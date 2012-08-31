@@ -1,0 +1,17 @@
+Tests single SNP and an insertion before (TODO how does samtools handle depth with insertions?)
+
+v1 alignments:
+ref a-tgcatgcatgcatgc
+    aaagcatgcatgcatgc
+    aaagcatgcatgcatgc
+    aaagcatgcatgcatgc
+    aaagcatgcatgcatgc
+    *  **************
+
+v2 alignments:
+ref atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    ****************
