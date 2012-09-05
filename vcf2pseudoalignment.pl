@@ -25,16 +25,16 @@ my $snp_info = {'removed' => {'insertions' => 0, 'deletions' => 0, 'multi' => 0,
 
 sub usage
 {
-	"Usage: $0 --vcf-dir [vcf dir] --mpileup-dir [mpileup dir]\n".
+	"Usage: $0 --vcf-dir [vcf dir] --mpileup-dir [mpileup dir] --output [output alignment file]\n".
 	"Parameters:\n".
 	"\t--vcf-dir: The directory containing the vcf files.\n".
 	"\t--mpileup-dir: Directory containing the vcf files produced by 'samtools mpileup \$file | bcftools view -cg' (*.vcf).\n".
 	"\t-o|--output:  The output file for the alignment\n".
-	"\t-r|--reference:  The name of the reference file used.\n".
-	"\t-u|--uniquify:  Make the seq names unique and print mapping file to real names (for phylip format limitations)\n".
 	"Options:\n".
-	"\t-f|--format:  The format to output the alignment to, one of the Bio::AlignIO supported formats\n".
-	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base\n".
+	"\t-u|--uniquify:  Make the seq names unique and print mapping file to real names (for phylip format limitations)\n".
+	"\t-r|--reference:  The name of the reference to use in the alignment (default: reference)\n".
+	"\t-f|--format:  The format to output the alignment to, one of the Bio::AlignIO supported formats (default: fasta)\n".
+	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
 	"\t--verbose:  More information printed\n".
 	"\t-h|--help:  Help\n";
 }
@@ -379,8 +379,8 @@ die "output file undefined\n".usage if (not defined $output);
 
 if (not defined $reference)
 {
-	print STDERR "reference name not defined, calling it 'ref'\n";
-	$reference = 'ref';
+	print STDERR "reference name not defined, calling it 'reference'\n";
+	$reference = 'reference';
 }
 
 $uniquify = 0 if (not defined $uniquify);
