@@ -40,7 +40,7 @@ if ($help)
 }
 
 opendir(my $in_h,$input_dir) or die "Could not open $input_dir: $!";
-my @in_files = sort grep {$_ !~ /^\./} readdir($in_h);
+my @in_files = sort {$a <=> $b} grep {$_ !~ /^\./} readdir($in_h);
 closedir($in_h);
 
 print "Testing all input variants in $input_dir\n";
