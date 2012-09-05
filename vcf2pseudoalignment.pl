@@ -15,10 +15,12 @@ use Bio::SimpleAlign;
 use Vcf;
 
 my $verbose;
+my $unknown_base = 'N';
 
 my $snp_info = {'removed' => {'insertions' => 0, 'deletions' => 0, 'multi' => 0, 'other' => 0},
 		'total' => 0,
-		'positions' => {'total' => 0, 'filtered-coverage' => 0, 'filtered-mpileup' => 0, 'kept' => 0}
+		'positions' => 0,
+		'snps' => {'filtered-coverage' => 0, 'filtered-mpileup' => 0, 'kept' => 0}
 		};
 
 sub usage
@@ -56,7 +58,7 @@ sub variant_info_to_hash
 	my ($info_string) = @_;
 
 	my @info = split(/;/,$info_string);
-	my %info_hash = map {my @a=split(/=/,$_); $a[0] => $a[1]} @info;
+	my %info_hash = map {my @a=split(/=/,$_); $a[0] => ((@a >= 1) ? $a[1] : undef)} @info;
 
 	return \%info_hash;
 }
@@ -83,7 +85,6 @@ sub variants_alignment
 
 	for my $pos (sort {$a <=> $b} keys %$positions_hash)
 	{
-		my $skip_pos = 0;
 		my $sample_hash = $positions_hash->{$pos};
 
 		my @sample_hash_list = keys %$sample_hash;
@@ -94,8 +95,6 @@ sub variants_alignment
 		my $alignment_local = {};
 		for my $sample (@$samples_list)
 		{
-			next if ($skip_pos);
-
 			# get data for aligment we are building
 			if (not exists $sample_hash->{$sample})
 			{
@@ -103,9 +102,9 @@ sub variants_alignment
 				my $pileup_vcf = $mpileup_data->{$sample}->{$chromosome}->{$pos};
 				if (not defined $pileup_vcf)
 				{
-					$skip_pos = 1;
 					print STDERR "fail for $sample:$chromosome:$pos, mpileup(coverage) not defined\n" if ($verbose);
-					$snp_info->{'positions'}->{'filtered-coverage'}++;
+					$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
+					$snp_info->{'snps'}->{'filtered-coverage'}++;
 				}
 				else
 				{
@@ -120,49 +119,47 @@ sub variants_alignment
 					}
 					elsif ($coverage < $coverage_cutoff)
 					{
-						$skip_pos = 1;
 						print STDERR "fail for $sample:$chromosome:$pos, coverage=$coverage < cutoff=$coverage_cutoff\n" if ($verbose);
-						$snp_info->{'positions'}->{'filtered-coverage'}++;
+						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
+						$snp_info->{'snps'}->{'filtered-coverage'}++;
 					}
 					elsif ($alt ne '.')
 					{
-						$skip_pos = 1;
 						print STDERR "fail for $sample:$chromosome:$pos, mpileup data gives alt=$alt (ref=$ref), but no variant called from vcf data\n" if ($verbose);
-						$snp_info->{'positions'}->{'filtered-mpileup'}++;
+						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
+						$snp_info->{'snps'}->{'filtered-mpileup'}++;
 					}
 					else
 					{
 						print STDERR "pass for $sample:$chromosome:$pos, coverage=$coverage > cutoff=$coverage_cutoff and no variant called from mpileup data\n" if ($verbose);
 						$alignment_local->{$sample} = {'base' => $ref_base, 'position' => $pos};
+
+						$snp_info->{'snps'}->{'kept'}++;
 					}
 				}
 			}
 			else
 			{
 				$alignment_local->{$sample} = {'base' => $sample_hash->{$sample}->{'alt'}, 'position' => $pos};
+				$snp_info->{'snps'}->{'kept'}++;
 			}
 		}
 
-		if (not $skip_pos)
+		# fill in overall data structure
+		for my $sample (keys %$alignment_local)
 		{
-			# fill in overall data structure
-			for my $sample (keys %$alignment_local)
-			{
-				my $base = $alignment_local->{$sample}->{'base'};
-				my $pos = $alignment_local->{$sample}->{'position'};
+			my $base = $alignment_local->{$sample}->{'base'};
+			my $pos = $alignment_local->{$sample}->{'position'};
 
-				my $alignment_sample = $alignment{$sample};
+			my $alignment_sample = $alignment{$sample};
 
-				$alignment_sample->{'alignment'} .= $base;
-				push(@{$alignment_sample->{'positions'}}, $pos);
-			}
-
-			# fill in data for reference
-			$alignment{$reference}->{'alignment'} .= $ref_base;
-			push(@{$alignment{$reference}->{'positions'}}, $pos);
-
-			$snp_info->{'positions'}->{'kept'}++;
+			$alignment_sample->{'alignment'} .= $base;
+			push(@{$alignment_sample->{'positions'}}, $pos);
 		}
+
+		# fill in data for reference
+		$alignment{$reference}->{'alignment'} .= $ref_base;
+		push(@{$alignment{$reference}->{'positions'}}, $pos);
 	}
 
 
@@ -246,7 +243,7 @@ sub parse_variants
 					{
 						$position_hash = {};
 						$chrom_hash->{$position} = $position_hash;
-						$snp_info->{'positions'}->{'total'}++;
+						$snp_info->{'positions'}++;
 					}
 					else
 					{
@@ -422,6 +419,8 @@ closedir($dh);
 die "No *.vcf.gz files found in $vcf_dir.  Perhas you need to compress and index with 'tabix' tools\n".
 "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%vcf_files) <= 0);
 
+my $total_samples = (keys %vcf_files);
+
 # fill table depth_files with entries like
 #  sample1 => dir/vcf1.vcf.gz
 #  sample2 => dir/vcf2.vcf.gz
@@ -505,16 +504,18 @@ print STDERR "Alignment written to $output\n";
 print "# Command Line\n";
 print "# $command_line\n";
 print "# SNP statistics\n";
-print "# Total SNPs Processed: ".$snp_info->{'total'},"\n";
+print "# Processed $total_samples samples\n";
+print "# Total variant called SNPs processed: ".$snp_info->{'total'},"\n";
 print "#\tRemoved ".$snp_info->{'removed'}->{'insertions'}," insertions\n";
 print "#\tRemoved ".$snp_info->{'removed'}->{'deletions'}," deletions\n";
 print "#\tRemoved ".$snp_info->{'removed'}->{'multi'}," multi\n";
 print "#\tRemoved ".$snp_info->{'removed'}->{'other'}," other\n";
-print "# Total Valid Positions: ".$snp_info->{'positions'}->{'total'},"\n";
-print "#\tFiltered:\n";
-print "#\t\tLow Coverage: ".$snp_info->{'positions'}->{'filtered-coverage'}."\n";
-print "#\t\tVariant/mpileup differences: ".$snp_info->{'positions'}->{'filtered-mpileup'},"\n";
-print "#\tKept for analysis: ".$snp_info->{'positions'}->{'kept'},"\n";
+print "# Total Valid Positions: ".$snp_info->{'positions'},"\n";
+print "# Total SNPs to process: ".($snp_info->{'positions'}*$total_samples)."\n";
+print "#\tSNPs called as N's:\n";
+print "#\t\tLow Coverage: ".$snp_info->{'snps'}->{'filtered-coverage'}."\n";
+print "#\t\tVariant/mpileup differences: ".$snp_info->{'snps'}->{'filtered-mpileup'},"\n";
+print "#\tValid SNPs for analysis: ".$snp_info->{'snps'}->{'kept'},"\n";
 
 # print other information
 print "#\n#AlnName\tSampleName\tPositions\n";
