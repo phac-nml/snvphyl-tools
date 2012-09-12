@@ -8,6 +8,7 @@ use strict;
 
 use Getopt::Long;
 use Storable 'dclone';
+use File::Basename;
 
 use Bio::AlignIO;
 use Bio::SimpleAlign;
@@ -39,21 +40,24 @@ sub usage
 	"\t-h|--help:  Help\n";
 }
 
-sub check_subset_of
+sub create_mpileup_table
 {
-	my ($set1, $set1_dir, $set2, $set2_dir) = @_;
+	my ($vcf_files, $vcf_dir, $mpileup_dir) = @_;
+	my %mpileup_table;
 
-	for my $key1 (keys %$set1)
+	for my $vcf_name (keys %$vcf_files)
 	{
-		if (not defined $set2->{$key1})
+		my $vcf_file = $vcf_files->{$vcf_name};
+		my $mpileup_file = "$mpileup_dir/".basename($vcf_file);
+		$mpileup_table{$vcf_name} = $mpileup_file;
+		if (not (-e $mpileup_file))
 		{
-			print STDERR "Could not find file in $set2_dir matching file ".$set1->{$key1}." in $set1_dir" if ($verbose);
-			return 0;
+			print STDERR "Could not find mpileup file \"$mpileup_file\" corresponding to vcf-file \"$vcf_file\"\n";
+			return undef;
 		}
-		print STDERR $set1->{$key1}." matches ".$set2->{$key1}."\n" if ($verbose);
 	}
 
-	return 1;
+	return \%mpileup_table;
 }
 
 sub variant_info_to_hash
@@ -424,23 +428,17 @@ die "No *.vcf.gz files found in $vcf_dir.  Perhas you need to compress and index
 
 my $total_samples = (keys %vcf_files);
 
-# fill table depth_files with entries like
-#  sample1 => dir/vcf1.vcf.gz
-#  sample2 => dir/vcf2.vcf.gz
-opendir($dh, $mpileup_dir) or die "error opening directory $mpileup_dir: $!";
-%mpileup_files = map { /^(.*)\.vcf\.gz$/; $1 => "$mpileup_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
-closedir($dh);
-
-# check to make sure every vcf file has a corresponding depth file
-# assumes files are named with the same prefix and just have the .depth or .vcf suffix changed
-# ex file1.vcf and file1.depth
-if (not check_subset_of(\%vcf_files, $vcf_dir, \%mpileup_files, $mpileup_dir))
+# create table of mpileup files corresponding to input freebayes/variant vcf files
+# assumes files are named with the same prefix
+# ex vcf-dir/file1.vcf.gz and mpileup-dir/file1.vcf.gz
+my $mpileup_table = create_mpileup_table(\%vcf_files, $vcf_dir, $mpileup_dir);
+if (not defined $mpileup_table)
 {
-	die "Error: vcf-dir contains vcf files with unmatched files in mpileup-dir";
+	die "Error: vcf-dir contains unmatched files in mpileup-dir";
 }
-if (not check_subset_of(\%mpileup_files, $mpileup_dir, \%vcf_files, $vcf_dir))
+else
 {
-	die "Error: mpileup-dir contains mpileup files with unmatched files in vcf-dir";
+	%mpileup_files = %{$mpileup_table};
 }
 
 # fill in variants for each vcf file
