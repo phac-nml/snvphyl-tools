@@ -47,10 +47,13 @@ sub check_subset_of
 	{
 		if (not defined $set2->{$key1})
 		{
-			die "Could not find file in $set2_dir matching file ".$set1->{$key1}." in $set1_dir";
+			print STDERR "Could not find file in $set2_dir matching file ".$set1->{$key1}." in $set1_dir" if ($verbose);
+			return 0;
 		}
 		print STDERR $set1->{$key1}." matches ".$set2->{$key1}."\n" if ($verbose);
 	}
+
+	return 1;
 }
 
 sub variant_info_to_hash
@@ -431,7 +434,14 @@ closedir($dh);
 # check to make sure every vcf file has a corresponding depth file
 # assumes files are named with the same prefix and just have the .depth or .vcf suffix changed
 # ex file1.vcf and file1.depth
-check_subset_of(\%vcf_files, $vcf_dir, \%mpileup_files, $mpileup_dir);
+if (not check_subset_of(\%vcf_files, $vcf_dir, \%mpileup_files, $mpileup_dir))
+{
+	die "Error: vcf-dir contains vcf files with unmatched files in mpileup-dir";
+}
+if (not check_subset_of(\%mpileup_files, $mpileup_dir, \%vcf_files, $vcf_dir))
+{
+	die "Error: mpileup-dir contains mpileup files with unmatched files in vcf-dir";
+}
 
 # fill in variants for each vcf file
 my $vcf_data = parse_variants(\%vcf_files);
