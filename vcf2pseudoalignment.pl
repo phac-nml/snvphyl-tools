@@ -115,14 +115,21 @@ sub variants_alignment
 				}
 				else
 				{
-					my $ref = $pileup_vcf->[3];
-					my $alt = $pileup_vcf->[4];
-					my %info_hash = %{variant_info_to_hash($pileup_vcf->[7])};
+					my $ref = $pileup_vcf->{'ref'};
+					my $alt = $pileup_vcf->{'alt'};
+					my $coverage = $pileup_vcf->{'cov'};
 
-					my $coverage = $info_hash{'DP'};
 					if (not defined $coverage)
 					{
-						die "Error: coverage not defined for sample $sample, vcf-line: ".join("\t",@$pileup_vcf);
+						die "Error: mpileup coverage not defined for sample $sample:$chromosome:$pos\n";
+					}
+					elsif (not defined $alt)
+					{
+						die "Error: mpileup for $sample:$chromosome:$pos, alt not defined\n" if ($verbose);
+					}
+					elsif (not defined $ref)
+					{
+						die "Error: mpileup for $sample:$chromosome:$pos, ref not defined\n" if ($verbose);
 					}
 					elsif ($coverage < $coverage_cutoff)
 					{
@@ -138,7 +145,7 @@ sub variants_alignment
 					}
 					else
 					{
-						print STDERR "pass for $sample:$chromosome:$pos, coverage=$coverage > cutoff=$coverage_cutoff and no variant called from mpileup data\n" if ($verbose);
+						print STDERR "pass for $sample:$chromosome:$pos, coverage=$coverage > cutoff=$coverage_cutoff and no variant called from mpileup data (alt=$alt, ref=$ref)\n" if ($verbose);
 						$alignment_local->{$sample} = {'base' => $ref_base, 'position' => $pos};
 
 						$snp_info->{'snps'}->{'kept'}++;
@@ -322,6 +329,10 @@ sub parse_mpileup
 				if (exists $working_mpileup->{$chrom}->{$position})
 				{
 					my %info_hash = %{variant_info_to_hash($data->[7])};
+					my $ref = $data->[3];
+					my $alt = $data->[4];
+					my $coverage = $info_hash{'DP'};
+
 					if (exists $info_hash{'INDEL'})
 					{
 						print STDERR "skipping INDEL vcf-line found for $sample: '".join(" ",@$data)."\n";
@@ -333,7 +344,7 @@ sub parse_mpileup
 					else
 					{
 						print STDERR "mpileup info found for $sample:$chrom:$position\n" if ($verbose);
-						$working_mpileup->{$chrom}->{$position} = $data;
+						$working_mpileup->{$chrom}->{$position} = {'ref' => $ref, 'alt' => $alt, 'cov' => $coverage};
 					}
 				}
 			}

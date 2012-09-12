@@ -1,4 +1,4 @@
-Tests single SNP and an insertion before (TODO how does samtools handle depth with insertions?)
+Tests single SNP and an insertion before
 
 v1 alignments:
 ref a-tgcatgcatgcatgc

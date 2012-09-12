@@ -1,0 +1,29 @@
+Tests two valid (v) nucleotide variants, and two invalid variants (one due to low coverage (c), another due to differences in mpileup calls (m))
+
+v1 alignments:
+ref1 atgcccgt
+     aagcactt
+     aagcactt
+     aagcactt
+     aagcactt
+     *v**m*c*
+ref2 gcataagt
+     gcttaagt
+     gcttaagt
+     gcttaagt
+     gcttaagt
+     **v*****
+
+v2 alignments:
+ref1 atgcccgt
+     aagcact
+     aagcact
+     aagcact
+     aagcac
+     *v**m*c
+ref2 gcataagt
+     gcataagt
+     gcataagt
+     gcataagt
+     gcataagt
+     ********
