@@ -61,7 +61,7 @@ sub run_command
 
 	my ($fh,$actual_out_file) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 	close($fh);
-	my $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference --format fasta --output $actual_out_file --coverage-cutoff $coverage_cutoff";
+	my $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference --format $format --output $actual_out_file --coverage-cutoff $coverage_cutoff";
 	
 	if ($verbose)
 	{
@@ -75,6 +75,15 @@ sub run_command
 	system($command) == 0 or die "Could not run command $command: $!";
 
 	return $actual_out_file;
+}
+
+sub test_header
+{
+	my ($message) = @_;
+
+	print "\n########################################\n";
+	print "### Testing $message ###\n";
+	print "########################################\n\n";
 }
 
 my $cases_dir = "$script_dir";
@@ -112,9 +121,7 @@ for my $dir (@in_files)
 	my $expected_out_file = "$curr_input/expected.fasta";
 	my $vcf_dir = $curr_input;
 	my $pileup_dir = "$curr_input/pileup";
-	print "\n########################################\n";
-	print "### Testing $curr_input ###\n";
-	print "########################################\n\n";
+	test_header($curr_input);
 	print "### Description ###\n";
 	print "$description\n";
 	print "### Expected ###\n";
@@ -135,5 +142,24 @@ for my $dir (@in_files)
 	}
 	print "### done ###\n";
 }
+
+my $actual_file;
+my $expected_file;
+my $curr_input;
+my $got;
+my $expected;
+
+$curr_input = "$input_dir/1";
+test_header("phylip output format in $curr_input");
+$expected_file = "$curr_input/expected.phy";
+$expected = `cat $expected_file`;
+print "### Expected ###\n";
+print "$expected\n";
+die("could not find input dir $curr_input") if (not -e $curr_input);
+$actual_file = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,'phylip');
+$got = `cat $actual_file`;
+print "### Got ###\n";
+print "$got\n";
+pass("pass test for phylip output") if (compare_files($expected_file,$actual_file));
 
 done_testing();
