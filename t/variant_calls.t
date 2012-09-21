@@ -23,19 +23,19 @@ sub usage
 
 sub compare_files
 {
-	my ($expected_out_file,$actual_out_base) = @_;
+	my ($expected_out_file,$actual_out_file) = @_;
 
 	my $success = 1;
 
 	open(my $out_h, $expected_out_file) or die "Could not open $expected_out_file: $!";
-	open(my $a_out_h, $actual_out_base) or die "Could not open $actual_out_base: $!";
+	open(my $a_out_h, $actual_out_file) or die "Could not open $actual_out_file: $!";
 	while($success and (defined (my $expected_line = readline($out_h))))
 	{
 		my $actual_line = readline($a_out_h);
 		if (not defined $actual_line)
 		{
 			$success = 0;
-			fail("expected file $expected_out_file has more lines than actual file $actual_out_base");
+			fail("expected file $expected_out_file has more lines than actual file $actual_out_file");
 			next;
 		}
 		else
@@ -51,6 +51,8 @@ sub compare_files
 	}
 	close($out_h);
 	close($a_out_h);
+
+	unlink($actual_out_file);
 
 	return $success;
 }
@@ -181,5 +183,22 @@ $got = `cat $actual_file`;
 print "### Got ###\n";
 print "$got\n";
 pass("pass test for phylip output") if (compare_files($expected_file,$actual_file));
+
+$curr_input = "$input_dir/1";
+test_header("phylip/fasta output format in $curr_input");
+$expected_file_phy = "$curr_input/expected.phy";
+$expected_file_fasta = "$curr_input/expected.fasta";
+die("could not find input dir $curr_input") if (not -e $curr_input);
+($actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta']);
+if ($actual_file_1 =~ /phy$/)
+{
+        pass("pass test for phylip output") if (compare_files($expected_file_phy,$actual_file_1));
+        pass("pass test for fasta output") if (compare_files($expected_file_fasta,$actual_file_2));
+}
+else
+{
+        pass("pass test for phylip output") if (compare_files($expected_file_phy,$actual_file_2));
+        pass("pass test for fasta output") if (compare_files($expected_file_fasta,$actual_file_1));
+}
 
 done_testing();

@@ -364,7 +364,7 @@ my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 my $vcf_dir;
 my $mpileup_dir;
 my $output_base;
-my $format;
+my @formats;
 my $reference;
 my $coverage_cutoff;
 my $uniquify;
@@ -374,7 +374,7 @@ my $command_line = join(' ',@ARGV);
 
 if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 		'mpileup-dir|b=s' => \$mpileup_dir,
-		'format|f=s' => \$format,
+		'format|f=s' => \@formats,
 		'output-base|o=s' => \$output_base,
 		'reference|r=s' => \$reference,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
@@ -404,14 +404,17 @@ if (not defined $reference)
 
 $uniquify = 0 if (not defined $uniquify);
 
-if (not defined $format)
+if (@formats <= 0)
 {
 	print STDERR "warning: format not defined, assuming fasta\n";
-	$format = "fasta";
+	@formats = ("fasta");
 }
-elsif (not defined $valid_formats{$format})
+else
 {
-	die "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n";
+	for my $format (@formats)
+	{
+		die "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n" if (not defined $valid_formats{$format});
+	}
 }
 
 if (not defined $coverage_cutoff)
@@ -516,10 +519,13 @@ for my $seq_id ($aln->each_seq)
 # check if alignment is flush
 die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
 
-my $output_file = "$output_base.".$valid_formats{$format};
-my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format);
-$io->write_aln($aln);
-print STDERR "Alignment written to $output_file\n";
+for my $format (@formats)
+{
+	my $output_file = "$output_base.".$valid_formats{$format};
+	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format);
+	$io->write_aln($aln);
+	print STDERR "Alignment written to $output_file\n";
+}
 
 # print snp stats
 print "# Command Line\n";
