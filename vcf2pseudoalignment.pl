@@ -26,11 +26,11 @@ my $snp_info = {'removed' => {'insertions' => 0, 'deletions' => 0, 'multi' => 0,
 
 sub usage
 {
-	"Usage: $0 --vcf-dir [vcf dir] --mpileup-dir [mpileup dir] --output [output alignment file]\n".
+	"Usage: $0 --vcf-dir [vcf dir] --mpileup-dir [mpileup dir] --output-base [base of output alignment file]\n".
 	"Parameters:\n".
 	"\t--vcf-dir: The directory containing the vcf files.\n".
 	"\t--mpileup-dir: Directory containing the vcf files produced by 'samtools mpileup \$file | bcftools view -cg' (*.vcf).\n".
-	"\t-o|--output:  The output file for the alignment\n".
+	"\t-o|--output-base:  The output base name for the alignment file(s)\n".
 	"Options:\n".
 	"\t-u|--uniquify:  Make the seq names unique and print mapping file to real names (for phylip format limitations)\n".
 	"\t-r|--reference:  The name of the reference to use in the alignment (default: reference)\n".
@@ -358,11 +358,12 @@ sub parse_mpileup
 ### MAIN ###
 ############
 
-my %valid_formats = map {$_ => 1} ('fasta', 'phylip', 'clustalw');
+# maps format name to format file extension
+my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 my $vcf_dir;
 my $mpileup_dir;
-my $output;
+my $output_base;
 my $format;
 my $reference;
 my $coverage_cutoff;
@@ -374,7 +375,7 @@ my $command_line = join(' ',@ARGV);
 if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 		'mpileup-dir|b=s' => \$mpileup_dir,
 		'format|f=s' => \$format,
-		'output|o=s' => \$output,
+		'output-base|o=s' => \$output_base,
 		'reference|r=s' => \$reference,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
 		'uniquify|u' => \$uniquify,
@@ -393,7 +394,7 @@ die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
 die "mpileup-dir undefined\n".usage if (not defined $mpileup_dir);
 die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
 
-die "output file undefined\n".usage if (not defined $output);
+die "output-base undefined\n".usage if (not defined $output_base);
 
 if (not defined $reference)
 {
@@ -515,9 +516,10 @@ for my $seq_id ($aln->each_seq)
 # check if alignment is flush
 die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
 
-my $io = Bio::AlignIO->new(-file => ">$output", -format => $format);
+my $output_file = "$output_base.".$valid_formats{$format};
+my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format);
 $io->write_aln($aln);
-print STDERR "Alignment written to $output\n";
+print STDERR "Alignment written to $output_file\n";
 
 # print snp stats
 print "# Command Line\n";
