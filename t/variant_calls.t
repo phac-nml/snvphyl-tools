@@ -11,12 +11,70 @@ use Getopt::Long;
 my $script_dir = $FindBin::Bin;
 my $vcf_align_bin = "$script_dir/../vcf2pseudoalignment.pl";
 
+my $verbose = 0;
+
 sub usage
 {
 	"Usage: $0 [Options]\n".
 	"Options:\n".
 	"\t-h|--help\n".
 	"\t-v|--verbose\n";
+}
+
+sub compare_files
+{
+	my ($expected_out_file,$actual_out_file) = @_;
+
+	my $success = 1;
+
+	open(my $out_h, $expected_out_file) or die "Could not open $expected_out_file: $!";
+	open(my $a_out_h, $actual_out_file) or die "Could not open $actual_out_file: $!";
+	while($success and (defined (my $expected_line = readline($out_h))))
+	{
+		my $actual_line = readline($a_out_h);
+		if (not defined $actual_line)
+		{
+			$success = 0;
+			fail("expected file $expected_out_file has more lines than actual file $actual_out_file");
+			next;
+		}
+		else
+		{
+			chomp $expected_line;
+			chomp $actual_line;
+			if ($actual_line ne $expected_line)
+			{
+				is($actual_line,$expected_line,"lines \"$actual_line\" and \"$expected_line\" differ");
+				$success = 0;
+			}
+		}
+	}
+	close($out_h);
+	close($a_out_h);
+
+	return $success;
+}
+
+sub run_command
+{
+	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$format) = @_;
+
+	my ($fh,$actual_out_file) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
+	close($fh);
+	my $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference --format fasta --output $actual_out_file --coverage-cutoff $coverage_cutoff";
+	
+	if ($verbose)
+	{
+		$command .= " -v";
+	}
+	else
+	{
+		$command .= " 2>&1 1>/dev/null";
+	}
+	print "## Running $command\n\n";
+	system($command) == 0 or die "Could not run command $command: $!";
+
+	return $actual_out_file;
 }
 
 my $cases_dir = "$script_dir";
@@ -26,7 +84,7 @@ my $coverage_cutoff = 4;
 
 ### MAIN ###
 
-my ($help,$verbose);
+my ($help);
 if (!GetOptions('help|h' => \$help,
                 'verbose|v' => \$verbose))
 {
@@ -51,7 +109,6 @@ for my $dir (@in_files)
 
 	my $description = `cat $curr_input/description`;
 	my $expected = `cat $curr_input/expected.fasta`;
-	my $reference = 'ref';
 	my $expected_out_file = "$curr_input/expected.fasta";
 	my $vcf_dir = $curr_input;
 	my $pileup_dir = "$curr_input/pileup";
@@ -66,52 +123,17 @@ for my $dir (@in_files)
 	die "$expected_out_file does not exist" if (not -e $expected_out_file);
 
 	my $done_testing = 0;
-	my ($fh,$actual_out_file) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
-	close($fh);
-	my $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference --format fasta --output $actual_out_file --coverage-cutoff $coverage_cutoff";
-	
-	if ($verbose)
-	{
-		$command .= " -v";
-	}
-	else
-	{
-		$command .= " 2>&1 1>/dev/null";
-	}
-	print "## Running $command\n\n";
-	system($command) == 0 or die "Could not run command $command: $!";
 
+	my $actual_out_file = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,'fasta');
 	my $got = `cat $actual_out_file`;
 	print "### Got ###\n";
 	print "$got\n";
-	open(my $out_h, $expected_out_file) or die "Could not open $expected_out_file: $!";
-	open(my $a_out_h, $actual_out_file) or die "Could not open $actual_out_file: $!";
-	while(not $done_testing and (defined (my $expected_line = readline($out_h))))
-	{
-		my $actual_line = readline($a_out_h);
-		if (not defined $actual_line)
-		{
-			$done_testing = 1;
-			fail("expected file $expected_out_file has more lines than actual file $actual_out_file");
-			next;
-		}
-		else
-		{
-			chomp $expected_line;
-			chomp $actual_line;
-			if ($actual_line ne $expected_line)
-			{
-				is($actual_line,$expected_line,"lines \"$actual_line\" and \"$expected_line\" differ");
-				$done_testing = 1;
-			}
-		}
-	}
-	if (not $done_testing) #pass
+	my $success = compare_files($expected_out_file,$actual_out_file);
+	if ($success) #pass
 	{
 		pass("pseudoalignment generated from data in $curr_input is valid");
 	}
 	print "### done ###\n";
-	close($out_h);
 }
 
 done_testing();
