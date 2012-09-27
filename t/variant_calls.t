@@ -10,7 +10,9 @@ use Getopt::Long;
 
 my $script_dir = $FindBin::Bin;
 
-$ENV{'PERL5LIB'} = "$script_dir/../../../lib:$script_dir/../../../cpanlib/lib/perl5:".$ENV{'PERL5LIB'};
+my $old_env = $ENV{'PERL5LIB'};
+$ENV{'PERL5LIB'} = "$script_dir/../../../lib:$script_dir/../../../cpanlib/lib/perl5:";
+$ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
 my $vcf_align_bin = "$script_dir/../vcf2pseudoalignment.pl";
 
