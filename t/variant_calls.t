@@ -167,7 +167,7 @@ for my $dir (@in_files)
 	{
 		pass("pseudoalignment generated from data in $curr_input is valid");
 	}
-	my $success = compare_files($expected_positions_file,$actual_positions_file);
+	$success = compare_files($expected_positions_file,$actual_positions_file);
 	if ($success)
 	{
 		pass("positions file generated from data in $curr_input is valid");

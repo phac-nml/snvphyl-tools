@@ -84,7 +84,7 @@ sub variants_alignment
 	my %alignment;
 
 	# for printing out list of valid/excluded positions
-	# form of {pos => valid/invalid}
+	# form of {pos => {status => valid/invalid, ref => 'base', 'samples' => {sample => 'base'}}}
 	my $total_positions = {};
 	for my $sample (@$samples_list)
 	{
@@ -101,6 +101,7 @@ sub variants_alignment
 		my @sample_hash_list = keys %$sample_hash;
 		my $first_sample = $sample_hash->{$sample_hash_list[0]};
 		my $ref_base = $first_sample->{'ref'}; # get reference base
+		$total_positions->{$pos} = {'ref' => $ref_base} if (not defined $total_positions->{$pos});
 
 		# check for which samples have no variant called in this position
 		my $alignment_local = {};
@@ -117,10 +118,11 @@ sub variants_alignment
 					$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
 					$snp_info->{'snps'}->{'filtered-coverage'}++;
 
-					my $is_valid = $total_positions->{$pos};
+					$total_positions->{$pos}->{'samples'}->{$sample} = '-';
+					my $is_valid = $total_positions->{$pos}->{'status'};
 					if (not defined $is_valid or $is_valid eq 'valid')
 					{
-						$total_positions->{$pos} = 'filtered-coverage';
+						$total_positions->{$pos}->{'status'} = 'filtered-coverage';
 					}
 				}
 				else
@@ -147,10 +149,11 @@ sub variants_alignment
 						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
 						$snp_info->{'snps'}->{'filtered-coverage'}++;
 
-						my $is_valid = $total_positions->{$pos};
+						$total_positions->{$pos}->{'samples'}->{$sample} = '-';
+						my $is_valid = $total_positions->{$pos}->{'status'};
 						if (not defined $is_valid or $is_valid eq 'valid')
 						{
-							$total_positions->{$pos} = 'filtered-coverage';
+							$total_positions->{$pos}->{'status'} = 'filtered-coverage';
 						}
 					}
 					elsif ($alt ne '.')
@@ -159,10 +162,11 @@ sub variants_alignment
 						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
 						$snp_info->{'snps'}->{'filtered-mpileup'}++;
 
-						my $is_valid = $total_positions->{$pos};
+						$total_positions->{$pos}->{'samples'}->{$sample} = 'N';
+						my $is_valid = $total_positions->{$pos}->{'status'};
 						if (not defined $is_valid or $is_valid eq 'valid')
 						{
-							$total_positions->{$pos} = 'filtered-mpileup';
+							$total_positions->{$pos}->{'status'} = 'filtered-mpileup';
 						}
 					}
 					else
@@ -171,22 +175,44 @@ sub variants_alignment
 						$alignment_local->{$sample} = {'base' => $ref_base, 'position' => $pos};
 
 						$snp_info->{'snps'}->{'kept'}++;
-						my $is_valid = $total_positions->{$pos};
+						$total_positions->{$pos}->{'samples'}->{$sample} = $ref_base;
+						my $is_valid = $total_positions->{$pos}->{'status'};
 						if (not defined $is_valid)
 						{
-							$total_positions->{$pos} = 'valid';
+							$total_positions->{$pos}->{'status'} = 'valid';
 						}
 					}
 				}
 			}
 			else
 			{
-				$alignment_local->{$sample} = {'base' => $sample_hash->{$sample}->{'alt'}, 'position' => $pos};
-				$snp_info->{'snps'}->{'kept'}++;
-				my $is_valid = $total_positions->{$pos};
-				if (not defined $is_valid)
+				my $pileup_vcf = $mpileup_data->{$sample}->{$chromosome}->{$pos};
+				die "Error: mpileup for $sample:$chromosome:$pos not defined, but position called in other alignment software" if (not defined $pileup_vcf);
+				my $coverage = $pileup_vcf->{'cov'};
+				die "Error: position defined, but coverage in mpileup for $sample:$chromosome:$pos not defined\n" if (not defined $coverage or $coverage !~ /^\d+$/);
+				if ($coverage < $coverage_cutoff)
 				{
-					$total_positions->{$pos} = 'valid';
+					print STDERR "fail for $sample:$chromosome:$pos, coverage=$coverage < cutoff=$coverage_cutoff\n" if ($verbose);
+					$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
+					$snp_info->{'snps'}->{'filtered-coverage'}++;
+
+					$total_positions->{$pos}->{'samples'}->{$sample} = '-';
+					my $is_valid = $total_positions->{$pos}->{'status'};
+					if (not defined $is_valid or $is_valid eq 'valid')
+					{
+						$total_positions->{$pos}->{'status'} = 'filtered-coverage';
+					}
+				}
+				else
+				{
+					$alignment_local->{$sample} = {'base' => $sample_hash->{$sample}->{'alt'}, 'position' => $pos};
+					$snp_info->{'snps'}->{'kept'}++;
+					$total_positions->{$pos}->{'samples'}->{$sample} = $sample_hash->{$sample}->{'alt'};
+					my $is_valid = $total_positions->{$pos}->{'status'};
+					if (not defined $is_valid)
+					{
+						$total_positions->{$pos}->{'status'} = 'valid';
+					}
 				}
 			}
 		}
@@ -588,13 +614,36 @@ for my $name (sort keys %name_map)
 }
 
 open(my $vfh, ">$valid_positions") or die "Could not open $valid_positions: $!";
-print $vfh "#Chromosome\tPosition\tStatus\n";
+print $vfh "#Chromosome\tPosition\tStatus\tReference\t";
+my @samples_sorted_list = sort {$a cmp $b} @samples_list;
+print $vfh join("\t",@samples_sorted_list);
+print $vfh "\n";
 for my $chr (keys %total_positions_map)
 {
 	my $positions = $total_positions_map{$chr};
 	for my $pos (sort {$a <=> $b} keys %$positions)
 	{
-		print $vfh "$chr\t$pos\t".$positions->{$pos}."\n";
+		my $samples = $positions->{$pos}->{'samples'};
+		my $ref = $positions->{$pos}->{'ref'};
+		print $vfh "$chr\t$pos\t".$positions->{$pos}->{'status'}."\t$ref\t";
+		my $first = 1;
+		die "error in total_positions_map, for $chr:$pos, not enough sample entries" if (@samples_sorted_list != scalar(keys %$samples));
+		my $id = 0;
+		for my $sample (sort {$a cmp $b } keys %$samples)
+		{
+			die "error: sample name $sample different from ".$samples_sorted_list[$id] if ($samples_sorted_list[$id] ne $sample);
+			if ($first)
+			{
+				$first = 0;
+				print $vfh $samples->{$sample};
+			}
+			else
+			{
+				print $vfh "\t".$samples->{$sample};
+			}
+			$id++;
+		}
+		print $vfh "\n";
 	}
 }
 close($vfh);

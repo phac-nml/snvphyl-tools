@@ -1,3 +1,3 @@
-#Chromosome	Position	Status
-ref	2	valid
-ref	4	valid
+#Chromosome	Position	Status	Reference	v1	v2
+ref	2	valid	T	A	T
+ref	4	valid	C	T	C
