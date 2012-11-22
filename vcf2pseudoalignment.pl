@@ -82,6 +82,10 @@ sub variants_alignment
 	# stores pseudoalignment in form of
 	# {sample => {alignment => 'string', positions => [pos array]}}
 	my %alignment;
+
+	# for printing out list of valid/excluded positions
+	# form of {pos => valid/invalid}
+	my $total_positions = {};
 	for my $sample (@$samples_list)
 	{
 		$alignment{$sample} = {'alignment' => '', 'positions' => []};
@@ -112,6 +116,12 @@ sub variants_alignment
 					print STDERR "fail for $sample:$chromosome:$pos, mpileup(coverage) not defined\n" if ($verbose);
 					$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
 					$snp_info->{'snps'}->{'filtered-coverage'}++;
+
+					my $is_valid = $total_positions->{$pos};
+					if (not defined $is_valid or $is_valid eq 'valid')
+					{
+						$total_positions->{$pos} = 'filtered-coverage';
+					}
 				}
 				else
 				{
@@ -136,12 +146,24 @@ sub variants_alignment
 						print STDERR "fail for $sample:$chromosome:$pos, coverage=$coverage < cutoff=$coverage_cutoff\n" if ($verbose);
 						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
 						$snp_info->{'snps'}->{'filtered-coverage'}++;
+
+						my $is_valid = $total_positions->{$pos};
+						if (not defined $is_valid or $is_valid eq 'valid')
+						{
+							$total_positions->{$pos} = 'filtered-coverage';
+						}
 					}
 					elsif ($alt ne '.')
 					{
 						print STDERR "fail for $sample:$chromosome:$pos, mpileup data gives alt=$alt (ref=$ref), but no variant called from vcf data\n" if ($verbose);
 						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
 						$snp_info->{'snps'}->{'filtered-mpileup'}++;
+
+						my $is_valid = $total_positions->{$pos};
+						if (not defined $is_valid or $is_valid eq 'valid')
+						{
+							$total_positions->{$pos} = 'filtered-mpileup';
+						}
 					}
 					else
 					{
@@ -149,6 +171,11 @@ sub variants_alignment
 						$alignment_local->{$sample} = {'base' => $ref_base, 'position' => $pos};
 
 						$snp_info->{'snps'}->{'kept'}++;
+						my $is_valid = $total_positions->{$pos};
+						if (not defined $is_valid)
+						{
+							$total_positions->{$pos} = 'valid';
+						}
 					}
 				}
 			}
@@ -156,6 +183,11 @@ sub variants_alignment
 			{
 				$alignment_local->{$sample} = {'base' => $sample_hash->{$sample}->{'alt'}, 'position' => $pos};
 				$snp_info->{'snps'}->{'kept'}++;
+				my $is_valid = $total_positions->{$pos};
+				if (not defined $is_valid)
+				{
+					$total_positions->{$pos} = 'valid';
+				}
 			}
 		}
 
@@ -177,7 +209,7 @@ sub variants_alignment
 	}
 
 
-	return \%alignment;
+	return (\%alignment,$total_positions);
 }
 
 # parse_variants
@@ -465,9 +497,11 @@ my %chromosome_align;
 my $unique_count = 1;
 my %name_map; # used to map sample name to other information
 my %sample_map; # keeps track of which samples have which unique ids (so we can properly increment unique_count)
+my %total_positions_map; # keep track of total positions, and if valid/not
 for my $chromosome (keys %$vcf_data)
 {
-	my $alignment = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff);
+	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff);
+	$total_positions_map{$chromosome} = $total_positions;
 	for my $sample (sort {$a cmp $b} keys %$alignment)
 	{
 		next if (@{$alignment->{$sample}->{'positions'}} <= 0); # no alignments
@@ -527,6 +561,7 @@ for my $format (@formats)
 	print STDERR "Alignment written to $output_file\n";
 }
 
+my $valid_positions = "$output_base-positions.tsv";
 # print snp stats
 print "# Command Line\n";
 print "# $command_line\n";
@@ -543,6 +578,7 @@ print "#\tSNPs called as N's:\n";
 print "#\t\tLow Coverage: ".$snp_info->{'snps'}->{'filtered-coverage'}."\n";
 print "#\t\tVariant/mpileup differences: ".$snp_info->{'snps'}->{'filtered-mpileup'},"\n";
 print "#\tValid SNPs for analysis: ".$snp_info->{'snps'}->{'kept'},"\n";
+print "# Positions file in $valid_positions\n";
 
 # print other information
 print "#\n#AlnName\tSampleName\tPositions\n";
@@ -551,3 +587,14 @@ for my $name (sort keys %name_map)
 	print "$name\t",$name_map{$name},"\n";
 }
 
+open(my $vfh, ">$valid_positions") or die "Could not open $valid_positions: $!";
+print $vfh "#Chromosome\tPosition\tStatus\n";
+for my $chr (keys %total_positions_map)
+{
+	my $positions = $total_positions_map{$chr};
+	for my $pos (sort {$a <=> $b} keys %$positions)
+	{
+		print $vfh "$chr\t$pos\t".$positions->{$pos}."\n";
+	}
+}
+close($vfh);

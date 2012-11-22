@@ -99,7 +99,7 @@ sub run_command
 	print "## Running $command\n\n";
 	system($command) == 0 or die "Could not run command $command: $!";
 
-	return @out_files;
+	return ($actual_out_base,@out_files);
 }
 
 sub test_header
@@ -144,6 +144,7 @@ for my $dir (@in_files)
 	my $description = `cat $curr_input/description`;
 	my $expected = `cat $curr_input/expected.fasta`;
 	my $expected_out_file = "$curr_input/expected.fasta";
+	my $expected_positions_file = "$curr_input/expected.positions.tsv";
 	my $vcf_dir = $curr_input;
 	my $pileup_dir = "$curr_input/pileup";
 	test_header($curr_input);
@@ -156,7 +157,8 @@ for my $dir (@in_files)
 
 	my $done_testing = 0;
 
-	my ($actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta']);
+	my ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta']);
+	my $actual_positions_file = "$actual_base-positions.tsv";
 	my $got = `cat $actual_out_file`;
 	print "### Got ###\n";
 	print "$got\n";
@@ -165,14 +167,22 @@ for my $dir (@in_files)
 	{
 		pass("pseudoalignment generated from data in $curr_input is valid");
 	}
+	my $success = compare_files($expected_positions_file,$actual_positions_file);
+	if ($success)
+	{
+		pass("positions file generated from data in $curr_input is valid");
+	}
 	print "### done ###\n";
 }
 
+my $actual_base;
 my $actual_file;
 my $expected_file;
 my $curr_input;
 my $got;
 my $expected;
+my $expected_positions_file;
+my $actual_positions_file;
 my ($actual_file_1,$actual_file_2);
 my ($expected_file_phy,$expected_file_fasta);
 
@@ -180,21 +190,26 @@ $curr_input = "$input_dir/1";
 test_header("phylip output format in $curr_input");
 $expected_file = "$curr_input/expected.phy";
 $expected = `cat $expected_file`;
+$expected_positions_file = "$curr_input/expected.positions.tsv";
 print "### Expected ###\n";
 print "$expected\n";
 die("could not find input dir $curr_input") if (not -e $curr_input);
-($actual_file) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip']);
+($actual_base,$actual_file) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip']);
+$actual_positions_file = "$actual_base-positions.tsv";
 $got = `cat $actual_file`;
 print "### Got ###\n";
 print "$got\n";
 pass("pass test for phylip output") if (compare_files($expected_file,$actual_file));
+pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
 
 $curr_input = "$input_dir/1";
 test_header("phylip/fasta output format in $curr_input");
 $expected_file_phy = "$curr_input/expected.phy";
 $expected_file_fasta = "$curr_input/expected.fasta";
 die("could not find input dir $curr_input") if (not -e $curr_input);
-($actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta']);
+($actual_base,$actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta']);
+$actual_positions_file = "$actual_base-positions.tsv";
+pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
 if ($actual_file_1 =~ /phy$/)
 {
         pass("pass test for phylip output") if (compare_files($expected_file_phy,$actual_file_1));

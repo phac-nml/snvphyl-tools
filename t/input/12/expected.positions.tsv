@@ -1,0 +1,5 @@
+#Chromosome	Position	Status
+ref1	2	valid
+ref1	5	filtered-mpileup
+ref1	7	filtered-coverage
+ref2	3	valid
