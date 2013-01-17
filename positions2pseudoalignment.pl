@@ -91,7 +91,7 @@ while($line = readline($fh))
 			for (my $i = 0; $i < @dna; $i++)
 			{
 				$data[$i] = '' if (not defined $data[$i]);
-				$dna[$i] = 'N' if ($dna[$i] = '-'); # replace those positions filtered by coverage with N
+				$dna[$i] = 'N' if ($dna[$i] eq '-'); # replace those positions filtered by coverage with N
 				$data[$i] .= $dna[$i];
 			}
 		}
