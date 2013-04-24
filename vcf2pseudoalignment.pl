@@ -9,6 +9,7 @@ use strict;
 use Getopt::Long;
 use Storable 'dclone';
 use File::Basename;
+use Parallel::ForkManager;
 
 use Bio::AlignIO;
 use Bio::SimpleAlign;
@@ -354,19 +355,38 @@ sub parse_mpileup
 		}
 		$positions_hash->{$chr} = $new_chr_hash;
 	}
-
 	# positions_hash gets cloned and filled in for every sample
 	# fills in to 'chrom' => {'pos' => vcf-info/undef}
 
 	my %sample_pileup_hash;
-
+        
+        my $pm;
+        my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+        chomp $num_cpus;
+        $pm=Parallel::ForkManager->new($num_cpus);
+        
+        # data structure retrieval and handling
+        $pm -> run_on_finish ( # called BEFORE the first call to start()
+            sub {
+                my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
+                # retrieve data structure from child
+                if (defined($child_data)) {  # children are forced to send anything
+                    my ($single_key) = keys %{$child_data};
+                    $sample_pileup_hash{$single_key} = dclone($child_data->{$single_key});
+                } else {
+                    die "One or more mpileup file did not produce any data!\n";
+                }
+            }
+        );
+    
+        
+        
 	# read through each vcf file
 	# place into mpileup_hash, keeping only vcf lines necessary (in sorted_positions)
 	for my $sample (keys %$mpileup_files)
 	{
+                $pm->start and next;
 		my $working_mpileup = dclone($positions_hash);
-		$sample_pileup_hash{$sample} = $working_mpileup;
-
 		my $vcf_file = $mpileup_files->{$sample};
 
 		print STDERR "reading mpileup information from $vcf_file\n" if ($verbose);
@@ -406,8 +426,16 @@ sub parse_mpileup
 					}
 				}
 			}
-		}
+                    }
+            
+
+
+                $pm->finish(0,{$sample=>$working_mpileup})
+
+            
 	}
+        
+        $pm->wait_all_children;
 
 	return \%sample_pileup_hash;
 }
@@ -518,7 +546,7 @@ else
 my $vcf_data = parse_variants(\%vcf_files);
 my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data);
 
-my @samples_list = keys %vcf_files;
+my @samples_list = sort {$a cmp $b } keys %vcf_files;
 my %chromosome_align;
 my $unique_count = 1;
 my %name_map; # used to map sample name to other information
