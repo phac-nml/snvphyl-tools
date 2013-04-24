@@ -359,7 +359,7 @@ sub parse_variants
 
 sub parse_mpileup
 {
-	my ($mpileup_files, $vcf_data) = @_;
+	my ($mpileup_files, $vcf_data,$num_cpus) = @_;
 	# vcf_data is hash constructed from parse_variants
 	# converts to a positions_hash mapping 'chrom' => {'pos' => undef} for all positions
 	my $positions_hash = {};
@@ -379,8 +379,8 @@ sub parse_mpileup
 	my %sample_pileup_hash;
         
         my $pm;
-        my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
-        chomp $num_cpus;
+        # my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+        # chomp $num_cpus;
         $pm=Parallel::ForkManager->new($num_cpus);
         
         # data structure retrieval and handling
@@ -473,6 +473,7 @@ my $reference;
 my $coverage_cutoff;
 my $uniquify;
 my $help;
+my $num_cpus;
 
 my $command_line = join(' ',@ARGV);
 
@@ -483,6 +484,7 @@ if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 		'reference|r=s' => \$reference,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
 		'uniquify|u' => \$uniquify,
+                'numCpus=i' => \$num_cpus,
 		'help|h' => \$help,
 		'verbose|v' => \$verbose))
 {
@@ -500,6 +502,10 @@ die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
 
 die "output-base undefined\n".usage if (not defined $output_base);
 
+if ( not defined $num_cpus) {
+    print STDERR "number of core not defined, will use one CPU only\n";
+    $num_cpus=1;
+}
 if (not defined $reference)
 {
 	print STDERR "reference name not defined, calling it 'reference'\n";
@@ -562,7 +568,7 @@ else
 
 # fill in variants for each vcf file
 my $vcf_data = parse_variants(\%vcf_files);
-my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data);
+my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data,$num_cpus);
 
 my @samples_list = sort {$a cmp $b } keys %vcf_files;
 my %chromosome_align;
