@@ -7,7 +7,7 @@ use warnings;
 use strict;
 
 use Getopt::Long;
-use Storable 'dclone';
+use Storable qw /dclone store retrieve/;
 use File::Basename;
 use Parallel::ForkManager;
 
@@ -15,6 +15,8 @@ use Bio::AlignIO;
 use Bio::SimpleAlign;
 # VCF module from vcftools: http://vcftools.sourceforge.net/index.html
 use Vcf;
+use File::Temp qw /tempdir/;
+
 
 my $verbose;
 my $unknown_base = 'N';
@@ -359,7 +361,7 @@ sub parse_variants
 
 sub parse_mpileup
 {
-	my ($mpileup_files, $vcf_data,$num_cpus) = @_;
+	my ($mpileup_files, $vcf_data,$requested_cpus) = @_;
 	# vcf_data is hash constructed from parse_variants
 	# converts to a positions_hash mapping 'chrom' => {'pos' => undef} for all positions
 	my $positions_hash = {};
@@ -377,30 +379,37 @@ sub parse_mpileup
 	# fills in to 'chrom' => {'pos' => vcf-info/undef}
 
 	my %sample_pileup_hash;
+        my %list;
         
         my $pm;
-        # my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
-        # chomp $num_cpus;
-        $pm=Parallel::ForkManager->new($num_cpus);
-        
+        my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+        chomp $num_cpus;
+        #ensure that you user cannot request more threads then CPU on the machine
+        if ( $requested_cpus > $num_cpus) {
+            $requested_cpus = $num_cpus;
+            
+        }
+        $pm=Parallel::ForkManager->new($requested_cpus);
         # data structure retrieval and handling
-        $pm -> run_on_finish ( # called BEFORE the first call to start()
-            sub {
-                my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
-                # retrieve data structure from child
-                if (defined($child_data)) {  # children are forced to send anything
-                    my ($single_key) = keys %{$child_data};
-                    $sample_pileup_hash{$single_key} = dclone($child_data->{$single_key});
-                } else {
-                    die "One or more mpileup file did not produce any data!\n";
-                }
-            }
-        );
-    
-        
+         $pm -> run_on_finish ( # called BEFORE the first call to start()
+             sub {
+                 my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
+                 # retrieve data structure from child
+                 if (defined($child_data)) {  # children are forced to send anything
+                     my ($single_key) = keys %{$child_data};
+                     $list{$single_key} = $child_data->{$single_key};
+                 } else {
+                     die "One or more mpileup file did not produce any data!\n";
+                 }
+             }
+         );
+
+        #creating temporary directory on local machine to store results from each child.
+        my $tmpdir = tempdir( CLEANUP => 1 );
         
 	# read through each vcf file
 	# place into mpileup_hash, keeping only vcf lines necessary (in sorted_positions)
+
 	for my $sample (keys %$mpileup_files)
 	{
                 $pm->start and next;
@@ -431,7 +440,7 @@ sub parse_mpileup
 
 					if (exists $info_hash{'INDEL'})
 					{
-						print STDERR "skipping INDEL vcf-line found for $sample: '".join(" ",@$data)."\n";
+						#print STDERR "skipping INDEL vcf-line found for $sample: '".join(" ",@$data)."\n";
 					}
 					elsif (defined $working_mpileup->{$chrom}->{$position})
 					{
@@ -439,22 +448,30 @@ sub parse_mpileup
 					}
 					else
 					{
-						print STDERR "mpileup info found for $sample:$chrom:$position\n" if ($verbose);
+                                                #print STDERR "mpileup info found for $sample:$chrom:$position\n" if ($verbose);
 						$working_mpileup->{$chrom}->{$position} = {'ref' => $ref, 'alt' => $alt, 'cov' => $coverage};
 					}
 				}
 			}
                     }
             
+                $vcf->close();
 
-
-                $pm->finish(0,{$sample=>$working_mpileup})
+                #storing
+                my $name = basename($sample);
+                store $working_mpileup, "$tmpdir/$name";
+                
+                $pm->finish(0,{$sample=>"$tmpdir/$name"})
 
             
 	}
         
         $pm->wait_all_children;
 
+         #read all the files from dir storable into sample_pileup_hash and go on!
+         foreach my $sample( keys %list) {
+             $sample_pileup_hash{$sample} = retrieve($list{$sample});
+         }
 	return \%sample_pileup_hash;
 }
 
@@ -473,7 +490,7 @@ my $reference;
 my $coverage_cutoff;
 my $uniquify;
 my $help;
-my $num_cpus;
+my $requested_cpus;
 
 my $command_line = join(' ',@ARGV);
 
@@ -484,8 +501,9 @@ if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 		'reference|r=s' => \$reference,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
 		'uniquify|u' => \$uniquify,
-                'numCpus=i' => \$num_cpus,
 		'help|h' => \$help,
+                'numcpus=i' => \$requested_cpus,
+                
 		'verbose|v' => \$verbose))
 {
 	die "Invalid option\n".usage;
@@ -502,16 +520,13 @@ die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
 
 die "output-base undefined\n".usage if (not defined $output_base);
 
-if ( not defined $num_cpus) {
-    print STDERR "number of core not defined, will use one CPU only\n";
-    $num_cpus=1;
-}
 if (not defined $reference)
 {
 	print STDERR "reference name not defined, calling it 'reference'\n";
 	$reference = 'reference';
 }
 
+$requested_cpus = 1 if (not defined $requested_cpus);
 $uniquify = 0 if (not defined $uniquify);
 
 if (@formats <= 0)
@@ -568,7 +583,7 @@ else
 
 # fill in variants for each vcf file
 my $vcf_data = parse_variants(\%vcf_files);
-my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data,$num_cpus);
+my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data,$requested_cpus);
 
 my @samples_list = sort {$a cmp $b } keys %vcf_files;
 my %chromosome_align;
