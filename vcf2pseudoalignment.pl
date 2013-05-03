@@ -271,11 +271,40 @@ sub variants_alignment
 # Output:  A reference to the vcf_data structure
 sub parse_variants
 {
-	my ($vcf_files) = @_;
+	my ($vcf_files,$requested_cpus) = @_;
+        
+         my $pm;
+         my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+         chomp $num_cpus;
+         #ensure that you user cannot request more threads then CPU on the machine
+         if ( $requested_cpus > $num_cpus) {
+             $requested_cpus = $num_cpus;
+         }
+         my %list;
+        
+         $pm=Parallel::ForkManager->new($requested_cpus);
+         # data structure retrieval and handling
+          $pm -> run_on_finish ( # called BEFORE the first call to start()
+              sub {
+                  my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
+                  # retrieve data structure from child
+                  if (defined($child_data)) {  # children are forced to send anything
+                      my ($single_key) = keys %{$child_data};
+                      $list{$single_key} = $child_data->{$single_key};
+                  } else {
+                      die "One or more mpileup file did not produce any data!\n";
+                  }
+              }
+          );
+
+        #creating temporary directory on local machine to store results from each child.
+        my $tmpdir = tempdir( CLEANUP => 1 );
 
 	my %vcf_data;
 	for my $vcf_key (keys %$vcf_files)
 	{
+                $pm->start and next;
+                my %vcf_data;
 		my $vcf_file = $vcf_files->{$vcf_key};
 
 		print STDERR "Working on $vcf_file\n" if ($verbose);
@@ -299,27 +328,27 @@ sub parse_variants
 				# case: multi-snp
 				if ((length($ref) > 1) and length($ref) eq length($alt))
 				{
-					print STDERR "multi variant region found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
+                                        #print STDERR "multi variant region found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
 					$snp_info->{'removed'}->{'multi'}++;
 				}
 				elsif (length($ref) > 1 and length($ref) < length($alt))
 				{
-					print STDERR "length($ref) > 1 and length($ref) < length($alt) in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
+					#print STDERR "length($ref) > 1 and length($ref) < length($alt) in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
 					$snp_info->{'removed'}->{'other'}++;
 				}
 				elsif (length($ref) > 1) # deletion in query strain
 				{
 					$snp_info->{'removed'}->{'deletions'}++;
-					print STDERR "deletion found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
+					#print STDERR "deletion found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
 				}
 				elsif (length($alt) > 1) # insertion in query strain
 				{
 					$snp_info->{'removed'}->{'insertions'}++;
-					print STDERR "insertion found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
+					#print STDERR "insertion found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
 				}
 				elsif((length($alt) == 1) and length($ref) == 1) # SNP
 				{
-					print STDERR "for file $vcf_file, keeping variant \"".join(' ',@$data),"\"\n" if ($verbose);
+					#print STDERR "for file $vcf_file, keeping variant \"".join(' ',@$data),"\"\n" if ($verbose);
 					my $chrom_hash;
 					if (not exists $vcf_data{$chrom})
 					{
@@ -348,13 +377,35 @@ sub parse_variants
 				}
 				else # any other case?
 				{
-					print STDERR "invalid lengths for ref and query found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
+					#print STDERR "invalid lengths for ref and query found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
 					$snp_info->{'removed'}->{'other'}++;
 				}
 
 			}
-		}
-	}
+                    }
+                
+
+                #storing
+                #should be a single key only since we having one iteration per thread
+                store \%vcf_data, "$tmpdir/$vcf_key";
+                $pm->finish(0,{$vcf_key=>"$tmpdir/$vcf_key"});
+            }
+        
+        $pm->wait_all_children;
+        
+        #read all the files from dir storable into %vcf_data and go on!
+        foreach my $vcf_key( keys %list) {
+            my $data = retrieve($list{$vcf_key});
+            #go thru each chromsome and add the sample
+            foreach my $chrom (keys %$data ) {
+                foreach my $position(keys %{$data->{$chrom}} ) {
+                    $vcf_data{$chrom}{$position}{$vcf_key} = $data->{$chrom}{$position}{$vcf_key};
+                }
+
+            }
+
+        }
+        
 
 	return \%vcf_data;
 }
@@ -582,7 +633,7 @@ else
 }
 
 # fill in variants for each vcf file
-my $vcf_data = parse_variants(\%vcf_files);
+my $vcf_data = parse_variants(\%vcf_files,$requested_cpus);
 my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data,$requested_cpus);
 
 my @samples_list = sort {$a cmp $b } keys %vcf_files;
@@ -649,7 +700,7 @@ die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
 for my $format (@formats)
 {
 	my $output_file = "$output_base.".$valid_formats{$format};
-	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format);
+	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format,-idlength=>30);
 	$io->write_aln($aln);
 	print STDERR "Alignment written to $output_file\n";
 }
