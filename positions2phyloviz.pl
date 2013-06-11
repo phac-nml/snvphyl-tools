@@ -129,6 +129,9 @@ for (my $curr = 0; $curr < @strains; $curr++)
 		$curr_unused_type++;
 
 		$types{$snp_profile} = [$strain_id, $curr_type];
+
+		# only print profile information if this is a unique sequence type
+		print $profile_h "$curr_type\t$snp_profile\n";
 	}
 	else
 	{
@@ -140,7 +143,6 @@ for (my $curr = 0; $curr < @strains; $curr++)
 
 	# print information for strain
 	print $strain_h "$curr_type\t$strain_id\n";
-	print $profile_h "$curr_type\t$snp_profile\n";
 }
 close($profile_h);
 close($strain_h);
