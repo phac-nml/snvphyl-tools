@@ -123,5 +123,6 @@ close($ofh);
 
 print "Removed $filtered_count sites\n";
 print "Kept $valid_count sites\n";
+print "Removed SNPs from ".scalar(keys %banned)." bp of the genome.\n";
 print "Valid file in $valid_output\n";
 print "Invalid file in $invalid_output\n";
