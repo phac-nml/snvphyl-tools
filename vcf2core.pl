@@ -120,7 +120,7 @@ die "No *.vcf.gz files found in $mpileup_dir.  Perhas you need to compress and i
 "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0);
 
 
-my $info = determine_core(\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff);
+my $info = determine_core($output_base,\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff);
 
 
 printf("#Percentage of base pair in the core: %.2f \n",($info->{'core'}/$info->{'length'}*100));
@@ -133,7 +133,7 @@ exit;
 
 sub determine_core
 {
-    my ($mpileup_files,$requested_cpus,$fasta,$coverage_cutoff) = @_;
+    my ($output_base,$mpileup_files,$requested_cpus,$fasta,$coverage_cutoff) = @_;
 
     my $pm;
     my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
@@ -245,7 +245,7 @@ sub determine_core
             my $name = $chrom;
             $name =~ s/\|$//;
             $name =~ s/\|/_/g;
-            my $final = $name . '.gff';
+            my $final = "$output_base/$name" . '.gff';
 
 
             #combine all segment for a single reference
