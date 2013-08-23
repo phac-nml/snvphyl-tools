@@ -283,7 +283,7 @@ sub create_figures
         $out =~ s/\.gff$/.png/;
         
         #time java -Xmx12G  -jar gview.jar -i task_1/NC_003997.3.gb -s style.gss -l circular -f png -o image.png -g results.gff -z 4
-        `java -Xmx4G -jar $gview -i $fasta -s $style -l circular -f png -o $out -g $gff 15300 -H 4500   -z 4`;
+        `java -Xmx4G -jar $gview -i $fasta -s $style -l circular -f png -o $out -g $gff -W 15300 -H 4500   -z 4`;
     }
     
     return;
