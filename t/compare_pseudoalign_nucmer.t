@@ -158,6 +158,21 @@ my $fasta_in_A_3 =
 "AAAAAAAAAAAAAAA\n".
 "TTTTTTTTTTTTTTT\n";
 
+my $fasta_in_A_4 =
+">chr\n".
+"TGAATTCGAATCGGATTCG\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"TTTTTTTTTTTTTTT\n";
+
 my $fasta_in_B =
 ">chr\n".
 "TGAAATCGAATCGGATTCG\n".
@@ -185,6 +200,11 @@ my $example_pseudoalign_2 =
 my $example_pseudoalign_3 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t1\tvalid\tT\tA\tT\n";
+
+my $example_pseudoalign_4 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
+"chr\t1\tvalid\tT\tA\tT\n".
+"chr\t5\tvalid\tA\tT\tA\n";
 
 ### MAIN ###
 my ($help);
@@ -243,5 +263,11 @@ $expected_out_file = build_expected_out($reference_file, $fasta_file,
 	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
 	"1\t0\t0\t1\t0\tundefined\tundefined\tundefined\n");
 run_case("Test mis-detection of SNP (False Positive)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_A_4, "A", $example_pseudoalign_4);
+$expected_out_file = build_expected_out($reference_file, $fasta_file,
+	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"2\t1\t1\t1\t0\t1.000\t1.000\t0.000\n");
+run_case("Test mis-detection of SNP, true detection of another SNP (False Positive/True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
 done_testing();

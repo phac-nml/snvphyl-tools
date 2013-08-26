@@ -374,9 +374,9 @@ else
 		$intersection->size."\t".$uniq_pipeline->size."\t".$uniq_nucmer->size."\t";
 	if ($nucmer_set_size > 0)
 	{
-		my $true_positive = ($nucmer_set->size > 0) ? $intersection->size/$nucmer_set->size : "undefined";
-		my $false_positive = ($nucmer_set->size > 0) ? $uniq_pipeline->size/$nucmer_set->size : "undefined";
-		my $false_negative = ($nucmer_set->size > 0) ? $uniq_nucmer->size/$nucmer_set->size : "undefined";
+		my $true_positive = $intersection->size/$nucmer_set->size;
+		my $false_positive = $uniq_pipeline->size/$nucmer_set->size;
+		my $false_negative = $uniq_nucmer->size/$nucmer_set->size;
 		printf "%0.3f\t%0.3f\t%0.3f\n",$true_positive,$false_positive,$false_negative;
 	}
 	else
