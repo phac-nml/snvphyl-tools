@@ -82,6 +82,7 @@ sub run_case
 	print STDERR "Actual Out: $actual_out_file\n" if ($verbose);
 	
 	my $command = "$compare_snps_bin -i $pseudoalign -r $reference -g $fasta -b $bad_positions_file 1> $actual_out_file";
+	$command .= " 2> /dev/null" if (not $verbose);
 	print STDERR "$command\n" if ($verbose);
 	system($command) == 0 or die "Could not execute command $command: $!";
 	pass("pass $name") if (compare_files($expected_out, $actual_out_file));
@@ -271,9 +272,20 @@ my $example_pseudoalign_1 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t5\tvalid\tA\tT\tA\n";
 
+my $example_pseudoalign_1_1 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n";
+
+my $example_pseudoalign_1_2 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
+"chr\t5\tvalid\tA\tT\tA\n";
+
 my $example_pseudoalign_2 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t5\tvalid\tA\tT\tA\n".
+"chr\t10\tvalid\tA\tG\tA\n";
+
+my $example_pseudoalign_2_1 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t10\tvalid\tA\tG\tA\n";
 
 my $example_pseudoalign_3 =
@@ -306,6 +318,10 @@ my $example_pseudoalign_9 =
 "chr\t10\tvalid\tA\tA\tG\n";
 
 my $empty_bad_positions = '';
+
+my $bad_positions_1 = "chr\t5\t7\n";
+my $bad_positions_1_2 = "chr\t6\t7\n";
+my $bad_positions_2_1 = "chr\t5\t7\n";
 
 ### MAIN ###
 my ($help);
@@ -341,11 +357,29 @@ $expected_out_file = build_expected_out($bad_positions_file,$reference_file, $fa
 	"1\t1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n");
 run_case("Test single SNP (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file, $expected_out_file);
 
+($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1_1, $bad_positions_1);
+$expected_out_file = build_expected_out($bad_positions_file,$reference_file, $fasta_file,
+	"Pipeline\tNucmer\tNucmerFiltered\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"0\t1\t0\t0\t0\t0\tundefined\tundefined\tundefined\n");
+run_case("Test single SNP in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file, $expected_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1_2, $bad_positions_1_2);
+$expected_out_file = build_expected_out($bad_positions_file,$reference_file, $fasta_file,
+	"Pipeline\tNucmer\tNucmerFiltered\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"1\t1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n");
+run_case("Test single SNP not in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file, $expected_out_file);
+
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2, $empty_bad_positions);
 $expected_out_file = build_expected_out($bad_positions_file,$reference_file, $fasta_file,
 	"Pipeline\tNucmer\tNucmerFiltered\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
 	"2\t2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n");
 run_case("Test multiple SNP (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file, $expected_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2_1, $bad_positions_2_1);
+$expected_out_file = build_expected_out($bad_positions_file,$reference_file, $fasta_file,
+	"Pipeline\tNucmer\tNucmerFiltered\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"1\t2\t1\t1\t0\t0\t1.000\t0.000\t0.000\n");
+run_case("Test multiple SNP, one in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file, $expected_out_file);
 
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_1, $empty_bad_positions);
 $expected_out_file = build_expected_out($bad_positions_file,$reference_file, $fasta_file,
