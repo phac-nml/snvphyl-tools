@@ -163,7 +163,7 @@ sub parse_genome_nucmer
 	my $base_sub_map =
 		{'A' => 'T', 'C' => 'G', 'G' => 'C', 'T' => 'A'};
 
-	my $out_dir = tempdir("SNP_Check_XXXXXX", CLEANUP => $keep_temp);
+	my $out_dir = tempdir("SNP_Check_XXXXXX", TMPDIR => 1, CLEANUP => $keep_temp);
 	print STDERR "Tempdir=$out_dir\n" if ($verbose);
 
 	my $reference_copy = "$out_dir/".basename($reference);
