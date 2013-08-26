@@ -213,7 +213,11 @@ sub parse_genome_nucmer
 
 	my $genome_nucmer_set = parse_single_genome($genome,$reference_copy,$out_dir, \%changed_positions, $genome_name);
 	$nucmer_set = $genome_nucmer_set->{$genome_name};
-	die "error: nucmer_set undefined" if (not defined $nucmer_set);
+	if (not defined $nucmer_set)
+	{
+		warn "nucer_set undefind for $genome_name, assuming no SNPs";
+		$nucmer_set = Set::Scalar->new;
+	}
 
 	return $nucmer_set;
 }
@@ -364,9 +368,19 @@ if ($verbose)
 }
 else
 {
+	my $nucmer_set_size = $nucmer_set->size;
 	print "#Reference\tGenome\tPipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n";
 	print "$reference\t$genome\t".$pipeline_set->size."\t".$nucmer_set->size."\t".
 		$intersection->size."\t".$uniq_pipeline->size."\t".$uniq_nucmer->size."\t";
-	printf "%0.3f\t%0.3f\t%0.3f\n",($intersection->size/$nucmer_set->size)
-		,($uniq_pipeline->size/$nucmer_set->size),($uniq_nucmer->size/$nucmer_set->size);
+	if ($nucmer_set_size > 0)
+	{
+		my $true_positive = ($nucmer_set->size > 0) ? $intersection->size/$nucmer_set->size : "undefined";
+		my $false_positive = ($nucmer_set->size > 0) ? $uniq_pipeline->size/$nucmer_set->size : "undefined";
+		my $false_negative = ($nucmer_set->size > 0) ? $uniq_nucmer->size/$nucmer_set->size : "undefined";
+		printf "%0.3f\t%0.3f\t%0.3f\n",$true_positive,$false_positive,$false_negative;
+	}
+	else
+	{
+		print "undefined\tundefined\tundefined\n";
+	}
 }

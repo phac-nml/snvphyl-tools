@@ -143,6 +143,21 @@ my $fasta_in_A_2 =
 "AAAAAAAAAAAAAAA\n".
 "TTTTTTTTTTTTTTT\n";
 
+my $fasta_in_A_3 =
+">chr\n".
+"TGAAATCGAATCGGATTCG\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"TTTTTTTTTTTTTTT\n";
+
 my $fasta_in_B =
 ">chr\n".
 "TGAAATCGAATCGGATTCG\n".
@@ -166,6 +181,10 @@ my $example_pseudoalign_2 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t5\tvalid\tA\tT\tA\n".
 "chr\t10\tvalid\tA\tG\tA\n";
+
+my $example_pseudoalign_3 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
+"chr\t1\tvalid\tT\tA\tT\n";
 
 ### MAIN ###
 my ($help);
@@ -199,24 +218,30 @@ print "Testing $compare_snps_bin\n";
 $expected_out_file = build_expected_out($reference_file, $fasta_file,
 	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
 	"1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n");
-run_case("Test single SNP", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+run_case("Test single SNP (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
 ($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2);
 $expected_out_file = build_expected_out($reference_file, $fasta_file,
 	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
 	"2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n");
-run_case("Test multiple SNP", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+run_case("Test multiple SNP (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
 ($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_1);
 $expected_out_file = build_expected_out($reference_file, $fasta_file,
 	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
 	"1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n");
-run_case("Test detection single reference base", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+run_case("Test detection single reference base (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
 ($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_2);
 $expected_out_file = build_expected_out($reference_file, $fasta_file,
 	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
 	"2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n");
-run_case("Test detection multiple reference base", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+run_case("Test detection multiple reference base (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_A_3, "A", $example_pseudoalign_3);
+$expected_out_file = build_expected_out($reference_file, $fasta_file,
+	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"1\t0\t0\t1\t0\tundefined\tundefined\tundefined\n");
+run_case("Test mis-detection of SNP (False Positive)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
 done_testing();
