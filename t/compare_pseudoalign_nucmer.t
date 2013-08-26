@@ -248,6 +248,21 @@ my $fasta_in_B_8 =
 "AAAAAAAAAAAAAAA\n".
 "TTTTTTTTTTTTTTT\n";
 
+my $fasta_in_A_9 =
+">chr\n".
+"TGAATTCGAGTCGGATTCG\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"TTTTTTTTTTTTTTT\n";
+
 my $example_pseudoalign_1 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t5\tvalid\tA\tT\tA\n";
@@ -280,6 +295,11 @@ my $example_pseudoalign_7 =
 my $example_pseudoalign_8 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t5\tvalid\tA\tT\tA\n";
+
+my $example_pseudoalign_9 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
+"chr\t5\tvalid\tA\tT\tA\n".
+"chr\t10\tvalid\tA\tA\tG\n";
 
 ### MAIN ###
 my ($help);
@@ -368,5 +388,11 @@ $expected_out_file = build_expected_out($reference_file, $fasta_file,
 	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
 	"1\t1\t0\t1\t1\t0.000\t1.000\t1.000\n");
 run_case("Test mis-identified reference base (should be G, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_A_9, "A", $example_pseudoalign_9);
+$expected_out_file = build_expected_out($reference_file, $fasta_file,
+	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"2\t2\t1\t1\t1\t0.500\t0.500\t0.500\n");
+run_case("Test mis-identified reference base (should be G, identified as A) and true SNP", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
 done_testing();
