@@ -207,4 +207,16 @@ $expected_out_file = build_expected_out($reference_file, $fasta_file,
 	"2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n");
 run_case("Test multiple SNP", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
+($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_1);
+$expected_out_file = build_expected_out($reference_file, $fasta_file,
+	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n");
+run_case("Test detection single reference base", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_2);
+$expected_out_file = build_expected_out($reference_file, $fasta_file,
+	"Pipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n",
+	"2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n");
+run_case("Test detection multiple reference base", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+
 done_testing();
