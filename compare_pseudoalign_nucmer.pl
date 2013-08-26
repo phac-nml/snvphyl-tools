@@ -172,7 +172,11 @@ sub parse_genome_nucmer
 	my %changed_positions;
 	my $reference_contig_map = generate_reference_contig_map($reference);
 	my $genome_core_snp = $genomes_core_snp->{$genome_name};
-	die "error: no genome_core_snp for $genome_name" if (not defined $genome_core_snp);
+	if (not defined $genome_core_snp)
+	{
+		warn "warning: no genome_core_snp for $genome_name";
+	}
+
 	for my $chrom (keys %$genome_core_snp)
 	{
 		my $pos_map = $genome_core_snp->{$chrom};
@@ -229,7 +233,10 @@ sub build_pipeline_set
 	my $pipeline_set = Set::Scalar->new;
 
 	my $genome_snps_set = $genomes_core_snp->{$genome_name};
-	die "error: no genome_snps_set for $genome_name defined" if (not defined $genome_snps_set);
+	if (not defined $genome_snps_set)
+	{
+		warn "warning: no genome_snps_set for $genome_name defined";
+	}
 
 	for my $chrom (keys %$genome_snps_set)
 	{
@@ -261,10 +268,16 @@ sub generate_core_genome_snps
 	my (undef,undef,undef,@strains) = split(/\t/,$line);
 	die "Error: no strains defined in $input_align" if (@strains <= 0);
 	die "Error: reference not in correct column" if ($strains[0] ne 'Reference');
+	my %genomes_core_snp;
+
+	# initialize empty table for each strain
+	for my $strain (@strains)
+	{
+		$genomes_core_snp{$strain} = undef;
+	}
 	
 	my $valid = 0;
 	my $total = 0;
-	my %genomes_core_snp;
 	while(my $line = readline($fh))
 	{
 		chomp $line;
