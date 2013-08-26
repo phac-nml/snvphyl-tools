@@ -22,7 +22,10 @@ my $keep_temp = 1;
 sub parse_single_genome
 {
 	my ($genome_file, $reference, $out_dir, $changed_positions, $genome_name) = @_;
+
 	my %results;
+	$results{$genome_name} = Set::Scalar->new;
+	my $seen_changed_positions = {};
 
 	my $cwd = getcwd;
 	my $reference_name = basename($reference, '.fasta');
@@ -54,24 +57,26 @@ sub parse_single_genome
 		die "error: undefined value for ref_name" if (not defined $ref_name);
 		next if ($ref !~ /^[ACTG]$/i or $alt !~ /^[ACTG]$/i);
 
-		if (not defined $results{$genome_name})
-		{
-			$results{$genome_name} = Set::Scalar->new;
-		}
-
 		print STDERR "$genome_name: $ref_name\t$ref_pos\t$ref\t$alt\n" if ($verbose);
 		if (defined $changed_positions->{$genome_name}{$ref_name}{$ref_pos})
 		{
 			my $original_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'reference'};
 			my $changed_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'changed'};
-			if ($changed_position ne $ref or $original_position ne $alt)
+			if ($changed_position ne $ref)
 			{
-				die "error: picked up invalid snp in a changed position on reference $genome_name:$ref_name:$ref_pos should be [r:$original_position => r:$changed_position], was [r:$ref => r:$alt]";
+				die "error: change on reference for $ref_name:$ref_pos [r:$original_position => r:$changed_position] did not work";
+			}
+			elsif ($original_position ne $alt)
+			{
+				print STDERR "picked up invalid reference call from snp in a changed position on reference $genome_name:$ref_name:$ref_pos should be [r:$original_position => r:$changed_position], was [r:$ref => r:$alt]\n";
+				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
 			}
 			else
 			{
 				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
 			}
+
+			$seen_changed_positions->{$ref_name}{$ref_pos} = 1;
 		}
 		else
 		{
@@ -80,6 +85,23 @@ sub parse_single_genome
 	}
 	close($fh);
 	chdir ($cwd);
+
+	# check for any positions where we swapped the reference base and it wasn't identified as a SNP
+	# (sign of an invalid reference base call)
+	my $genome_changed_positions = $changed_positions->{$genome_name};
+	for my $ref_name (keys %$genome_changed_positions)
+	{
+		my $ref_name_table = $genome_changed_positions->{$ref_name};
+		for my $ref_pos (keys %$ref_name_table)
+		{
+			my $ref = $ref_name_table->{$ref_pos}{'reference'};
+			my $changed = $ref_name_table->{$ref_pos}{'changed'};
+			if (not exists $seen_changed_positions->{$ref_name}{$ref_pos})
+			{
+				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$changed");
+			}
+		}
+	}
 
 	return \%results;
 }
