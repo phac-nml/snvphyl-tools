@@ -35,9 +35,11 @@ sub parse_single_genome
 
 	chdir $out_dir;
 	my $command = "nucmer --prefix=$delta_prefix $ref_file_abs_path $genome_file_abs_path 2> $delta_prefix.nucmer.err.log 1> $delta_prefix.nucmer.out.log";
+	print STDERR $command if ($verbose);
 	system($command) == 0 or die "Could not execute \"$command\"";
 
 	$command = "show-snps -TH $delta_prefix.delta 2> $delta_prefix.delta.show-snps.log 1> $snps_file_name";
+	print STDERR $command if ($verbose);
 	system($command) == 0 or die "Could not execute \"$command\"";
 
 	open(my $fh, "<$snps_file_name") or die "Could not open $snps_file_name";
@@ -164,7 +166,7 @@ sub parse_genome_nucmer
 	my $out_dir = tempdir("SNP_Check_XXXXXX", CLEANUP => $keep_temp);
 	print STDERR "Tempdir=$out_dir\n" if ($verbose);
 
-	my $reference_copy = "$out_dir/$reference";
+	my $reference_copy = "$out_dir/".basename($reference);
 	my $genome_file_name = basename($genome);
 
 	my %changed_positions;
