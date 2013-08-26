@@ -98,6 +98,21 @@ sub build_expected_out_1
 	return $expected_out_file;
 }
 
+sub build_expected_out_2
+{
+	my ($reference_file, $fasta_file) = @_;
+	my $expected_out_1 =
+	"#Reference\tGenome\tPipeline\tNucmer\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n".
+	"$reference_file\t$fasta_file\t2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n";
+
+	my ($efh, $expected_out_file) = tempfile("compare_nucmer.expected_out.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
+	print $efh $expected_out_1;
+	close($efh);
+	print STDERR "Expected Out 2: $expected_out_file\n" if ($verbose);
+
+	return $expected_out_file;
+}
+
 my $reference =
 ">chr\n".
 "TGAAATCGAATCGGATTCG\n".
@@ -113,7 +128,7 @@ my $reference =
 "AAAAAAAAAAAAAAA\n".
 "TTTTTTTTTTTTTTT\n";
 
-my $fasta_in_A =
+my $fasta_in_A_1 =
 ">chr\n".
 "TGAATTCGAATCGGATTCG\n".
 "AAAAAAAAAAAAAAA\n".
@@ -128,13 +143,44 @@ my $fasta_in_A =
 "AAAAAAAAAAAAAAA\n".
 "TTTTTTTTTTTTTTT\n";
 
-my $fasta_in_B = 
+my $fasta_in_A_2 =
 ">chr\n".
-"ATCGATCGATCG\n";
+"TGAATTCGAGTCGGATTCG\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"TTTTTTTTTTTTTTT\n";
 
-my $example_pseudoalign =
+my $fasta_in_B =
+">chr\n".
+"TGAAATCGAATCGGATTCG\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"TTTTTTTTTTTTTTT\n";
+
+my $example_pseudoalign_1 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t5\tvalid\tA\tT\tA\n";
+
+my $example_pseudoalign_2 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
+"chr\t5\tvalid\tA\tT\tA\n".
+"chr\t10\tvalid\tA\tG\tA\n";
 
 ### MAIN ###
 my ($help);
@@ -164,8 +210,12 @@ elsif ($verbose)
 
 print "Testing $compare_snps_bin\n";
 
-($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_A, "A", $example_pseudoalign);
+($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1);
 $expected_out_file = build_expected_out_1($reference_file, $fasta_file);
-run_case("Case 1", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+run_case("Test single SNP", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2);
+$expected_out_file = build_expected_out_2($reference_file, $fasta_file);
+run_case("Test multiple SNP", $reference_file, $fasta_file, $pseudoalign_file, $expected_out_file);
 
 done_testing();
