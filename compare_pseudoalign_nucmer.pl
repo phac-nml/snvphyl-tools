@@ -43,7 +43,7 @@ sub parse_single_genome
 	print STDERR $command if ($verbose);
 	system($command) == 0 or die "Could not execute \"$command\"";
 
-	$command = "show-snps -CTH $delta_prefix.delta 2> $delta_prefix.delta.show-snps.log 1> $snps_file_name";
+	$command = "show-snps -TH $delta_prefix.delta 2> $delta_prefix.delta.show-snps.log 1> $snps_file_name";
 	print STDERR $command if ($verbose);
 	system($command) == 0 or die "Could not execute \"$command\"";
 
@@ -52,7 +52,7 @@ sub parse_single_genome
 	{
 		chomp;
 		my @fields = split(/\t/);
-		my ($ref_pos, $ref, $alt, $ref_name) = ($fields[0],$fields[1],$fields[2],$fields[8]);
+		my ($ref_pos, $ref, $alt, $ref_name) = ($fields[0],$fields[1],$fields[2],$fields[10]);
 		die "error: undefined value for ref_pos" if (not defined $ref_pos);
 		die "error: undefined value for ref" if (not defined $ref);
 		die "error: undefined value for alt" if (not defined $alt);
