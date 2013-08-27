@@ -465,17 +465,17 @@ my $total_bases_filtered = scalar(keys %$bad_positions);
 my $total_bases_reference = get_reference_length($reference);
 my $total_bases_kept = $total_bases_reference - $total_bases_filtered;
 
-print "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\tPercentage Kept\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n";
+print "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\t% Kept\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
 print "$reference\t$genome\t$bad_positions_file\t$total_bases_reference\t$total_bases_kept\t";
 printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
 print $pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
 	$intersection_no_bad_pos->size."\t".$uniq_pipeline_no_bad->size."\t".$uniq_nucmer_no_bad->size."\t";
 if ($nucmer_set_no_bad_pos->size > 0)
 {
-	my $true_positive = $intersection_no_bad_pos->size/$nucmer_set_no_bad_pos->size;
-	my $false_positive = $uniq_pipeline_no_bad->size/$nucmer_set_no_bad_pos->size;
-	my $false_negative = $uniq_nucmer_no_bad->size/$nucmer_set_no_bad_pos->size;
-	printf "%0.3f\t%0.3f\t%0.3f\n",$true_positive,$false_positive,$false_negative;
+	my $true_positive = ($intersection_no_bad_pos->size/$nucmer_set_no_bad_pos->size)*100;
+	my $false_positive = ($uniq_pipeline_no_bad->size/$nucmer_set_no_bad_pos->size)*100;
+	my $false_negative = ($uniq_nucmer_no_bad->size/$nucmer_set_no_bad_pos->size)*100;
+	printf "%0.1f\t%0.1f\t%0.1f\n",$true_positive,$false_positive,$false_negative;
 }
 else
 {

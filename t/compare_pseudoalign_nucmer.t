@@ -101,7 +101,7 @@ sub run_case
 sub build_expected_out
 {
 	my ($reference_total, $reference_kept, $percentage_kept, $pseudoalign_file, $bad_positions_file, $reference_file, $fasta_file, $line1, $line2, $detailed_out_contents) = @_;
-	my $expected_1 = "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\tPercentage Kept\t$line1";
+	my $expected_1 = "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\t% Kept\t$line1";
 
 	my ($efh, $expected_out_file) = tempfile("compare_nucmer.expected_out.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
 	print $efh $expected_1;
@@ -534,15 +534,15 @@ print "Testing $compare_snps_bin\n";
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t1\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
 	$detailed_out_1);
-run_case("Test single SNP (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Test single SNP (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,182,(182/184)*100);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1_1, $bad_positions_1);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
 	"0\t1\t0\t0\t0\t0\tundefined\tundefined\tundefined\n",
 	$detailed_out_1_1);
 run_case("Test single SNP in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
@@ -550,104 +550,104 @@ run_case("Test single SNP in bad position", $reference_file, $fasta_file, $pseud
 ($reference_total,$reference_kept,$percentage_kept) = (184,183,(183/184)*100);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1_2, $bad_positions_1_2);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t1\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
 	$detailed_out_1_2);
 run_case("Test single SNP not in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"2\t2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"2\t2\t2\t2\t0\t0\t100.0\t0.0\t0.0\n",
 	$detailed_out_2);
-run_case("Test multiple SNP (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Test multiple SNP (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,182,(182/184)*100);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2_1, $bad_positions_2_1);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t2\t1\t1\t0\t0\t1.000\t0.000\t0.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t2\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
 	$detailed_out_2_1);
 run_case("Test multiple SNP, one in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_1, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t1\t1\t1\t0\t0\t1.000\t0.000\t0.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t1\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
 	$detailed_out_b_1);
-run_case("Test detection single reference base (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Test detection single reference base (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_2, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"2\t2\t2\t2\t0\t0\t1.000\t0.000\t0.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"2\t2\t2\t2\t0\t0\t100.0\t0.0\t0.0\n",
 	$detailed_out_b_2);
-run_case("Test detection multiple reference base (True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Test detection multiple reference base (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_3, "A", $example_pseudoalign_3, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
 	"1\t0\t0\t0\t1\t0\tundefined\tundefined\tundefined\n",
 	$detailed_out_3);
-run_case("Test mis-detection of SNP (False Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Test mis-detection of SNP (% False Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_4, "A", $example_pseudoalign_4, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"2\t1\t1\t1\t1\t0\t1.000\t1.000\t0.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"2\t1\t1\t1\t1\t0\t100.0\t100.0\t0.0\n",
 	$detailed_out_4);
-run_case("Test mis-detection of SNP, true detection of another SNP (False Positive/True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Test mis-detection of SNP, true detection of another SNP (% False Positive/% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_5, "A", $example_pseudoalign_5, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"0\t1\t1\t0\t0\t1\t0.000\t0.000\t1.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"0\t1\t1\t0\t0\t1\t0.0\t0.0\t100.0\n",
 	$detailed_out_5);
-run_case("Single SNP Test False Negative", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Single SNP Test % False Negative", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_6, "A", $example_pseudoalign_6, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t2\t2\t1\t0\t1\t0.500\t0.000\t0.500\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t2\t2\t1\t0\t1\t50.0\t0.0\t50.0\n",
 	$detailed_out_6);
-run_case("Multiple SNP Test False Negative", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+run_case("Multiple SNP Test % False Negative", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B_7, "B", $example_pseudoalign_7, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t1\t1\t0\t1\t1\t0.000\t1.000\t1.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t1\t1\t0\t1\t1\t0.0\t100.0\t100.0\n",
 	$detailed_out_7);
 run_case("Test mis-identified reference base (should be T, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B_8, "B", $example_pseudoalign_8, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t1\t1\t0\t1\t1\t0.000\t1.000\t1.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t1\t1\t0\t1\t1\t0.0\t100.0\t100.0\n",
 	$detailed_out_8);
 run_case("Test mis-identified reference base (should be G, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B_8_1, "B", $example_pseudoalign_8_1, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"1\t1\t1\t0\t1\t1\t0.000\t1.000\t1.000\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"1\t1\t1\t0\t1\t1\t0.0\t100.0\t100.0\n",
 	$detailed_out_8_1);
 run_case("Test mis-identified reference base (should be C, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_9, "A", $example_pseudoalign_9, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
-	"2\t2\t2\t1\t1\t1\t0.500\t0.500\t0.500\n",
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
+	"2\t2\t2\t1\t1\t1\t50.0\t50.0\t50.0\n",
 	$detailed_out_9);
 run_case("Test mis-identified reference base (should be G, identified as A) and true SNP", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
