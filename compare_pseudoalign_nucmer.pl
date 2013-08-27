@@ -176,6 +176,22 @@ sub generate_reference_contig_map
 	return \%contig_map;
 }
 
+sub get_reference_length
+{
+	my ($reference) = @_;
+	my $length = 0;
+
+	my $io = Bio::SeqIO->new(-file=>"<$reference", -format=>"fasta");
+	die "error: could not read $reference" if (not defined $io);
+
+	while (my $seq = $io->next_seq)
+	{
+		$length += $seq->length;
+	}
+
+	return $length;
+}
+
 sub determine_genome_name
 {
 	my ($genomes_core_snp, $genome) = @_;
@@ -444,8 +460,14 @@ my $intersection_no_bad_pos = $pipeline_set * $nucmer_set_no_bad_pos;
 my $uniq_pipeline_no_bad = $pipeline_set - $nucmer_set_no_bad_pos;
 my $uniq_nucmer_no_bad = $nucmer_set_no_bad_pos - $pipeline_set;
 
-print "Reference\tGenome\tBad Positions\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n";
-print "$reference\t$genome\t$bad_positions_file\t".$pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
+my $total_bases_filtered = scalar(keys %$bad_positions);
+my $total_bases_reference = get_reference_length($reference);
+my $total_bases_kept = $total_bases_reference - $total_bases_filtered;
+
+print "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\tPercentage Kept\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n";
+print "$reference\t$genome\t$bad_positions_file\t$total_bases_reference\t$total_bases_kept\t";
+printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
+print $pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
 	$intersection_no_bad_pos->size."\t".$uniq_pipeline_no_bad->size."\t".$uniq_nucmer_no_bad->size."\t";
 if ($nucmer_set_no_bad_pos->size > 0)
 {
