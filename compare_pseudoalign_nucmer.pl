@@ -468,7 +468,7 @@ if ($verbose)
 	}
 }
 
-print "#Reference\tGenome\tBadPositions\tPipeline\tNucmer\tNucmerFiltered\tIntersection\tUniqPipeline\tUniqNucmer\tTruePositive\tFalsePositive\tFalseNegative\n";
+print "Reference\tGenome\tBad Positions\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n";
 print "$reference\t$genome\t$bad_positions_file\t".$pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
 	$intersection_no_bad_pos->size."\t".$uniq_pipeline_no_bad->size."\t".$uniq_nucmer_no_bad->size."\t";
 if ($nucmer_set_no_bad_pos->size > 0)
