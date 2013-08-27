@@ -270,6 +270,21 @@ my $fasta_in_B_8 =
 "AAAAAAAAAAAAAAA\n".
 "TTTTTTTTTTTTTTT\n";
 
+my $fasta_in_B_8_1 =
+">chr\n".
+"TGAACTCGAATCGGATTCG\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"AAAAAAAAAAAAAAA\n".
+"TTTTTTTTTTTTTTT\n";
+
 my $fasta_in_A_9 =
 ">chr\n".
 "TGAATTCGAGTCGGATTCG\n".
@@ -407,6 +422,16 @@ my $detailed_out_8 =
 "Contig\tPosition\tReference\tGenome\n".
 "chr\t5\tA\tA\n";
 
+my $detailed_out_8_1 = 
+"Intersection\t0\n".
+"Contig\tPosition\tReference\tGenome\n".
+"\nUnique to Nucmer\t1\n".
+"Contig\tPosition\tReference\tGenome\n".
+"chr\t5\tA\tC\n".
+"\nUnique to Core Pipeline\t1\n".
+"Contig\tPosition\tReference\tGenome\n".
+"chr\t5\tA\tA\n";
+
 my $detailed_out_9 = 
 "Intersection\t1\n".
 "Contig\tPosition\tReference\tGenome\n".
@@ -459,6 +484,10 @@ my $example_pseudoalign_7 =
 "chr\t5\tvalid\tA\tT\tA\n";
 
 my $example_pseudoalign_8 =
+"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
+"chr\t5\tvalid\tA\tT\tA\n";
+
+my $example_pseudoalign_8_1 =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
 "chr\t5\tvalid\tA\tT\tA\n";
 
@@ -591,6 +620,13 @@ run_case("Test mis-identified reference base (should be T, identified as A)", $r
 	"1\t1\t1\t0\t1\t1\t0.000\t1.000\t1.000\n",
 	$detailed_out_8);
 run_case("Test mis-identified reference base (should be G, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+
+($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B_8_1, "B", $example_pseudoalign_8_1, $empty_bad_positions);
+($expected_out_file,$detailed_out_file) = build_expected_out($pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
+	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\tTrue Positive\tFalse Positive\tFalse Negative\n",
+	"1\t1\t1\t0\t1\t1\t0.000\t1.000\t1.000\n",
+	$detailed_out_8_1);
+run_case("Test mis-identified reference base (should be C, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
 
 ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_9, "A", $example_pseudoalign_9, $empty_bad_positions);
 ($expected_out_file,$detailed_out_file) = build_expected_out($pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
