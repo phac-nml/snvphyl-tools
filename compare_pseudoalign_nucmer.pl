@@ -470,17 +470,31 @@ print "$reference\t$genome\t$bad_positions_file\t$total_bases_reference\t$total_
 printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
 print $pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
 	$intersection_no_bad_pos->size."\t".$uniq_pipeline_no_bad->size."\t".$uniq_nucmer_no_bad->size."\t";
+
+my $true_positive;
+my $false_positive;
+my $false_negative;
 if ($nucmer_set_no_bad_pos->size > 0)
 {
-	my $true_positive = ($intersection_no_bad_pos->size/$nucmer_set_no_bad_pos->size)*100;
-	my $false_positive = ($uniq_pipeline_no_bad->size/$nucmer_set_no_bad_pos->size)*100;
-	my $false_negative = ($uniq_nucmer_no_bad->size/$nucmer_set_no_bad_pos->size)*100;
-	printf "%0.1f\t%0.1f\t%0.1f\n",$true_positive,$false_positive,$false_negative;
+	$false_negative = sprintf "%0.1f",($uniq_nucmer_no_bad->size/$nucmer_set_no_bad_pos->size)*100;
 }
 else
 {
-	print "undefined\tundefined\tundefined\n";
+	$false_negative = 'undefined';
 }
+
+if ($pipeline_set->size > 0)
+{
+	$false_positive = sprintf "%0.1f",($uniq_pipeline_no_bad->size/$pipeline_set->size)*100;
+	$true_positive = sprintf "%0.1f",($intersection_no_bad_pos->size/$pipeline_set->size)*100;
+}
+else
+{
+	$false_positive = 'undefined';
+	$true_positive = 'undefined';
+}
+
+print "$true_positive\t$false_positive\t$false_negative\n";
 
 open(my $oh, ">$output") or die "Could not open file $output for writing: $!";
 print $oh "Working on $input_align\n";
