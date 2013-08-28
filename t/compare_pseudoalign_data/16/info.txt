@@ -1,0 +1,1 @@
+Test multiple SNPs, one in core one not in core

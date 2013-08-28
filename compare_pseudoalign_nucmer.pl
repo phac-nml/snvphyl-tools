@@ -21,12 +21,12 @@ my $keep_temp = 1;
 
 sub parse_single_genome
 {
-	my ($genome_file, $reference, $out_dir, $changed_positions, $genome_name, $bad_positions) = @_;
+	my ($genome_file, $reference, $out_dir, $changed_positions, $genome_name, $core_positions) = @_;
 
 	my %results;
-	my %results_no_bad_positions;
+	my %results_in_core;
 	$results{$genome_name} = Set::Scalar->new;
-	$results_no_bad_positions{$genome_name} = Set::Scalar->new;
+	$results_in_core{$genome_name} = Set::Scalar->new;
 	my $seen_changed_positions = {};
 
 	my $cwd = getcwd;
@@ -72,17 +72,17 @@ sub parse_single_genome
 			{
 				print STDERR "picked up invalid reference call from snp in a changed position on reference $genome_name:$ref_name:$ref_pos should be [r:$original_position => r:$changed_position], was [r:$ref => r:$alt]\n";
 				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-				if (not exists $bad_positions->{"${ref_name}_${ref_pos}"})
+				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
 				{
-					$results_no_bad_positions{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
+					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
 				}
 			}
 			else
 			{
 				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-				if (not exists $bad_positions->{"${ref_name}_${ref_pos}"})
+				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
 				{
-					$results_no_bad_positions{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
+					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
 				}
 			}
 
@@ -91,9 +91,9 @@ sub parse_single_genome
 		else
 		{
 			$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
-			if (not exists $bad_positions->{"${ref_name}_${ref_pos}"})
+			if (exists $core_positions->{"${ref_name}_${ref_pos}"})
 			{
-				$results_no_bad_positions{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
+				$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
 			}
 		}
 	}
@@ -113,15 +113,15 @@ sub parse_single_genome
 			if (not exists $seen_changed_positions->{$ref_name}{$ref_pos})
 			{
 				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$changed");
-				if (not exists $bad_positions->{"${ref_name}_${ref_pos}"})
+				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
 				{
-					$results_no_bad_positions{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$changed");
+					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$changed");
 				}
 			}
 		}
 	}
 
-	return (\%results,\%results_no_bad_positions);
+	return (\%results,\%results_in_core);
 }
 
 sub generate_genome_file_mapping
@@ -212,10 +212,10 @@ sub determine_genome_name
 
 sub parse_genome_nucmer
 {
-	my ($genome, $reference, $genomes_core_snp, $genome_name, $bad_positions) = @_;
+	my ($genome, $reference, $genomes_core_snp, $genome_name, $core_positions) = @_;
 
 	my $nucmer_set = undef;
-	my $nucmer_set_no_bad_pos = undef;
+	my $nucmer_set_core_pos = undef;
 	# map defining how to swap out bases in closed/finished genome to detect same as reference "snps"
 	my $base_sub_map =
 		{'A' => 'T', 'C' => 'G', 'G' => 'C', 'T' => 'A'};
@@ -272,7 +272,7 @@ sub parse_genome_nucmer
 	}
 	print STDERR "Wrote changed reference to $reference_copy\n" if ($verbose);
 
-	my ($genome_nucmer_set, $genome_nucmer_set_no_bad_pos) = parse_single_genome($genome,$reference_copy,$out_dir, \%changed_positions, $genome_name, $bad_positions);
+	my ($genome_nucmer_set, $genome_nucmer_set_core_pos) = parse_single_genome($genome,$reference_copy,$out_dir, \%changed_positions, $genome_name, $core_positions);
 	$nucmer_set = $genome_nucmer_set->{$genome_name};
 	if (not defined $nucmer_set)
 	{
@@ -280,14 +280,14 @@ sub parse_genome_nucmer
 		$nucmer_set = Set::Scalar->new;
 	}
 
-	$nucmer_set_no_bad_pos = $genome_nucmer_set_no_bad_pos->{$genome_name};
-	if (not defined $nucmer_set_no_bad_pos)
+	$nucmer_set_core_pos = $genome_nucmer_set_core_pos->{$genome_name};
+	if (not defined $nucmer_set_core_pos)
 	{
 		warn "nucer_set undefind for $genome_name, assuming no SNPs";
-		$nucmer_set_no_bad_pos = Set::Scalar->new;
+		$nucmer_set_core_pos = Set::Scalar->new;
 	}
 
-	return ($nucmer_set,$nucmer_set_no_bad_pos);
+	return ($nucmer_set,$nucmer_set_core_pos);
 }
 
 sub build_pipeline_set
@@ -389,35 +389,63 @@ sub usage
 	"\t-v|--verbose\n";
 }
 
-sub build_bad_positions
+sub parse_positions_line
 {
-        my ($bad_pos_file) = @_;
-	my %bad_positions;
+	my ($line) = @_;
 
-        open(my $fh, "<$bad_pos_file") or die "Could not open $bad_pos_file: $!";
+	chomp $line;
+	my ($sub_line) = ($line =~ /^([^#]*)/);
+	my ($chrom,$start,$end) = split(/\t/,$sub_line);
+	my $real_start = undef;
+	my $real_end = undef;
 
-        while(my $line = readline($fh))
+	# swap in case start/end are reversed
+	if (defined $chrom and $chrom ne '' and defined $start and defined $end
+		and $start =~ /^\d+$/ and $end =~ /^\d+$/)
+	{
+		$real_start = ($start < $end) ? $start : $end;
+		$real_end = ($start < $end) ? $end : $start;
+	}
+
+	return ($chrom,$real_start,$real_end);
+}
+
+sub build_core_positions
+{
+        my ($core_pos_file, $bad_pos_file) = @_;
+	my %core_positions;
+
+	# open core positions file
+        open(my $cfh, "<$core_pos_file") or die "Could not open $core_pos_file: $!";
+        while(my $line = readline($cfh))
         {
-                chomp $line;
-                my ($sub_line) = ($line =~ /^([^#]*)/);
-                my ($chrom,$start,$end) = split(/\t/,$sub_line);
-                next if (not defined $chrom or $chrom eq '');
-                next if ($start !~ /^\d+$/);
-                next if ($end !~ /^\d+$/);
+                my ($chrom,$start,$end) = parse_positions_line($line);
+                next if (not defined $chrom or not defined $start or not defined $end);
 
-                # swap in case start/end are reversed
-                my $real_start = ($start < $end) ? $start : $end;
-                my $real_end = ($start < $end) ? $end : $start;
-
-                for (my $i = $real_start; $i < $real_end; $i++)
+                for (my $i = $start; $i <= $end; $i++)
                 {
-                        $bad_positions{"${chrom}_${i}"} = 1;
+                        $core_positions{"${chrom}_${i}"} = 1;
                 }
         }
+        close($cfh);
 
-        close($fh);
+	# open bad positions file
+        open(my $bfh, "<$bad_pos_file") or die "Could not open $bad_pos_file: $!";
+        while(my $line = readline($bfh))
+        {
+                my ($chrom,$start,$end) = parse_positions_line($line);
+                next if (not defined $chrom or not defined $start or not defined $end);
 
-	return \%bad_positions;
+		# remove any bad positions from core
+                for (my $i = $start; $i < $end; $i++)
+                {
+                        delete $core_positions{"${chrom}_${i}"}
+				if (exists $core_positions{"${chrom}_${i}"});
+                }
+        }
+        close($bfh);
+
+	return \%core_positions;
 }
 
 # MAIN
@@ -456,36 +484,35 @@ my $genomes_core_snp = generate_core_genome_snps($input_align, $genome);
 my $genome_name = determine_genome_name($genomes_core_snp,$genome);
 die "error: no entry in table $input_align for $genome" if (not defined $genome_name);
 
-my $bad_positions = build_bad_positions($bad_positions_file);
+my $core_positions = build_core_positions($core_positions_file, $bad_positions_file);
 
 my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snp);
-my ($nucmer_set,$nucmer_set_no_bad_pos) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $bad_positions);
+my ($nucmer_set,$nucmer_set_core_pos) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);
 
 # compare sets of snps
 my $intersection = $pipeline_set * $nucmer_set;
 my $uniq_pipeline = $pipeline_set - $nucmer_set;
 my $uniq_nucmer = $nucmer_set - $pipeline_set;
 
-my $intersection_no_bad_pos = $pipeline_set * $nucmer_set_no_bad_pos;
-my $uniq_pipeline_no_bad = $pipeline_set - $nucmer_set_no_bad_pos;
-my $uniq_nucmer_no_bad = $nucmer_set_no_bad_pos - $pipeline_set;
+my $intersection_core_pos = $pipeline_set * $nucmer_set_core_pos;
+my $uniq_pipeline_core = $pipeline_set - $nucmer_set_core_pos;
+my $uniq_nucmer_core = $nucmer_set_core_pos - $pipeline_set;
 
-my $total_bases_filtered = scalar(keys %$bad_positions);
+my $total_bases_kept = scalar(keys %$core_positions);
 my $total_bases_reference = get_reference_length($reference);
-my $total_bases_kept = $total_bases_reference - $total_bases_filtered;
 
 print "Reference\tGenome\tCore Positions\tBad Positions\tTotal Reference Length\tTotal Length Kept\t% Kept\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
 print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
 printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
-print $pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
-	$intersection_no_bad_pos->size."\t".$uniq_pipeline_no_bad->size."\t".$uniq_nucmer_no_bad->size."\t";
+print $pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_core_pos->size."\t".
+	$intersection_core_pos->size."\t".$uniq_pipeline_core->size."\t".$uniq_nucmer_core->size."\t";
 
 my $true_positive;
 my $false_positive;
 my $false_negative;
-if ($nucmer_set_no_bad_pos->size > 0)
+if ($nucmer_set_core_pos->size > 0)
 {
-	$false_negative = sprintf "%0.1f",($uniq_nucmer_no_bad->size/$nucmer_set_no_bad_pos->size)*100;
+	$false_negative = sprintf "%0.1f",($uniq_nucmer_core->size/$nucmer_set_core_pos->size)*100;
 }
 else
 {
@@ -494,8 +521,8 @@ else
 
 if ($pipeline_set->size > 0)
 {
-	$false_positive = sprintf "%0.1f",($uniq_pipeline_no_bad->size/$pipeline_set->size)*100;
-	$true_positive = sprintf "%0.1f",($intersection_no_bad_pos->size/$pipeline_set->size)*100;
+	$false_positive = sprintf "%0.1f",($uniq_pipeline_core->size/$pipeline_set->size)*100;
+	$true_positive = sprintf "%0.1f",($intersection_core_pos->size/$pipeline_set->size)*100;
 }
 else
 {
@@ -512,21 +539,21 @@ print $oh "Working with bad positions $bad_positions_file\n";
 print $oh "Working with genome $genome\n";
 print $oh "Working with reference $reference\n\n";
 
-print $oh "Intersection\t".$intersection_no_bad_pos->size."\n";
+print $oh "Intersection\t".$intersection_core_pos->size."\n";
 print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
-for my $e (sort $intersection_no_bad_pos->elements)
+for my $e (sort $intersection_core_pos->elements)
 {
 	print $oh "$e\n";
 }
 
-print $oh "\nUnique to Nucmer\t".$uniq_nucmer_no_bad->size."\n";
+print $oh "\nUnique to Nucmer\t".$uniq_nucmer_core->size."\n";
 print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
-for my $e (sort $uniq_nucmer_no_bad->elements)
+for my $e (sort $uniq_nucmer_core->elements)
 {
 	print $oh "$e\n";
 }
 
-print $oh "\nUnique to Core Pipeline\t".$uniq_pipeline_no_bad->size."\n";
+print $oh "\nUnique to Core Pipeline\t".$uniq_pipeline_core->size."\n";
 print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
 for my $e (sort $uniq_pipeline->elements)
 {
