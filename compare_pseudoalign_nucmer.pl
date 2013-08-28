@@ -239,6 +239,8 @@ sub parse_genome_nucmer
 		my $pos_map = $genome_core_snp->{$chrom};
 		for my $pos (keys %$pos_map)
 		{
+			die "error: found $chrom:$pos from pseudoalign which is not part of core - bad_positions" if (not exists $core_positions->{"${chrom}_${pos}"});
+
 			my $contig = $reference_contig_map->{$chrom};
 			die "error: no contig found for $chrom" if (not defined $contig);
 			my $ref_base = $pos_map->{$pos}->{'reference'};
@@ -437,7 +439,7 @@ sub build_core_positions
                 next if (not defined $chrom or not defined $start or not defined $end);
 
 		# remove any bad positions from core
-                for (my $i = $start; $i < $end; $i++)
+                for (my $i = $start; $i <= $end; $i++)
                 {
                         delete $core_positions{"${chrom}_${i}"}
 				if (exists $core_positions{"${chrom}_${i}"});

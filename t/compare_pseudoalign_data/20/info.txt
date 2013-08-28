@@ -1,0 +1,1 @@
+Test multiple SNPs, both in core, but one in bad_positions (at end of coordinates)
