@@ -15,7 +15,7 @@ use Bio::SeqIO;
 use Bio::LiveSeq::Mutation;
 use Bio::SeqUtils;
 
-my ($input_align,$genome,$output,$reference,$bad_positions_file,$verbose);
+my ($input_align,$genome,$output,$reference,$bad_positions_file,$core_positions_file,$verbose);
 $verbose = 0;
 my $keep_temp = 1;
 
@@ -384,6 +384,7 @@ sub usage
 	"\t-r|--reference: Reference genome.\n".
 	"\t-o|--output: File to output detailed information\n".
 	"\t-b|--bad-positions: Bad positions file\n".
+	"\t-c|--core-positions: Core positions file\n".
 	"\t-g|--genome:  Genome file to compare to.\n".
 	"\t-v|--verbose\n";
 }
@@ -423,6 +424,7 @@ sub build_bad_positions
 if (!GetOptions('i|input-align=s' => \$input_align,
 		'r|reference=s' => \$reference,
 		'b|bad-positions=s' => \$bad_positions_file,
+		'c|core-positions=s' => \$core_positions_file,
 		'o|output=s' => \$output,
 		'v|verbose' => \$verbose,
 		'g|genome=s' => \$genome))
@@ -438,11 +440,14 @@ die "Error: reference is not defined\n".usage if (not defined $reference);
 die "Error: reference=$reference does not exist\n".usage if (not -e $reference);
 die "Error: no bad-positions defind" if (not defined $bad_positions_file);
 die "Error: bad-positions=$bad_positions_file does not exist" if (not -e $bad_positions_file);
+die "Error: no core-positions defind" if (not defined $core_positions_file);
+die "Error: core-positions=$core_positions_file does not exist" if (not -e $core_positions_file);
 die "Error: no output file defined" if (not defined $output);
 
 my $reference_base = basename($reference);
 my $genome_base = basename($genome);
 my $bad_positions_base = basename($bad_positions_file);
+my $core_positions_base = basename($core_positions_file);
 
 $keep_temp = 0 if ($verbose);
 
@@ -469,8 +474,8 @@ my $total_bases_filtered = scalar(keys %$bad_positions);
 my $total_bases_reference = get_reference_length($reference);
 my $total_bases_kept = $total_bases_reference - $total_bases_filtered;
 
-print "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\t% Kept\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
-print "$reference_base\t$genome_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
+print "Reference\tGenome\tCore Positions\tBad Positions\tTotal Reference Length\tTotal Length Kept\t% Kept\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
+print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
 printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
 print $pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
 	$intersection_no_bad_pos->size."\t".$uniq_pipeline_no_bad->size."\t".$uniq_nucmer_no_bad->size."\t";
@@ -502,6 +507,7 @@ print "$true_positive\t$false_positive\t$false_negative\n";
 
 open(my $oh, ">$output") or die "Could not open file $output for writing: $!";
 print $oh "Working on $input_align\n";
+print $oh "Working with core positions $core_positions_file\n";
 print $oh "Working with bad positions $bad_positions_file\n";
 print $oh "Working with genome $genome\n";
 print $oh "Working with reference $reference\n\n";

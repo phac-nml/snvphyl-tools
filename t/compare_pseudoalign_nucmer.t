@@ -57,7 +57,7 @@ sub compare_files
 
 sub run_case
 {
-	my ($name, $reference, $fasta, $pseudoalign, $bad_positions_file, $expected_out, $expected_detailed_out) = @_;
+	my ($name, $reference, $fasta, $pseudoalign, $core_positions_file, $bad_positions_file, $expected_out, $expected_detailed_out) = @_;
 
 	my ($afh, $actual_out_file) = tempfile("compare_nucmer.actual_out.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
 	close($afh);
@@ -67,7 +67,7 @@ sub run_case
 	close($dfh);
 	print STDERR "Detailed Out: $detailed_out_file\n" if ($verbose);
 	
-	my $command = "$compare_snps_bin -i $pseudoalign -r $reference -g $fasta -b $bad_positions_file -o $detailed_out_file 1> $actual_out_file";
+	my $command = "$compare_snps_bin -i $pseudoalign -r $reference -g $fasta -c $core_positions_file -b $bad_positions_file -o $detailed_out_file 1> $actual_out_file";
 	$command .= " 2> /dev/null" if (not $verbose);
 	print STDERR "$command\n" if ($verbose);
 	system($command) == 0 or die "Could not execute command $command: $!";
@@ -77,11 +77,12 @@ sub run_case
 
 sub build_expected_out
 {
-	my ($summary_template, $detailed_template, $reference, $query, $bad_positions, $pseudoalign) = @_;
+	my ($summary_template, $detailed_template, $reference, $query, $core_positions, $bad_positions, $pseudoalign) = @_;
 
 	my $reference_base = basename($reference);
 	my $query_base = basename($query);
 	my $bad_positions_base = basename($bad_positions);
+	my $core_positions_base = basename($core_positions);
 
 	my $vars = {
 		'reference' => $reference,
@@ -90,6 +91,8 @@ sub build_expected_out
 		'query_base' => $query_base,
 		'bad_positions' => $bad_positions,
 		'bad_positions_base' => $bad_positions_base,
+		'core_positions' => $core_positions,
+		'core_positions_base' => $core_positions_base,
 		'pseudoalign' => $pseudoalign
 		};
 
@@ -144,15 +147,16 @@ for my $dir (@tests)
 	my $query_file = "$dir/input/query.fasta";
 	my $pseudoalign_file = "$dir/input/pseudoalign.tsv";
 	my $bad_positions_file = "$dir/input/bad_positions.tsv";
+	my $core_positions_file = "$dir/input/core_positions.tsv";
 
 	my $expected_summary_template = "$dir/output/summary.tsv.template";
 	my $expected_detailed_template = "$dir/output/detailed.tsv.template";
 
 	my ($expected_summary_file,$expected_detailed_file) = 
 		build_expected_out($expected_summary_template, $expected_detailed_template,
-			$reference_file, $query_file, $bad_positions_file, $pseudoalign_file);
+			$reference_file, $query_file, $core_positions_file, $bad_positions_file, $pseudoalign_file);
 
-	run_case("$dir: $info", $reference_file, $query_file, $pseudoalign_file, $bad_positions_file, $expected_summary_file,$expected_detailed_file);
+	run_case("$dir: $info", $reference_file, $query_file, $pseudoalign_file, $core_positions_file, $bad_positions_file, $expected_summary_file,$expected_detailed_file);
 }
 
 done_testing();

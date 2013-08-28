@@ -1,2 +1,2 @@
-Reference	Genome	Bad Positions	Total Reference Length	Total Length Kept	% Kept	Core Pipeline Positions	Nucmer Positions	Nucmer Filtered Positions	Intersection	Unique Core Pipeline	Unique Nucmer	% True Positive	% False Positive	% False Negative
-[% reference_base %]	[% query_base %]	[% bad_positions_base %]	184	182	98.9	0	1	0	0	0	0	undefined	undefined	undefined
+Reference	Genome	Core Positions	Bad Positions	Total Reference Length	Total Length Kept	% Kept	Core Pipeline Positions	Nucmer Positions	Nucmer Filtered Positions	Intersection	Unique Core Pipeline	Unique Nucmer	% True Positive	% False Positive	% False Negative
+[% reference_base %]	[% query_base %]	[% core_positions_base %]	[% bad_positions_base %]	184	182	98.9	0	1	0	0	0	0	undefined	undefined	undefined
