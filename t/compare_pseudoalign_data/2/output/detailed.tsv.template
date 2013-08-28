@@ -1,0 +1,12 @@
+Working on [% pseudoalign %]
+Working with genome [% query %]
+Working with reference [% reference %]
+
+Intersection	0
+Contig	Position	Reference	Genome
+
+Unique to Nucmer	0
+Contig	Position	Reference	Genome
+
+Unique to Core Pipeline	0
+Contig	Position	Reference	Genome

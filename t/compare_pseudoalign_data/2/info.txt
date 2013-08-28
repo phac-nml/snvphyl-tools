@@ -1,0 +1,1 @@
+Test single SNP in bad position

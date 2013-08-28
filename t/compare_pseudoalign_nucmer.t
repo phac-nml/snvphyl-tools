@@ -7,11 +7,13 @@ use FindBin;
 use Test::More;
 use File::Temp 'tempfile';
 use Getopt::Long;
+use Template;
 
 my $script_dir = $FindBin::Bin;
 my $compare_snps_bin = "$script_dir/../compare_pseudoalign_nucmer.pl";
 my $delete_temp = 1;
 my $verbose = 0;
+my $tt = Template->new({ABSOLUTE => 1});
 
 sub compare_files
 {
@@ -52,32 +54,6 @@ sub compare_files
         return $success;
 }
 
-sub build_input_files
-{
-	my ($reference, $fasta, $fasta_file_prefix, $pseudoalign, $bad_positions) = @_;
-
-	my ($rfh,$reference_file) = tempfile('compare_nucmer.reference.test.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
-	print $rfh $reference;
-	close($rfh);
-	print STDERR "Reference: $reference_file\n" if ($verbose);
-
-	my ($ffh, $fasta_file) = tempfile("$fasta_file_prefix.compare_nucmer.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
-	print $ffh $fasta;
-	close($ffh);
-	print STDERR "FASTA: $fasta_file\n" if ($verbose);
-
-	my ($pfh, $pseudoalign_file) = tempfile("compare_nucmer.pseudoalign.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
-	print $pfh $pseudoalign;
-	close($pfh);
-	print STDERR "Pseudoalign: $pseudoalign_file\n" if ($verbose);
-
-	my ($bfh, $bad_positions_file) = tempfile('compare_nucmer.bad_pos.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
-	print $bfh $bad_positions;
-	close($bfh);
-
-	return ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file);
-}
-
 sub run_case
 {
 	my ($name, $reference, $fasta, $pseudoalign, $bad_positions_file, $expected_out, $expected_detailed_out) = @_;
@@ -100,412 +76,30 @@ sub run_case
 
 sub build_expected_out
 {
-	my ($reference_total, $reference_kept, $percentage_kept, $pseudoalign_file, $bad_positions_file, $reference_file, $fasta_file, $line1, $line2, $detailed_out_contents) = @_;
-	my $expected_1 = "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\t% Kept\t$line1";
+	my ($summary_template, $detailed_template, $reference, $query, $bad_positions, $pseudoalign) = @_;
 
-	my ($efh, $expected_out_file) = tempfile("compare_nucmer.expected_out.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
-	print $efh $expected_1;
-	print $efh "$reference_file\t$fasta_file\t$bad_positions_file\t$reference_total\t$reference_kept\t";
-	printf $efh "%0.1f\t%s",$percentage_kept,$line2;
+	my $vars = {
+		'reference' => $reference,
+		'query' => $query,
+		'bad_positions' => $bad_positions,
+		'pseudoalign' => $pseudoalign
+		};
+
+	my ($efh, $expected_summary) = tempfile("compare_pseudoalign.summary.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
 	close($efh);
-	print STDERR "Expected Out: $expected_out_file\n" if ($verbose);
+	$tt->process($summary_template, $vars, $expected_summary) || die $tt->error(),"\n";
 
-	my ($dfh, $detailed_out_file) = tempfile("compare_nucmer.expected_detailed.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
-	print $dfh "Working on $pseudoalign_file\n";
-	print $dfh "Working with genome $fasta_file\n";
-	print $dfh "Working with reference $reference_file\n\n";
-	print $dfh $detailed_out_contents;
-	close ($dfh);
+	my ($dfh, $expected_detailed) = tempfile("compare_nucmer.expected_detailed.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
+	close($dfh);
+	$tt->process($detailed_template, $vars, $expected_detailed) || die $tt->error(),"\n";
 
-	return ($expected_out_file, $detailed_out_file);
+	return ($expected_summary, $expected_detailed);
 }
-
-my $reference =
-">chr\n".
-"TGAAATCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_A_1 =
-">chr\n".
-"TGAATTCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_A_2 =
-">chr\n".
-"TGAATTCGAGTCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_A_3 =
-">chr\n".
-"TGAAATCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_A_4 =
-">chr\n".
-"TGAATTCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_B =
-">chr\n".
-"TGAAATCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_A_5 =
-">chr\n".
-"TGAATTCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_A_6 =
-">chr\n".
-"TGAATTCGAGTCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_B_7 =
-">chr\n".
-"TGAATTCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_B_8 =
-">chr\n".
-"TGAAGTCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_B_8_1 =
-">chr\n".
-"TGAACTCGAATCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $fasta_in_A_9 =
-">chr\n".
-"TGAATTCGAGTCGGATTCG\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"AAAAAAAAAAAAAAA\n".
-"TTTTTTTTTTTTTTT\n";
-
-my $detailed_out_1 = 
-"Intersection\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_b_1 =
-"Intersection\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tA\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_1_1 = 
-"Intersection\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_1_2 = 
-"Intersection\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_2 = 
-"Intersection\t2\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t10\tA\tG\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_2_1 = 
-"Intersection\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t10\tA\tG\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_b_2 = 
-"Intersection\t2\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t10\tA\tA\n".
-"chr\t5\tA\tA\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_3 = 
-"Intersection\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t1\tT\tA\n";
-
-my $detailed_out_4 = 
-"Intersection\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Nucmer\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Core Pipeline\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t1\tT\tA\n";
-
-my $detailed_out_5 = 
-"Intersection\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Nucmer\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_6 = 
-"Intersection\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Nucmer\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t10\tA\tG\n".
-"\nUnique to Core Pipeline\t0\n".
-"Contig\tPosition\tReference\tGenome\n";
-
-my $detailed_out_7 = 
-"Intersection\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Nucmer\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Core Pipeline\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tA\n";
-
-my $detailed_out_8 = 
-"Intersection\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Nucmer\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tG\n".
-"\nUnique to Core Pipeline\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tA\n";
-
-my $detailed_out_8_1 = 
-"Intersection\t0\n".
-"Contig\tPosition\tReference\tGenome\n".
-"\nUnique to Nucmer\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tC\n".
-"\nUnique to Core Pipeline\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tA\n";
-
-my $detailed_out_9 = 
-"Intersection\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t5\tA\tT\n".
-"\nUnique to Nucmer\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t10\tA\tG\n".
-"\nUnique to Core Pipeline\t1\n".
-"Contig\tPosition\tReference\tGenome\n".
-"chr\t10\tA\tA\n";
-
-my $example_pseudoalign_1 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n";
-
-my $example_pseudoalign_1_1 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n";
-
-my $example_pseudoalign_1_2 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n";
-
-my $example_pseudoalign_2 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n".
-"chr\t10\tvalid\tA\tG\tA\n";
-
-my $example_pseudoalign_2_1 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t10\tvalid\tA\tG\tA\n";
-
-my $example_pseudoalign_3 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t1\tvalid\tT\tA\tT\n";
-
-my $example_pseudoalign_4 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t1\tvalid\tT\tA\tT\n".
-"chr\t5\tvalid\tA\tT\tA\n";
-
-my $example_pseudoalign_5 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n";
-
-my $example_pseudoalign_6 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n";
-
-my $example_pseudoalign_7 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n";
-
-my $example_pseudoalign_8 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n";
-
-my $example_pseudoalign_8_1 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n";
-
-my $example_pseudoalign_9 =
-"#Chromosome\tPosition\tStatus\tReference\tA\tB\n".
-"chr\t5\tvalid\tA\tT\tA\n".
-"chr\t10\tvalid\tA\tA\tG\n";
-
-my $empty_bad_positions = '';
-
-my $bad_positions_1 = "chr\t5\t7\n";
-my $bad_positions_1_2 = "chr\t6\t7\n";
-my $bad_positions_2_1 = "chr\t5\t7\n";
 
 ### MAIN ###
 my ($help);
 my $usage = "Usage: $0 [-h|--help] [-v|--verbose]\n";
-my ($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file, $expected_out_file, $detailed_out_file);
+my $tests_dir = "$script_dir/compare_pseudoalign_data";
 
 if (!GetOptions('v|verbose' => \$verbose,
                 'h|help' => \$help))
@@ -528,127 +122,29 @@ elsif ($verbose)
 	$delete_temp = 0;
 }
 
-my ($reference_total,$reference_kept,$percentage_kept);
-print "Testing $compare_snps_bin\n";
+opendir(my $test_in,$tests_dir) or die "Could not open $tests_dir: $!";
+my @tests = map {"$tests_dir/$_"} sort {$a <=> $b} grep {$_ !~ /^\./} readdir($test_in);
+closedir($test_in);
 
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t1\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
-	$detailed_out_1);
-run_case("Test single SNP (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+for my $dir (@tests)
+{
+	print "\nTesting $dir:\n" if ($verbose);
+	my $info = `cat $dir/info.txt`;
+	chomp $info;
 
-($reference_total,$reference_kept,$percentage_kept) = (184,182,(182/184)*100);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1_1, $bad_positions_1);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"0\t1\t0\t0\t0\t0\tundefined\tundefined\tundefined\n",
-	$detailed_out_1_1);
-run_case("Test single SNP in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+	my $reference_file = "$dir/input/reference.fasta";
+	my $query_file = "$dir/input/query.fasta";
+	my $pseudoalign_file = "$dir/input/pseudoalign.tsv";
+	my $bad_positions_file = "$dir/input/bad_positions.tsv";
 
-($reference_total,$reference_kept,$percentage_kept) = (184,183,(183/184)*100);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_1, "A", $example_pseudoalign_1_2, $bad_positions_1_2);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t1\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
-	$detailed_out_1_2);
-run_case("Test single SNP not in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+	my $expected_summary_template = "$dir/output/summary.tsv.template";
+	my $expected_detailed_template = "$dir/output/detailed.tsv.template";
 
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"2\t2\t2\t2\t0\t0\t100.0\t0.0\t0.0\n",
-	$detailed_out_2);
-run_case("Test multiple SNP (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+	my ($expected_summary_file,$expected_detailed_file) = 
+		build_expected_out($expected_summary_template, $expected_detailed_template,
+			$reference_file, $query_file, $bad_positions_file, $pseudoalign_file);
 
-($reference_total,$reference_kept,$percentage_kept) = (184,182,(182/184)*100);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_2, "A", $example_pseudoalign_2_1, $bad_positions_2_1);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t2\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
-	$detailed_out_2_1);
-run_case("Test multiple SNP, one in bad position", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_1, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t1\t1\t1\t0\t0\t100.0\t0.0\t0.0\n",
-	$detailed_out_b_1);
-run_case("Test detection single reference base (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B, "B", $example_pseudoalign_2, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"2\t2\t2\t2\t0\t0\t100.0\t0.0\t0.0\n",
-	$detailed_out_b_2);
-run_case("Test detection multiple reference base (% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_3, "A", $example_pseudoalign_3, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t0\t0\t0\t1\t0\t0.0\t100.0\tundefined\n",
-	$detailed_out_3);
-run_case("Test mis-detection of SNP (% False Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_4, "A", $example_pseudoalign_4, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"2\t1\t1\t1\t1\t0\t50.0\t50.0\t0.0\n",
-	$detailed_out_4);
-run_case("Test mis-detection of SNP, true detection of another SNP (% False Positive/% True Positive)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_5, "A", $example_pseudoalign_5, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"0\t1\t1\t0\t0\t1\tundefined\tundefined\t100.0\n",
-	$detailed_out_5);
-run_case("Single SNP Test % False Negative", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_6, "A", $example_pseudoalign_6, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t2\t2\t1\t0\t1\t100.0\t0.0\t50.0\n",
-	$detailed_out_6);
-run_case("Multiple SNP Test % False Negative", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B_7, "B", $example_pseudoalign_7, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t1\t1\t0\t1\t1\t0.0\t100.0\t100.0\n",
-	$detailed_out_7);
-run_case("Test mis-identified reference base (should be T, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B_8, "B", $example_pseudoalign_8, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t1\t1\t0\t1\t1\t0.0\t100.0\t100.0\n",
-	$detailed_out_8);
-run_case("Test mis-identified reference base (should be G, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_B_8_1, "B", $example_pseudoalign_8_1, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"1\t1\t1\t0\t1\t1\t0.0\t100.0\t100.0\n",
-	$detailed_out_8_1);
-run_case("Test mis-identified reference base (should be C, identified as A)", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
-
-($reference_total,$reference_kept,$percentage_kept) = (184,184,100.0);
-($reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file) = build_input_files($reference, $fasta_in_A_9, "A", $example_pseudoalign_9, $empty_bad_positions);
-($expected_out_file,$detailed_out_file) = build_expected_out($reference_total,$reference_kept,$percentage_kept,$pseudoalign_file,$bad_positions_file,$reference_file, $fasta_file,
-	"Core Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n",
-	"2\t2\t2\t1\t1\t1\t50.0\t50.0\t50.0\n",
-	$detailed_out_9);
-run_case("Test mis-identified reference base (should be G, identified as A) and true SNP", $reference_file, $fasta_file, $pseudoalign_file, $bad_positions_file,$expected_out_file,$detailed_out_file);
+	run_case("$dir: $info", $reference_file, $query_file, $pseudoalign_file, $bad_positions_file, $expected_summary_file,$expected_detailed_file);
+}
 
 done_testing();
