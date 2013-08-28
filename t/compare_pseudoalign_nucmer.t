@@ -8,6 +8,7 @@ use Test::More;
 use File::Temp 'tempfile';
 use Getopt::Long;
 use Template;
+use File::Basename;
 
 my $script_dir = $FindBin::Bin;
 my $compare_snps_bin = "$script_dir/../compare_pseudoalign_nucmer.pl";
@@ -78,10 +79,17 @@ sub build_expected_out
 {
 	my ($summary_template, $detailed_template, $reference, $query, $bad_positions, $pseudoalign) = @_;
 
+	my $reference_base = basename($reference);
+	my $query_base = basename($query);
+	my $bad_positions_base = basename($bad_positions);
+
 	my $vars = {
 		'reference' => $reference,
+		'reference_base' => $reference_base,
 		'query' => $query,
+		'query_base' => $query_base,
 		'bad_positions' => $bad_positions,
+		'bad_positions_base' => $bad_positions_base,
 		'pseudoalign' => $pseudoalign
 		};
 

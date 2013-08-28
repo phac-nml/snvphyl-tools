@@ -440,6 +440,10 @@ die "Error: no bad-positions defind" if (not defined $bad_positions_file);
 die "Error: bad-positions=$bad_positions_file does not exist" if (not -e $bad_positions_file);
 die "Error: no output file defined" if (not defined $output);
 
+my $reference_base = basename($reference);
+my $genome_base = basename($genome);
+my $bad_positions_base = basename($bad_positions_file);
+
 $keep_temp = 0 if ($verbose);
 
 my $genomes_core_snp = generate_core_genome_snps($input_align, $genome);
@@ -466,7 +470,7 @@ my $total_bases_reference = get_reference_length($reference);
 my $total_bases_kept = $total_bases_reference - $total_bases_filtered;
 
 print "Reference\tGenome\tBad Positions\tTotal Reference Length\tTotal Length Kept\t% Kept\tCore Pipeline Positions\tNucmer Positions\tNucmer Filtered Positions\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
-print "$reference\t$genome\t$bad_positions_file\t$total_bases_reference\t$total_bases_kept\t";
+print "$reference_base\t$genome_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
 printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
 print $pipeline_set->size."\t".$nucmer_set->size."\t".$nucmer_set_no_bad_pos->size."\t".
 	$intersection_no_bad_pos->size."\t".$uniq_pipeline_no_bad->size."\t".$uniq_nucmer_no_bad->size."\t";
@@ -498,25 +502,26 @@ print "$true_positive\t$false_positive\t$false_negative\n";
 
 open(my $oh, ">$output") or die "Could not open file $output for writing: $!";
 print $oh "Working on $input_align\n";
+print $oh "Working with bad positions $bad_positions_file\n";
 print $oh "Working with genome $genome\n";
 print $oh "Working with reference $reference\n\n";
 
 print $oh "Intersection\t".$intersection_no_bad_pos->size."\n";
-print $oh "Contig\tPosition\tReference\tGenome\n";
+print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
 for my $e (sort $intersection_no_bad_pos->elements)
 {
 	print $oh "$e\n";
 }
 
 print $oh "\nUnique to Nucmer\t".$uniq_nucmer_no_bad->size."\n";
-print $oh "Contig\tPosition\tReference\tGenome\n";
+print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
 for my $e (sort $uniq_nucmer_no_bad->elements)
 {
 	print $oh "$e\n";
 }
 
 print $oh "\nUnique to Core Pipeline\t".$uniq_pipeline_no_bad->size."\n";
-print $oh "Contig\tPosition\tReference\tGenome\n";
+print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
 for my $e (sort $uniq_pipeline->elements)
 {
 	print $oh "$e\n";
