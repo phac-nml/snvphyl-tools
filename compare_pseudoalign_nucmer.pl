@@ -388,12 +388,19 @@ sub parse_genome_nucmer
 	for my $chrom (keys %$genome_core_snp)
 	{
 		my $pos_map = $genome_core_snp->{$chrom};
+		my $contig = $reference_contig_map->{$chrom};
+		die "error: no contig found for $chrom" if (not defined $contig);
+		my $seq_string = $contig->seq;
+		die "error: no seq string for contig: $chrom" if (not defined $seq_string);
+		die "error: no sequence letters for contig: $chrom" if ($seq_string eq '');
+		my @seq_array = split(//,$seq_string);
+		my $seq_length = scalar(@seq_array);
+
 		for my $pos (keys %$pos_map)
 		{
 			die "error: found $chrom:$pos from pseudoalign which is not part of core - bad_positions" if (not exists $core_positions->{"${chrom}_${pos}"});
+			die "error: $chrom:$pos out of bounds of array for $chrom" if ($pos > $seq_length);
 
-			my $contig = $reference_contig_map->{$chrom};
-			die "error: no contig found for $chrom" if (not defined $contig);
 			my $ref_base = $pos_map->{$pos}->{'reference'};
 			my $alt_base = $pos_map->{$pos}->{'alternative'};
 			die "error: no ref_base for $genome_name:$chrom:$pos" if (not defined $ref_base);
@@ -405,9 +412,8 @@ sub parse_genome_nucmer
 			{
 				my $swapped_base = $base_sub_map->{$ref_base};
 				die "error: could not find alternative base for $ref_base" if (not defined $swapped_base);
-				my $mutation = Bio::LiveSeq::Mutation->new(-seq => $swapped_base, -pos => $pos);
+				$seq_array[$pos-1] = $swapped_base; # pos-1 since position is 1-based, array is 0-based
 			
-				Bio::SeqUtils->mutate($contig,$mutation);
 				$changed_positions{$genome_name}{$chrom}{$pos} = {'reference' => $ref_base, 'changed' => $swapped_base};
 				print STDERR "changed $genome_name:$chrom:$pos [r:$ref_base => r:$swapped_base, a:$alt_base]\n" if ($verbose);
 
@@ -422,6 +428,8 @@ sub parse_genome_nucmer
 				print STDERR "kept $genome_name:$chrom:$pos [r:$ref_base, a:$alt_base]\n" if ($verbose);
 			}
 		}
+
+		$contig->seq(join('',@seq_array));
 	}
 
 	my $out_io = Bio::SeqIO->new(-file=>">$reference_copy", -format=>"fasta");
