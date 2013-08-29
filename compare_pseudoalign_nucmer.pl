@@ -194,14 +194,16 @@ sub parse_single_genome
 							}
 							else
 							{
+								my @alt_bases = keys %$alt_base_table;
 								die "error: multiple alternative bases for positions: ref: $ref_name:$ref_pos,".
-									"alt: $alt_name:$alt_pos:".(keys %$alt_base_table);
+									"alt: $alt_name:$alt_pos:(@alt_bases)";
 							}
 						}
 						else
 						{
+							my @alt_pos = keys %$multiple_alt_pos_table;
 							die "error: multiple alternative mappings to $ref_name:$ref_pos,".
-								"$alt_name:".(keys %$multiple_alt_pos_table);
+								"$alt_name:(@alt_pos)";
 						}
 					}
 				}
