@@ -480,7 +480,7 @@ sub build_pipeline_set
 # strain_id => chrom => pos => {'reference' => $ref_base, 'alternative' => $alt_base}
 sub generate_core_genome_snps
 {
-	my ($input_align, $genome_file) = @_;
+	my ($input_align) = @_;
 
 	open(my $fh, "<$input_align") or die "Could not open $input_align: $!";
 	
@@ -492,11 +492,13 @@ sub generate_core_genome_snps
 	die "Error: no strains defined in $input_align" if (@strains <= 0);
 	die "Error: reference not in correct column" if ($strains[0] ne 'Reference');
 	my %genomes_core_snp;
+	my %genomes_core_snp_count;
 
 	# initialize empty table for each strain
 	for my $strain (@strains)
 	{
 		$genomes_core_snp{$strain} = undef;
+		$genomes_core_snp_count{$strain} = 0;
 	}
 	
 	my $valid = 0;
@@ -523,6 +525,12 @@ sub generate_core_genome_snps
 			{
 				$genomes_core_snp{$strains[$i]}{$chrom}{$pos} = {'reference' => $dna[0], 
 					'alternative' => $dna[$i]};
+
+				if ($dna[0] ne $dna[$i])
+				{
+					$genomes_core_snp_count{$strains[$i]}++;
+				}
+				
 			}
 			$valid++;
 		}
@@ -532,7 +540,7 @@ sub generate_core_genome_snps
 	
 	print STDERR "Kept $valid valid positions out of $total total positions\n" if ($verbose);
 
-	return \%genomes_core_snp;
+	return (\%genomes_core_snp,\%genomes_core_snp_count);
 }
 
 sub usage
@@ -638,10 +646,13 @@ my $core_positions_base = basename($core_positions_file);
 
 $keep_temp = 0 if ($verbose);
 
-my $genomes_core_snp = generate_core_genome_snps($input_align, $genome);
+my ($genomes_core_snp,$genomes_core_snp_count) = generate_core_genome_snps($input_align);
 
 my $genome_name = determine_genome_name($genomes_core_snp,$genome);
 die "error: no entry in table $input_align for $genome" if (not defined $genome_name);
+
+my $genome_core_snp_count = $genomes_core_snp_count->{$genome_name};
+die "error: could not find SNP count in $input_align for $genome_name" if (not defined $genome_core_snp_count);
 
 my $core_positions = build_core_positions($core_positions_file, $bad_positions_file);
 
@@ -663,10 +674,10 @@ my $total_bases_reference = get_reference_length($reference);
 my $nucmer_snps = $nucmer_set->size - $number_changed_positions;
 my $nucmer_filtered_snps = $nucmer_set_core_pos->size - $number_changed_positions_core;
 
-print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tNucmer Positions\tNucmer SNPs\tNucmer Filtered Positions\tNucmer Filtered SNPs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
+print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tCore Pipeline SNPs\tNucmer Positions\tNucmer SNPs\tNucmer Filtered Positions\tNucmer Filtered SNPs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
 print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
 printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
-print $pipeline_set->size."\t".$nucmer_set->size."\t$nucmer_snps\t".$nucmer_set_core_pos->size."\t$nucmer_filtered_snps\t".
+print $pipeline_set->size."\t$genome_core_snp_count\t".$nucmer_set->size."\t$nucmer_snps\t".$nucmer_set_core_pos->size."\t$nucmer_filtered_snps\t".
 	$intersection_core_pos->size."\t".$uniq_pipeline_core->size."\t".$uniq_nucmer_core->size."\t";
 
 my $true_positive;
