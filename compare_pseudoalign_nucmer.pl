@@ -84,18 +84,15 @@ sub parse_single_genome
 		}
 		elsif ($is_single_indel)
 		{
-			if (exists $indels{$ref_name}{$ref_pos})
+			if (exists $indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt})
 			{
-				my $old_alt_name = $indels{$ref_name}{$ref_pos}{'name'};
-				my $old_alt_pos = $indels{$ref_name}{$ref_pos}{'position'};
-				my $old_alt = $indels{$ref_name}{$ref_pos}{'alternative'};
-				
-				die "error: multiple overlapping positions for indel for same reference coordinates: ".
-					"original[ref: $ref_name:$ref_pos:$ref, alt: $old_alt_name:$old_alt_pos:$old_alt], ".
-					"new[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:$alt]";
+				my @original_alt = (keys %{$indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}});
+				warn "warning: multiple overlapping indel positions for same coordinates: ".
+					"original[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:@original_alt]".
+					", new[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:$alt]";
 			}
 
-			$indels{$ref_name}{$ref_pos} = {'name' => $alt_name, 'alternative' => $alt_pos, 'reference' => $ref_pos, 'position' => $alt_pos};
+			$indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt} = $ref;
 		}
 		else
 		{
@@ -211,10 +208,35 @@ sub parse_single_genome
 				# case: indel in position
 				elsif (exists $indels{$ref_name}{$ref_pos})
 				{
-					my $alt_mapping = $indels{$ref_name}{$ref_pos};
-					die "error: multiple indel entries for $ref_name:$ref_pos" if (keys %$alt_mapping > 1);
+					my $alt_mapping_name = $indels{$ref_name}{$ref_pos};
+					if (keys %$alt_mapping_name > 1)
+					{
+						die "error: multiple indel entries for $ref_name:$ref_pos";
+					}
+					else
+					{
+						my ($alt_name) = (keys %$alt_mapping_name);
+						my $alt_mapping_pos = $alt_mapping_name->{$alt_name};
+						if (keys %$alt_mapping_pos > 1)
+						{
+							die "error: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name";
+						}
+						else
+						{
+							my ($alt_pos) = (keys %$alt_mapping_pos);
+							my $alt_mapping_base = $alt_mapping_pos->{$alt_pos};
 
-					$true_nucmer_alt_call = $alt_mapping->{'alternative'};
+							if (keys %$alt_mapping_base > 1)
+							{
+								die "error: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name:$alt_pos";
+							}
+							else
+							{
+								my ($alt) = (keys %$alt_mapping_base);
+								$true_nucmer_alt_call = $alt;
+							}
+						}
+					}
 				}
 				# case: swapped reference base is real base call
 				else
