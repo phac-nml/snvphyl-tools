@@ -528,7 +528,6 @@ sub generate_core_genome_snps
 		}
 		else
 		{
-			$genomes_core_snp{$chrom}{$pos}{'status'} = $status;
 			for (my $i = 1; $i < @dna; $i++)
 			{
 				$genomes_core_snp{$strains[$i]}{$chrom}{$pos} = {'reference' => $dna[0], 
