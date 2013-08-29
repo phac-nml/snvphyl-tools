@@ -366,7 +366,6 @@ sub parse_genome_nucmer
 	my $nucmer_set = undef;
 	my $nucmer_set_core_pos = undef;
 	my $number_changed_positions = 0;
-	my $number_changed_positions_core = 0;
 	# map defining how to swap out bases in closed/finished genome to detect same as reference "snps"
 	my $base_sub_map =
 		{'A' => 'T', 'C' => 'G', 'G' => 'C', 'T' => 'A'};
@@ -417,10 +416,6 @@ sub parse_genome_nucmer
 				$changed_positions{$genome_name}{$chrom}{$pos} = {'reference' => $ref_base, 'changed' => $swapped_base};
 				print STDERR "changed $genome_name:$chrom:$pos [r:$ref_base => r:$swapped_base, a:$alt_base]\n" if ($verbose);
 
-				if (exists $core_positions->{"${chrom}_${pos}"})
-				{
-					$number_changed_positions_core++;
-				}
 				$number_changed_positions++;
 			}
 			else
@@ -454,7 +449,7 @@ sub parse_genome_nucmer
 		$nucmer_set_core_pos = Set::Scalar->new;
 	}
 
-	return ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions,$number_changed_positions_core);
+	return ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions);
 }
 
 sub build_pipeline_set
@@ -664,7 +659,7 @@ die "error: could not find SNP count in $input_align for $genome_name" if (not d
 my $core_positions = build_core_positions($core_positions_file, $bad_positions_file);
 
 my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snp);
-my ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions,$number_changed_positions_core) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);
+my ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);
 
 # compare sets of snps
 my $intersection = $pipeline_set * $nucmer_set;
@@ -679,7 +674,7 @@ my $total_bases_kept = scalar(keys %$core_positions);
 my $total_bases_reference = get_reference_length($reference);
 
 my $nucmer_snps = $nucmer_set->size - $number_changed_positions;
-my $nucmer_filtered_snps = $nucmer_set_core_pos->size - $number_changed_positions_core;
+my $nucmer_filtered_snps = $nucmer_set_core_pos->size - $number_changed_positions;
 
 print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tCore Pipeline SNPs\tNucmer Positions\tNucmer SNPs\tNucmer Filtered Positions\tNucmer Filtered SNPs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
 print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
