@@ -265,6 +265,15 @@ sub parse_single_genome
 				else
 				{
 					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\tunknown");
+					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
+					{
+						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\tunknown");
+					}
+					else
+					{
+						die "error: found position in pseudoalign table: $ref_name:$ref_pos:$ref".
+							"which is not identified as part of core";
+					}
 				}
 			}
 		}
