@@ -25,6 +25,8 @@ sub parse_single_genome
 
 	my %results;
 	my %results_in_core;
+	my %multiple_overlapping_snps; # stores information about multiple overlapping SNPs
+	my %indels; # stores information about indels (one of the cases when validating reference bases)
 	$results{$genome_name} = Set::Scalar->new;
 	$results_in_core{$genome_name} = Set::Scalar->new;
 	my $seen_changed_positions = {};
@@ -43,7 +45,7 @@ sub parse_single_genome
 	print STDERR $command if ($verbose);
 	system($command) == 0 or die "Could not execute \"$command\"";
 
-	$command = "show-snps -CTH $delta_prefix.delta 2> $delta_prefix.delta.show-snps.log 1> $snps_file_name";
+	$command = "show-snps -TH $delta_prefix.delta 2> $delta_prefix.delta.show-snps.log 1> $snps_file_name";
 	print STDERR $command if ($verbose);
 	system($command) == 0 or die "Could not execute \"$command\"";
 
@@ -52,48 +54,83 @@ sub parse_single_genome
 	{
 		chomp;
 		my @fields = split(/\t/);
-		my ($ref_pos, $ref, $alt, $ref_name) = ($fields[0],$fields[1],$fields[2],$fields[8]);
+		my $is_overlapping = 0;
+		my $is_single_indel = 0;
+		my ($ref_pos, $ref, $alt, $alt_pos, $ref_count, $alt_count, $ref_name, $alt_name) = ($fields[0],$fields[1],$fields[2],$fields[3],$fields[6],$fields[7],$fields[10],$fields[11]);
 		die "error: undefined value for ref_pos" if (not defined $ref_pos);
 		die "error: undefined value for ref" if (not defined $ref);
 		die "error: undefined value for alt" if (not defined $alt);
+		die "error: undefined value for alt_pos" if (not defined $alt_pos);
+		die "error: undefined value for ref_count" if (not defined $ref_count);
+		die "error: undefined value for alt_count" if (not defined $alt_count);
 		die "error: undefined value for ref_name" if (not defined $ref_name);
-		next if ($ref !~ /^[ACTG]$/i or $alt !~ /^[ACTG]$/i);
+		die "error: undefined value for alt_name" if (not defined $alt_name);
 
-		print STDERR "$genome_name: $ref_name\t$ref_pos\t$ref\t$alt\n" if ($verbose);
-		if (defined $changed_positions->{$genome_name}{$ref_name}{$ref_pos})
+		$is_overlapping = ($ref_count > 0 or $alt_count > 0);
+		$is_single_indel = ($ref !~ /^[ACTG]$/i or $alt !~ /^[ACTG]$/i);
+
+		# if this position has mutliple alignments, store in hash table to handle later
+		if ($is_overlapping)
 		{
-			my $original_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'reference'};
-			my $changed_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'changed'};
-			if ($changed_position ne $ref)
+			if (exists $multiple_overlapping_snps{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt})
 			{
-				die "error: change on reference for $ref_name:$ref_pos [r:$original_position => r:$changed_position] did not work";
-			}
-			elsif ($original_position ne $alt)
-			{
-				print STDERR "picked up invalid reference call from snp in a changed position on reference $genome_name:$ref_name:$ref_pos should be [r:$original_position => r:$changed_position], was [r:$ref => r:$alt]\n";
-				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
-				{
-					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-				}
-			}
-			else
-			{
-				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
-				{
-					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-				}
+				my @original_alt = (keys %{$multiple_overlapping_snps{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}});
+				warn "warning: multiple overlapping positions for same coordinates: ".
+					"original[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:@original_alt]".
+					", new[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:$alt]";
 			}
 
-			$seen_changed_positions->{$ref_name}{$ref_pos} = 1;
+			$multiple_overlapping_snps{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt} = $ref;
+		}
+		elsif ($is_single_indel)
+		{
+			if (exists $indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt})
+			{
+				die "error: multiple overlapping positions for indel for same coordinates: ".
+					"ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:$alt";
+			}
+
+			$indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt} = $ref;
 		}
 		else
 		{
-			$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
-			if (exists $core_positions->{"${ref_name}_${ref_pos}"})
+			print STDERR "$genome_name: $ref_name\t$ref_pos\t$ref\t$alt\n" if ($verbose);
+			# if this was one of the positions we purposely changed to validate reference base calls
+			if (defined $changed_positions->{$genome_name}{$ref_name}{$ref_pos})
 			{
-				$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
+				my $original_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'reference'};
+				my $changed_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'changed'};
+				if ($changed_position ne $ref)
+				{
+					die "error: change on reference for $ref_name:$ref_pos [r:$original_position => r:$changed_position] did not work";
+				}
+				elsif ($original_position ne $alt)
+				{
+					print STDERR "picked up invalid reference call from snp in a changed position on reference $genome_name:$ref_name:$ref_pos should be [r:$original_position => r:$changed_position], was [r:$ref => r:$alt]\n";
+					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
+					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
+					{
+						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
+					}
+				}
+				else
+				{
+					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
+					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
+					{
+						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
+					}
+				}
+	
+				$seen_changed_positions->{$ref_name}{$ref_pos} = 1;
+			}
+			else
+			{
+				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
+				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
+				{
+					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
+				}
 			}
 		}
 	}
@@ -102,6 +139,20 @@ sub parse_single_genome
 
 	# check for any positions where we swapped the reference base and it wasn't identified as a SNP
 	# (sign of an invalid reference base call)
+	# three cases:
+	#	case: SNP called but in an overlapping position
+	#		eg. pos=10 ref_original=A, changed=T
+	#			alt:11 @ ref:10 is A
+	#			alt:121 @ ref:10 is T
+	#		real call depends on what are the other overlapping positions
+	#	case: indel called at this position
+	#		eg. pos=10 ref_original=A, changed=T
+	#			alt:12 is .
+	#		real call is ref=A, alt=.
+	#	case: the swapped reference base is the real base call
+	#		eg. pos=10 ref_original=A, changed=T
+	#			alt:12 is T
+	#		real call is ref=A, alt=T
 	my $genome_changed_positions = $changed_positions->{$genome_name};
 	for my $ref_name (keys %$genome_changed_positions)
 	{
@@ -112,10 +163,66 @@ sub parse_single_genome
 			my $changed = $ref_name_table->{$ref_pos}{'changed'};
 			if (not exists $seen_changed_positions->{$ref_name}{$ref_pos})
 			{
-				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$changed");
+				my $true_nucmer_alt_call = undef;
+				# case: overlapping position
+				if (exists $multiple_overlapping_snps{$ref_name}{$ref_pos})
+				{
+					my $multiple_alt_name_table = $multiple_overlapping_snps{$ref_name}{$ref_pos};
+					if (keys %$multiple_alt_name_table > 1)
+					{
+						die "error: reference position $ref_name:$ref_pos".
+							"has multiple alignments to multiple contigs: "
+							.(keys %$multiple_alt_name_table);
+					}
+					else
+					{
+						my ($alt_name) = (keys %$multiple_alt_name_table);
+						my $multiple_alt_pos_table = $multiple_alt_name_table->{$alt_name};
+						# if only one single position check all alternative calls
+						if (keys %$multiple_alt_pos_table == 1)
+						{
+							my ($alt_pos) = (keys %$multiple_alt_pos_table);
+							my $alt_base_table = $multiple_alt_pos_table->{$alt_pos};
+
+							# if only one alternative call, mark as a SNP from ref to changed
+							if (keys %$alt_base_table == 1)
+							{
+								my ($alt) = (keys %$alt_base_table);
+								$true_nucmer_alt_call = $alt;
+							}
+							else
+							{
+								die "error: multiple alternative bases for positions: ref: $ref_name:$ref_pos,".
+									"alt: $alt_name:$alt_pos:".(keys %$alt_base_table);
+							}
+						}
+						else
+						{
+							die "error: multiple alternative mappings to $ref_name:$ref_pos,".
+								"$alt_name:".(keys %$multiple_alt_pos_table);
+						}
+					}
+				}
+				# case: indel in position
+				elsif (exists $indels{$ref_name}{$ref_pos})
+				{
+					$true_nucmer_alt_call = $indels{$ref_name}{$ref_pos}{'alternative'};
+				}
+				# case: swapped reference base is real base call
+				else
+				{
+					$true_nucmer_alt_call = $changed;
+				}
+
+				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
 				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
 				{
-					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$changed");
+					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
+				}
+				else
+				{
+					die "error: found position in pseudoalign table: $ref_name:$ref_pos:$ref".
+						"which is not identified as part of core";
 				}
 			}
 		}
