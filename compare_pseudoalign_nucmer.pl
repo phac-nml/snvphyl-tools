@@ -25,10 +25,12 @@ sub parse_single_genome
 
 	my %results;
 	my %results_in_core;
+	my %results_unable_to_validate;
 	my %multiple_overlapping_snps; # stores information about multiple overlapping SNPs
 	my %indels; # stores information about indels (one of the cases when validating reference bases)
 	$results{$genome_name} = Set::Scalar->new;
 	$results_in_core{$genome_name} = Set::Scalar->new;
+	$results_unable_to_validate{$genome_name} = Set::Scalar->new;
 	my $seen_changed_positions = {};
 
 	my $cwd = getcwd;
@@ -172,7 +174,7 @@ sub parse_single_genome
 					my $multiple_alt_name_table = $multiple_overlapping_snps{$ref_name}{$ref_pos};
 					if (keys %$multiple_alt_name_table > 1)
 					{
-						die "error: reference position $ref_name:$ref_pos".
+						warn "warning: reference position $ref_name:$ref_pos".
 							"has multiple alignments to multiple contigs: "
 							.(keys %$multiple_alt_name_table);
 					}
@@ -195,14 +197,14 @@ sub parse_single_genome
 							else
 							{
 								my @alt_bases = keys %$alt_base_table;
-								die "error: multiple alternative bases for positions: ref: $ref_name:$ref_pos,".
+								warn "warning: multiple alternative bases for positions: ref: $ref_name:$ref_pos,".
 									"alt: $alt_name:$alt_pos:(@alt_bases)";
 							}
 						}
 						else
 						{
 							my @alt_pos = keys %$multiple_alt_pos_table;
-							die "error: multiple alternative mappings to $ref_name:$ref_pos,".
+							warn "warning: multiple alternative mappings to $ref_name:$ref_pos,".
 								"$alt_name:(@alt_pos)";
 						}
 					}
@@ -213,7 +215,7 @@ sub parse_single_genome
 					my $alt_mapping_name = $indels{$ref_name}{$ref_pos};
 					if (keys %$alt_mapping_name > 1)
 					{
-						die "error: multiple indel entries for $ref_name:$ref_pos";
+						warn "warning: multiple indel entries for $ref_name:$ref_pos";
 					}
 					else
 					{
@@ -221,7 +223,7 @@ sub parse_single_genome
 						my $alt_mapping_pos = $alt_mapping_name->{$alt_name};
 						if (keys %$alt_mapping_pos > 1)
 						{
-							die "error: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name";
+							warn "error: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name";
 						}
 						else
 						{
@@ -230,7 +232,7 @@ sub parse_single_genome
 
 							if (keys %$alt_mapping_base > 1)
 							{
-								die "error: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name:$alt_pos";
+								warn "warning: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name:$alt_pos";
 							}
 							else
 							{
@@ -246,15 +248,23 @@ sub parse_single_genome
 					$true_nucmer_alt_call = $changed;
 				}
 
-				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
-				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
+				if (defined $true_nucmer_alt_call)
 				{
-					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
+					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
+					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
+					{
+						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
+					}
+					else
+					{
+						die "error: found position in pseudoalign table: $ref_name:$ref_pos:$ref".
+							"which is not identified as part of core";
+					}
 				}
+				# if we could not validate this reference position, then mark it as unknown
 				else
 				{
-					die "error: found position in pseudoalign table: $ref_name:$ref_pos:$ref".
-						"which is not identified as part of core";
+					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\tunknown");
 				}
 			}
 		}
