@@ -39,8 +39,41 @@ sub usage
 	"\t-r|--reference:  The name of the reference to use in the alignment (default: reference)\n".
 	"\t-f|--format:  The format to output the alignment to, one of the Bio::AlignIO supported formats (default: fasta)\n".
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
+	"\t--invalid-pos: A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\\tEND_POS\\n".
 	"\t--verbose:  More information printed\n".
 	"\t-h|--help:  Help\n";
+}
+
+
+
+sub parse_invalid 
+{
+    my ($file) =  @_;
+    my %invalid;
+
+    open(my $fh, "<" , "$file") or die "Could not open $file: $!";
+
+    while(my $line = readline($fh))
+    {
+	chomp $line;
+	my ($sub_line) = ($line =~ /^([^#]*)/);
+	my ($chrom,$start,$end) = split(/\t/,$sub_line);
+	next if (not defined $chrom or $chrom eq '');
+	next if ($start !~ /^\d+$/);
+	next if ($end !~ /^\d+$/);
+
+	# swap in case start/end are reversed
+	my $real_start = ($start < $end) ? $start : $end;
+	my $real_end = ($start < $end) ? $end : $start;
+
+
+        foreach my $i ( $real_start..$real_end ) {
+	    $invalid{"${chrom}_${i}"} = 1;
+        }
+    }
+
+    close($fh);
+    return  \%invalid
 }
 
 sub create_mpileup_table
@@ -97,7 +130,7 @@ sub variant_info_to_hash
 # Output:  An alignment of all valid variant positions (in FASTA format)
 sub variants_alignment
 {
-	my ($positions_hash, $chromosome, $reference, $samples_list, $mpileup_data, $coverage_cutoff) = @_;
+	my ($positions_hash, $chromosome, $reference, $samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos) = @_;
 	my $alignment_string = undef;
 
 	# stores pseudoalignment in form of
@@ -118,7 +151,6 @@ sub variants_alignment
 	for my $pos (sort {$a <=> $b} keys %$positions_hash)
 	{
 		my $sample_hash = $positions_hash->{$pos};
-
 		my @sample_hash_list = keys %$sample_hash;
 		my $first_sample = $sample_hash->{$sample_hash_list[0]};
 		my $ref_base = $first_sample->{'ref'}; # get reference base
@@ -190,6 +222,19 @@ sub variants_alignment
 							$total_positions->{$pos}->{'status'} = 'filtered-mpileup';
 						}
 					}
+					elsif ($invalid_pos && exists $invalid_pos->{"${chromosome}_${pos}"} ) 
+					{
+					    print STDERR "fail for $sample:$chromosome:$pos, position is invalid due to invalid position file provided by operator\n" if ($verbose);
+					    $alignment_local->{$sample} = {'base' => $ref_base, 'position' => $pos};
+					    $snp_info->{'snps'}->{'filtered-invalid'}++;
+
+					    $total_positions->{$pos}->{'samples'}->{$sample} = $ref_base;
+					    my $is_valid = $total_positions->{$pos}->{'status'};
+					    if (not defined $is_valid or $is_valid eq 'valid')
+					    {
+						$total_positions->{$pos}->{'status'} = 'filtered-invalid';
+					    }					    
+					}
 					else
 					{
 						print STDERR "pass for $sample:$chromosome:$pos, coverage=$coverage > cutoff=$coverage_cutoff and no variant called from mpileup data (alt=$alt, ref=$ref)\n" if ($verbose);
@@ -223,6 +268,19 @@ sub variants_alignment
 					{
 						$total_positions->{$pos}->{'status'} = 'filtered-coverage';
 					}
+				}
+				elsif ($invalid_pos && exists $invalid_pos->{"${chromosome}_${pos}"} ) 
+				{
+				    print STDERR "fail for $sample:$chromosome:$pos, position is invalid due to invalid position file provided by operator\n" if ($verbose);
+				    $alignment_local->{$sample} = {'base' => $sample_hash->{$sample}->{'alt'}, 'position' => $pos};
+				    $snp_info->{'snps'}->{'filtered-invalid'}++;
+				    
+				    $total_positions->{$pos}->{'samples'}->{$sample} = $ref_base;
+				    my $is_valid = $total_positions->{$pos}->{'status'};
+				    if (not defined $is_valid or $is_valid eq 'valid')
+				    {
+					$total_positions->{$pos}->{'status'} = 'filtered-invalid';
+				    }					    
 				}
 				else
 				{
@@ -542,6 +600,7 @@ my $coverage_cutoff;
 my $uniquify;
 my $help;
 my $requested_cpus;
+my $invalid;
 
 my $command_line = join(' ',@ARGV);
 
@@ -552,6 +611,7 @@ if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 		'reference|r=s' => \$reference,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
 		'uniquify|u' => \$uniquify,
+		'invalid-pos=s' => \$invalid,
 		'help|h' => \$help,
                 'numcpus=i' => \$requested_cpus,
                 
@@ -576,6 +636,21 @@ if (not defined $reference)
 	print STDERR "reference name not defined, calling it 'reference'\n";
 	$reference = 'reference';
 }
+
+
+
+if (defined $invalid)
+{
+    if ( ! -e $invalid)
+    {
+	die "Was given an invalid position file but could not locate it '$invalid'\n";
+    }
+}
+else
+{
+    print STDERR "invalid position file not defined, Will ignore step\n";
+}
+
 
 $requested_cpus = 1 if (not defined $requested_cpus);
 $uniquify = 0 if (not defined $uniquify);
@@ -636,6 +711,12 @@ else
 my $vcf_data = parse_variants(\%vcf_files,$requested_cpus);
 my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data,$requested_cpus);
 
+
+
+my $invalid_pos;
+
+$invalid_pos = parse_invalid($invalid) if $invalid;
+
 my @samples_list = sort {$a cmp $b } keys %vcf_files;
 my %chromosome_align;
 my $unique_count = 1;
@@ -644,7 +725,7 @@ my %sample_map; # keeps track of which samples have which unique ids (so we can 
 my %total_positions_map; # keep track of total positions, and if valid/not
 for my $chromosome (keys %$vcf_data)
 {
-	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff);
+	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos);
 	$total_positions_map{$chromosome} = $total_positions;
 	for my $sample (sort {$a cmp $b} keys %$alignment)
 	{
@@ -721,6 +802,7 @@ print "# Total SNPs to process: ".($snp_info->{'positions'}*$total_samples)."\n"
 print "#\tSNPs called as N's:\n";
 print "#\t\tLow Coverage: ".$snp_info->{'snps'}->{'filtered-coverage'}."\n";
 print "#\t\tVariant/mpileup differences: ".$snp_info->{'snps'}->{'filtered-mpileup'},"\n";
+print "#\t\tInvalid Position based on user provided file: ".$snp_info->{'snps'}->{'filtered-invalid'},"\n" if $invalid_pos;
 print "#\tValid SNPs for analysis: ".$snp_info->{'snps'}->{'kept'},"\n";
 print "# Positions file in $valid_positions\n";
 
