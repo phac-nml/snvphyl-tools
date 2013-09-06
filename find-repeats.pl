@@ -1,23 +1,30 @@
 #!/usr/bin/env perl
-# filter-repeats.pl
-# Purpose:  Given a nucmer repeats file, removes the "odd" repeats.
+# find-repeats.pl
+# Purpose:  Runs numcer to find repeats and does some basic filtering.
 
 use warnings;
 use strict;
 
 use File::Basename;
+use Getopt::Long;
+use File::Temp 'tempdir';
 use Cwd qw(abs_path getcwd);
 
-my ($input) = @ARGV;
-my $output = "output";
+my $min_length_default = 150;
+my $min_pid_default = 90;
 my $min_length;
 my $min_pid;
+my $keep_temp = 0;
 
 sub usage
 {
-	"Usage: $0 [reference.fasta]\n".
+	"Usage: $0 [reference.fasta] --min-length [length] --min-pid [pid]\n".
 	"Parameters:\n".
-	"\t[reference.fasta]:  A fasta reference file to search for repeats.";
+	"\t[reference.fasta]:  A fasta reference file to search for repeats.\n".
+	"Options:\n".
+	"\t-l|--min-length: Minimum length of repeat region ($min_length_default).\n".
+	"\t-p|--min-pid: Minimum PID of repeat region ($min_pid_default).\n".
+	"\t-k|--keep-temp: Keep around temporary nucmer/coords files (no).\n";
 }
 
 sub run_nucmer
@@ -60,13 +67,27 @@ sub show_coords
 }
 
 # MAIN
-$min_length = 150;
-$min_pid = 90;
-die "Error: no input file defined\n".usage if (not defined $input);
-die "Error: file $input does not exist" if (not -e $input);
-die "error: no output defined" if (not defined $output);
-die "error: output directory $output already exists" if (-e $output);
-mkdir $output if (not -e $output);
+if (!GetOptions('l|min-length=i' => \$min_length,
+		'p|min-pid=i' => \$min_pid,
+		'k|keep-temp' => \$keep_temp))
+{
+	die "Invalid option\n".usage;
+}
+
+my ($input) = @ARGV;
+die "error: no input file defined\n".usage if (not defined $input);
+die "error: file $input does not exist\n".usage if (not -e $input);
+
+$min_length = $min_length_default if (not defined $min_length);
+$min_pid = $min_pid_default if (not defined $min_pid);
+
+die "error: $min_length must be positive\n".usage if ($min_length <= 0);
+die "error: $min_pid must be between 0-100\n".usage if ($min_pid < 0 or $min_pid > 100);
+
+print STDERR "Finding repeats on $input\n";
+print STDERR "Using min-length $min_length, min-pid $min_pid\n";
+
+my $output = tempdir('find_repeats_XXXXXX', TMPDIR => 0, CLEANUP => (not $keep_temp));
 
 my $full_output = abs_path($output);
 my $full_input = abs_path($input);
@@ -78,6 +99,8 @@ my $pos_bad = "$full_output/$input_base.bad.txt";
 
 open(my $log_fh,">$log") or die "Could not open $log: $!";
 
+print STDERR "Temporary directory: $full_output\n" if ($keep_temp);
+
 my $delta_file = run_nucmer($full_input,$full_output,$log_fh);
 my $coords_file = show_coords($delta_file,$min_length,$min_pid,$log_fh);
 
@@ -85,6 +108,7 @@ open(my $gfh, ">$pos_good") or die "Could not open $pos_good: $!";
 open(my $bfh, ">$pos_bad") or die "Could not open $pos_bad: $!";
 
 open(my $fh, "<$coords_file") or die "Could not open $coords_file: $!";
+
 while(my $line = readline($fh))
 {
 	chomp $line;
