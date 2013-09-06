@@ -127,7 +127,9 @@ while(my $line = readline($fh))
 	else
 	{
 		print $gfh "$line\n";
-		print "$line\n";
+
+		print "$contig1\t$start1\t$end1\n";
+		print "$contig2\t$start2\t$end2\n";
 	}
 }
 close($fh);
