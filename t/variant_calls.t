@@ -72,7 +72,7 @@ sub run_command
 {
 	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$formats, $extra_params) = @_;
 
-	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 0);
+	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 	close($fh);
 	my $format = '';
 	$extra_params = '' if (not defined $extra_params);

@@ -131,7 +131,7 @@ sub variant_info_to_hash
 # Output:  An alignment of all valid variant positions (in FASTA format)
 sub variants_alignment
 {
-	my ($positions_hash, $chromosome, $reference, $samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos) = @_;
+	my ($positions_hash, $chromosome, $reference, $samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous) = @_;
 	my $alignment_string = undef;
 
 	# stores pseudoalignment in form of
@@ -288,7 +288,8 @@ sub variants_alignment
 		}
 
 		# fill in overall data structure
-		if ($total_positions->{$pos}->{'status'} ne 'filtered-invalid')
+		if (($keep_ambiguous or $total_positions->{$pos}->{'status'} eq 'valid')
+			 and $total_positions->{$pos}->{'status'} ne 'filtered-invalid')
 		{
 			for my $sample (keys %$alignment_local)
 			{
@@ -304,6 +305,10 @@ sub variants_alignment
 			# fill in data for reference
 			$alignment{$reference}->{'alignment'} .= $ref_base;
 			push(@{$alignment{$reference}->{'positions'}}, $pos);
+		}
+		else
+		{
+			print STDERR "skipping over position $chromosome:$pos with status ".$total_positions->{$pos}->{'status'}."\n" if ($verbose);
 		}
 	}
 
@@ -721,7 +726,7 @@ my %sample_map; # keeps track of which samples have which unique ids (so we can 
 my %total_positions_map; # keep track of total positions, and if valid/not
 for my $chromosome (keys %$vcf_data)
 {
-	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos);
+	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous);
 	$total_positions_map{$chromosome} = $total_positions;
 	for my $sample (sort {$a cmp $b} keys %$alignment)
 	{
@@ -762,16 +767,6 @@ for my $sample (sort {$a cmp $b} keys %chromosome_align)
 	$aln->add_seq($seq);
 }
 
-# check if alignment is flush
-die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
-
-# remove ambiguous base pair characters
-if (not $keep_ambiguous)
-{
-	$aln = $aln->remove_gaps($unknown_base);
-	die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
-}
-
 # sets displayname for each sequence
 for my $seq_id ($aln->each_seq)
 {
@@ -780,6 +775,9 @@ for my $seq_id ($aln->each_seq)
 	my $id = $seq_id->id."/$start-$end";
 	$aln->displayname($id, $seq_id->id);
 }
+
+# check if alignment is flush
+die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
 
 for my $format (@formats)
 {
