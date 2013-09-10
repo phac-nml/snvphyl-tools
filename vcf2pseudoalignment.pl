@@ -41,6 +41,7 @@ sub usage
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
 	"\t--invalid-pos: A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\\tEND_POS\\n".
 	"\t--verbose:  More information printed\n".
+	"\t--keep-ambiguous:  Keep ambiguous characters in alignment output file\n".
 	"\t-h|--help:  Help\n";
 }
 
@@ -215,7 +216,7 @@ sub variants_alignment
 						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
 						$snp_info->{'snps'}->{'filtered-mpileup'}++;
 
-						$total_positions->{$pos}->{'samples'}->{$sample} = 'N';
+						$total_positions->{$pos}->{'samples'}->{$sample} = $unknown_base;
 						my $is_valid = $total_positions->{$pos}->{'status'};
 						if (not defined $is_valid or $is_valid eq 'valid')
 						{
@@ -601,6 +602,7 @@ my $uniquify;
 my $help;
 my $requested_cpus;
 my $invalid;
+my $keep_ambiguous;
 
 my $command_line = join(' ',@ARGV);
 
@@ -613,6 +615,7 @@ if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 		'uniquify|u' => \$uniquify,
 		'invalid-pos=s' => \$invalid,
 		'help|h' => \$help,
+		'keep-ambiguous' => \$keep_ambiguous,
                 'numcpus=i' => \$requested_cpus,
                 
 		'verbose|v' => \$verbose))
@@ -766,6 +769,16 @@ for my $sample (sort {$a cmp $b} keys %chromosome_align)
 	$aln->add_seq($seq);
 }
 
+# check if alignment is flush
+die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
+
+# remove ambiguous base pair characters
+if (not $keep_ambiguous)
+{
+	$aln = $aln->remove_gaps($unknown_base);
+	die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
+}
+
 # sets displayname for each sequence
 for my $seq_id ($aln->each_seq)
 {
@@ -774,9 +787,6 @@ for my $seq_id ($aln->each_seq)
 	my $id = $seq_id->id."/$start-$end";
 	$aln->displayname($id, $seq_id->id);
 }
-
-# check if alignment is flush
-die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
 
 for my $format (@formats)
 {

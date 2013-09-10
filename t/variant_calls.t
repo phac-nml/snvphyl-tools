@@ -64,11 +64,12 @@ sub compare_files
 
 sub run_command
 {
-	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$formats) = @_;
+	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$formats, $extra_params) = @_;
 
 	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 	close($fh);
 	my $format = '';
+	$extra_params = '' if (not defined $extra_params);
 	my @out_files = ();
 	for my $f (@$formats)
 	{
@@ -86,7 +87,7 @@ sub run_command
 			die "Invalid format $f for testing";
 		}
 	}
-	my $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff";
+	my $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params";
 	
 	if ($verbose)
 	{
@@ -132,7 +133,7 @@ if ($help)
 }
 
 opendir(my $in_h,$input_dir) or die "Could not open $input_dir: $!";
-my @in_files = sort {$a <=> $b} grep {$_ !~ /^\./} readdir($in_h);
+my @in_files = sort grep {$_ !~ /^\./} readdir($in_h);
 closedir($in_h);
 
 print "Testing all input variants in $input_dir\n";
@@ -140,6 +141,9 @@ for my $dir (@in_files)
 {
 	my $curr_input = "$input_dir/$dir";
 	next if (not -d $curr_input);
+
+	my $extra_params = '--keep-ambiguous';
+	$extra_params = '' if ($dir =~ /^noN/);
 
 	my $description = `cat $curr_input/description`;
 	my $expected = `cat $curr_input/expected.fasta`;
@@ -157,7 +161,7 @@ for my $dir (@in_files)
 
 	my $done_testing = 0;
 
-	my ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta']);
+	my ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta'], $extra_params);
 	my $actual_positions_file = "$actual_base-positions.tsv";
 	my $got = `cat $actual_out_file`;
 	print "### Got ###\n";

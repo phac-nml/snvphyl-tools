@@ -1,0 +1,17 @@
+Tests two SNPs called in v1 by freebayes, but one SNP not called in v2 by freebayes, but detected by mpileup.
+
+v1 alignments:
+ref atgc
+    aagt
+    aagt
+    aagt
+    aagt
+    * * 
+
+v2 alignments:
+ref atgc
+    atgt
+    atgt
+    atgt
+    atgt
+    *** 
