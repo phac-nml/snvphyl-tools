@@ -1,0 +1,17 @@
+Tests two SNPs, one in an invalid position.
+
+v1 alignments:
+ref atgc
+    aagt
+    aagt
+    aagt
+    aagt
+    * *i 
+
+v2 alignments:
+ref atgc
+    atgc
+    atgc
+    atgc
+    atgc
+    ****

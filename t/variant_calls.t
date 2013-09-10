@@ -55,6 +55,12 @@ sub compare_files
 		}
 	}
 	close($out_h);
+
+	if (defined readline($a_out_h))
+	{
+		fail("expected file $expected_out_file has less lines than actual file $actual_out_file");
+	}
+
 	close($a_out_h);
 
 	unlink($actual_out_file);
@@ -66,7 +72,7 @@ sub run_command
 {
 	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$formats, $extra_params) = @_;
 
-	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
+	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 0);
 	close($fh);
 	my $format = '';
 	$extra_params = '' if (not defined $extra_params);
@@ -141,9 +147,19 @@ for my $dir (@in_files)
 {
 	my $curr_input = "$input_dir/$dir";
 	next if (not -d $curr_input);
+	my $invalid_positions = "$curr_input/invalid-positions.tsv";
 
-	my $extra_params = '--keep-ambiguous';
-	$extra_params = '' if ($dir =~ /^noN/);
+	my $extra_params = '';
+	if ($dir !~ /^noN/)
+	{
+		$extra_params .= '--keep-ambiguous ';
+	}
+
+	if (-e "$invalid_positions")
+	{
+		$extra_params .= "--invalid-pos $invalid_positions";
+		print "testing with invalid positions $invalid_positions\n";
+	}
 
 	my $description = `cat $curr_input/description`;
 	my $expected = `cat $curr_input/expected.fasta`;

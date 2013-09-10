@@ -226,15 +226,10 @@ sub variants_alignment
 					elsif ($invalid_pos && exists $invalid_pos->{"${chromosome}_${pos}"} ) 
 					{
 					    print STDERR "fail for $sample:$chromosome:$pos, position is invalid due to invalid position file provided by operator\n" if ($verbose);
-					    $alignment_local->{$sample} = {'base' => $ref_base, 'position' => $pos};
 					    $snp_info->{'snps'}->{'filtered-invalid'}++;
 
 					    $total_positions->{$pos}->{'samples'}->{$sample} = $ref_base;
-					    my $is_valid = $total_positions->{$pos}->{'status'};
-					    if (not defined $is_valid or $is_valid eq 'valid')
-					    {
-						$total_positions->{$pos}->{'status'} = 'filtered-invalid';
-					    }					    
+					    $total_positions->{$pos}->{'status'} = 'filtered-invalid';
 					}
 					else
 					{
@@ -273,15 +268,10 @@ sub variants_alignment
 				elsif ($invalid_pos && exists $invalid_pos->{"${chromosome}_${pos}"} ) 
 				{
 				    print STDERR "fail for $sample:$chromosome:$pos, position is invalid due to invalid position file provided by operator\n" if ($verbose);
-				    $alignment_local->{$sample} = {'base' => $sample_hash->{$sample}->{'alt'}, 'position' => $pos};
 				    $snp_info->{'snps'}->{'filtered-invalid'}++;
 				    
-				    $total_positions->{$pos}->{'samples'}->{$sample} = $ref_base;
-				    my $is_valid = $total_positions->{$pos}->{'status'};
-				    if (not defined $is_valid or $is_valid eq 'valid')
-				    {
-					$total_positions->{$pos}->{'status'} = 'filtered-invalid';
-				    }					    
+				    $total_positions->{$pos}->{'samples'}->{$sample} = $sample_hash->{$sample}->{'alt'};
+				    $total_positions->{$pos}->{'status'} = 'filtered-invalid';
 				}
 				else
 				{
@@ -298,20 +288,23 @@ sub variants_alignment
 		}
 
 		# fill in overall data structure
-		for my $sample (keys %$alignment_local)
+		if ($total_positions->{$pos}->{'status'} ne 'filtered-invalid')
 		{
-			my $base = $alignment_local->{$sample}->{'base'};
-			my $pos = $alignment_local->{$sample}->{'position'};
+			for my $sample (keys %$alignment_local)
+			{
+				my $base = $alignment_local->{$sample}->{'base'};
+				my $pos = $alignment_local->{$sample}->{'position'};
 
-			my $alignment_sample = $alignment{$sample};
+				my $alignment_sample = $alignment{$sample};
 
-			$alignment_sample->{'alignment'} .= $base;
-			push(@{$alignment_sample->{'positions'}}, $pos);
+				$alignment_sample->{'alignment'} .= $base;
+				push(@{$alignment_sample->{'positions'}}, $pos);
+			}
+
+			# fill in data for reference
+			$alignment{$reference}->{'alignment'} .= $ref_base;
+			push(@{$alignment{$reference}->{'positions'}}, $pos);
 		}
-
-		# fill in data for reference
-		$alignment{$reference}->{'alignment'} .= $ref_base;
-		push(@{$alignment{$reference}->{'positions'}}, $pos);
 	}
 
 
