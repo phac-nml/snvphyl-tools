@@ -763,6 +763,17 @@ for my $sample (sort {$a cmp $b} keys %chromosome_align)
 	my $id = $chromosome_align{$sample}->{'header'};
 	my $data = $chromosome_align{$sample}->{'data'};
 
+	if ($keep_ambiguous)
+	{
+		die "error: SNP alignment for $sample contains an invalid character"
+			if ($data =~ /[^ATCGN]/);
+	}
+	else
+	{
+		die "error: SNP alignment for $sample contains an invalid character"
+			if ($data =~ /[^ATCG]/);
+	}
+
 	my $seq = Bio::LocatableSeq->new(-seq => $data, -id => $id);
 	$aln->add_seq($seq);
 }
