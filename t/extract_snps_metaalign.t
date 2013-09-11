@@ -67,7 +67,7 @@ my $example =
 "#Chromosome\tPosition\tStatus\tReference\tA\tB\tC\n".
 "chr\t1\tvalid\tA\tA\tA\tT\n".
 "chr\t2\tvalid\tA\tC\tC\tT\n".
-"chr\t3\tvalid\tA\tC\tG\tT\n";
+"chr\t3\tvalid\tA\tC\tG\tT\n".
 "chr\t4\tfiltered-mpileup\tC\tC\tN\tT\n";
 
 my $case1 = 
