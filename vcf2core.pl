@@ -126,7 +126,7 @@ my $info = determine_core($output_base,\%mpileup_files,$requested_cpus,$fasta,$c
 printf("#Percentage of base pair in the core: %.2f \n",($info->{'core'}/$info->{'length'}*100));
 
 
-create_figures($gview,$gview_style,$info->{'gffs'});
+create_figures($gview,$gview_style,$info->{'gffs'},$requested_cpus);
 
 exit;
 
@@ -236,36 +236,33 @@ sub determine_core
             $pm->finish(0,{'core' =>$core,'file'=>$filename,'chrom'=>$chrom});
         }
     
-        $pm->wait_all_children;
-
-        foreach my $chrom( keys %files) {
-            my ($fh,$combine) = tempfile();
-
-            #get the reference name and make it at least usable as a filename
-            my $name = $chrom;
-            $name =~ s/\|$//;
-            $name =~ s/\|/_/g;
-            my $final = "$output_base/$name" . '.gff';
-
-
-            #combine all segment for a single reference
-
-            foreach ( @ {$files{$chrom}}) {
-                `sed 1d $_ >> $combine`
-            }
-            #sort based on the position
-            `sort -n -k 4 -t "\t" $combine > $final`;
-            push @gffs,$final;
-        }
-       
     }
+    $pm->wait_all_children;
 
+    foreach my $chrom( keys %files) {
+        my ($fh,$combine) = tempfile();
+
+        #get the reference name and make it at least usable as a filename
+        my $name = $chrom;
+        $name =~ s/\|$//;
+        $name =~ s/\|/_/g;
+        my $final = "$output_base/$name" . '.gff';
+
+
+        #combine all segment for a single reference
+
+        foreach ( @ {$files{$chrom}}) {
+            `sed 1d $_ >> $combine`
+        }
+        #sort based on the position
+        `sort -n -k 4 -t "\t" $combine > $final`;
+        push @gffs,$final;
+    }
     
     my %info;
     $info{'core'} = $total_core;
     $info{'length'} = $total_length;
     $info{'gffs'} = \@gffs;
-    
     
     return \%info;
 }
@@ -274,17 +271,30 @@ sub determine_core
 
 sub create_figures
 {
-    my ($gview,$style,$gffs) = @_;
+    my ($gview,$style,$gffs,$requested_cpus) = @_;
     
     
+    my $pm;
+    my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+    chomp $num_cpus;
+    #ensure that you user cannot request more threads then CPU on the machine
+    if ( $requested_cpus > $num_cpus) {
+        $requested_cpus = $num_cpus;
+    }
+
+    $pm=Parallel::ForkManager->new($requested_cpus);
     #create gview image using all the gffs provided
     foreach my $gff( @$gffs) {
+	$pm->start and next;
         my $out = $gff;
         $out =~ s/\.gff$/.png/;
         
         #time java -Xmx12G  -jar gview.jar -i task_1/NC_003997.3.gb -s style.gss -l circular -f png -o image.png -g results.gff -z 4
         `java -Xmx4G -jar $gview -i $fasta -s $style -l circular -f png -o $out -g $gff -W 15300 -H 4500   -z 4`;
+	$pm->finish();
     }
+    $pm->wait_all_children;
+
     
     return;
 }
@@ -336,7 +346,6 @@ sub create_streamers {
         
         #store results
         my $result = `$cmd`;
-        die "'$cmd' produce no result\n" if ! $result;
         
         #created filehandle from scalar so we do not have to write to disk
         open (my $OUTPUT,'<',\$result);
