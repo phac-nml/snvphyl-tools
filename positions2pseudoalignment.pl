@@ -109,7 +109,7 @@ while($line = readline($fh))
 close($fh);
 
 # generate seq objects
-my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNP Pipeline");
+my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNP Pipeline",-idlength=>30);
 for (my $i = 0; $i < @strains; $i++)
 {
 	my $seq = Bio::LocatableSeq->new(-seq => $data[$i], -id => $strains[$i], -start => 1, -end => length($data[$i]));
