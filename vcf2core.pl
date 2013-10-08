@@ -190,7 +190,8 @@ sub determine_core
             $stop = $stop+$bit_size;
             $range="$chrom:" . join('-',($start,$stop));
             $range = quotemeta $range;
-            $pm->start and next;
+            my $pid = $pm->start and next;
+            srand(time + $pid);
             my ($fh,$filename) = tempfile();
             my $gffout =  Bio::Tools::GFF->new(-file => ">$filename" ,
                                                -gff_version => 3);
