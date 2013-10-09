@@ -369,8 +369,6 @@ sub create_figures
         my $out = $gff;
         $out =~ s/\.gff$/.png/;
 
-        print STDERR "java -Xmx4G -jar $gview -i $fasta -s $style -l linear -f png -o $out -g $gff -z 4\n";
-        
         `java -Xmx4G -jar $gview -i $fasta -s $style -l linear -f png -o $out -g $gff -z 4`;
 	$pm->finish();
     }
