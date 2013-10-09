@@ -30,6 +30,7 @@ sub usage
 	"\t--verbose:  More information printed\n".
         "\t--gview_path: Full path to gview.jar".
         "\t--gview_style: Full path to default gview stylesheet".
+	"\t--positions: Full path to pseudoalign-positions.tsv file".
 	"\t-h|--help:  Help\n";
 }
 
@@ -61,7 +62,7 @@ sub create_mpileup_table
 
 
 
-my ($mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$gview,$gview_style);
+my ($mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$gview,$gview_style,$invalid,$positions);
 
 my $command_line = join(' ',@ARGV);
 
@@ -70,6 +71,8 @@ if (!GetOptions(
 		'output-base|o=s' => \$output_base,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
                 'i|fasta=s' => \$fasta,
+	        'invalid_pos=s' => \$invalid,
+		'positions=s' => \$positions,
 		'help|h' => \$help,
                 'numcpus=i' => \$requested_cpus,
                 'gview_path=s' => \$gview,
@@ -85,6 +88,11 @@ $verbose = 0 if (not defined $verbose);
 die "mpileup-dir undefined\n".usage if (not defined $mpileup_dir);
 die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
 
+die "pseudoalign-positions undefined\n".usage if (not defined $positions);
+die "pseudoalign-positions does not exist\n".usage if (not -e $positions);
+
+
+
 die "output-base undefined\n".usage if (not defined $output_base);
 
 die "gview undefined\n".usage if (not defined $gview);
@@ -93,6 +101,10 @@ die "gview_style undefined\n".usage if (not defined $gview_style);
 
 $requested_cpus = 1 if (not defined $requested_cpus);
 
+if ( defined $invalid && ! -e $invalid)
+{
+    die "was given an invalid position file but could not find it '$invalid'\n";
+}
 
     
 if (not defined $coverage_cutoff)
@@ -104,6 +116,7 @@ elsif ($coverage_cutoff !~ /^\d+$/)
 {
 	die "coverage-cutoff=$coverage_cutoff is invalid\n".usage;
 }
+
 
 
 my %mpileup_files;
@@ -120,21 +133,67 @@ die "No *.vcf.gz files found in $mpileup_dir.  Perhas you need to compress and i
 "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0);
 
 
-my $info = determine_core($output_base,\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff);
+my $snps = read_snps($positions,$output_base);
+
+my $info = determine_core($snps,$output_base,\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff);
+
+#reduce total length if an invalid bad position file was given
+if ($invalid)
+{
+    my $pos = parse_invalid($invalid);
+    $info->{'invalid'} = scalar keys %$pos;
+    $info->{'length'} = $info->{'length'} - $info->{'invalid'};
+    
+}
 
 
 printf("#Percentage of base pair in the core: %.2f \n",($info->{'core'}/$info->{'length'}*100));
+print "#Number of invalid position : " . $info->{'invalid'} . "\n" if exists $info->{'invalid'};
 
-
-create_figures($gview,$gview_style,$info->{'gffs'},$requested_cpus);
+create_figures($gview,$gview_style,$info,$requested_cpus);
 
 exit;
 
 
+sub read_snps
+{
+  my ($file,$output_base) = @_;
+  my %pos;
+
+  open my $in,'<',$file;
+  my $header = <$in>;
+  while ( <$in>)
+  {
+    chomp;
+    my ($chrom,$pos,$status) = split /\t/;
+    if ($status eq 'valid'){
+        my $name = $chrom;
+        $name =~ s/\|$//;
+        $name =~ s/\|/_/g;
+        my $filename = "$output_base/$name" . '_valid.gff';
+	my $gffout;
+	if (exists $pos{$name} )
+	{
+	  $gffout = $pos{$name}{'fh'};
+	}
+	else
+	{
+	  $pos{$name}{'fh'}= Bio::Tools::GFF->new(-file => ">$filename" ,-gff_version => 3);
+          $pos{$name}{'filename'} = $filename;
+	  $gffout = $pos{$name}{'fh'};
+	}
+	write_range($pos,$pos,'task_3',$gffout)
+    }
+  }
+  close $in;
+
+  return \%pos;
+}
+
 sub determine_core
 {
-    my ($output_base,$mpileup_files,$requested_cpus,$fasta,$coverage_cutoff) = @_;
-
+    my ($snps,$output_base,$mpileup_files,$requested_cpus,$fasta,$coverage_cutoff) = @_;
+    
     my $pm;
     my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
     chomp $num_cpus;
@@ -145,7 +204,6 @@ sub determine_core
 
     my ($total_core,$total_length);
     my %files;
-    my @gffs;
 
     $pm=Parallel::ForkManager->new($requested_cpus);
     # data structure retrieval and handling
@@ -169,15 +227,16 @@ sub determine_core
     );
 
 
-    my %ref_length = %{ get_lengths($fasta)};
+    my %refs = %{ parse_fastas($fasta,$output_base)};
 
 
     my $bit_size = 100000;
-    foreach my $chrom( keys %ref_length) {
+    foreach my $chrom( keys %refs) {
         
         my ($start,$stop)=(0,0);
         my ($range);
-        my $length = $ref_length{$chrom};
+        my $length = $refs{$chrom}{'length'};
+        
         if ( !$length) {
             die "Could not determine length of '$chrom' from provided reference fasta file\n";
         }
@@ -217,7 +276,7 @@ sub determine_core
                     #end of a range, may be one base pair or could be hundreds
                     
                     if ( $last_range_start) {
-                        write_range($last_range_start,$cur_pos-1,$gffout);
+                        write_range($last_range_start,$cur_pos-1,'task_2',$gffout);
                     }
                     $last_range_start=0;
                 }
@@ -229,7 +288,7 @@ sub determine_core
             
 
             if ( $last_range_start) {
-                write_range($last_range_start,$cur_pos-1,$gffout);
+                write_range($last_range_start,$cur_pos-1,'task_2',$gffout);
             }
         
 
@@ -240,6 +299,9 @@ sub determine_core
     }
     $pm->wait_all_children;
 
+    my %info;
+    my %results;
+    
     foreach my $chrom( keys %files) {
         my ($fh,$combine) = tempfile();
 
@@ -249,22 +311,36 @@ sub determine_core
         $name =~ s/\|/_/g;
         my $final = "$output_base/$name" . '.gff';
 
-
         #combine all segment for a single reference
-
         foreach ( @ {$files{$chrom}}) {
             `sed 1d $_ >> $combine`
         }
-        #sort based on the position
-        `sort -n -k 4 -t "\t" $combine > $final`;
-        push @gffs,$final;
+
+        #if we have a snp file, add it to the combine set
+        if ( exists $snps->{$name}) {
+            my $snps = $snps->{$name}{'filename'};
+            `sed 1d $snps >> $combine`;
+            #sort based on the position
+            `sort -n -k 4 -t "\t" $combine > $final`;
+
+            #have to remove manually the snp file since was not created with tempfile()
+            unlink $snps;
+        }
+        else {
+            `sort -n -k 4 -t "\t" $combine > $final`;
+        }
+        $results{$chrom}{'gff'} = $final;
+        if ( exists $refs{$chrom}{'fasta'} ) {
+            $results{$chrom}{'fasta'} = $refs{$chrom}{'fasta'};
+        }
+
+        
     }
     
-    my %info;
     $info{'core'} = $total_core;
     $info{'length'} = $total_length;
-    $info{'gffs'} = \@gffs;
-    
+    $info{'results'} = \%results;
+
     return \%info;
 }
 
@@ -272,7 +348,7 @@ sub determine_core
 
 sub create_figures
 {
-    my ($gview,$style,$gffs,$requested_cpus) = @_;
+    my ($gview,$style,$info,$requested_cpus) = @_;
     
     
     my $pm;
@@ -285,13 +361,17 @@ sub create_figures
 
     $pm=Parallel::ForkManager->new($requested_cpus);
     #create gview image using all the gffs provided
-    foreach my $gff( @$gffs) {
+    foreach my $chrom ( keys %{$info->{'results'} }) {
+        my $gff = $info->{'results'}{$chrom}{'gff'};
+        my $fasta = $info->{'results'}{$chrom}{'fasta'};
+        
 	$pm->start and next;
         my $out = $gff;
         $out =~ s/\.gff$/.png/;
+
+        print STDERR "java -Xmx4G -jar $gview -i $fasta -s $style -l linear -f png -o $out -g $gff -z 4\n";
         
-        #time java -Xmx12G  -jar gview.jar -i task_1/NC_003997.3.gb -s style.gss -l circular -f png -o image.png -g results.gff -z 4
-        `java -Xmx4G -jar $gview -i $fasta -s $style -l circular -f png -o $out -g $gff -W 15300 -H 4500   -z 4`;
+        `java -Xmx4G -jar $gview -i $fasta -s $style -l linear -f png -o $out -g $gff -z 4`;
 	$pm->finish();
     }
     $pm->wait_all_children;
@@ -302,12 +382,12 @@ sub create_figures
     
 
 sub write_range {
-    my ($x,$y,$gffout) = @_;
+    my ($x,$y,$task,$gffout) = @_;
     #print "$x-$y\n";
     
     my $f = Bio::SeqFeature::Generic->new(
         -primary    => 'region',
-        -seq_id     => 'task_2',
+        -seq_id     => $task,
         -start      => $x,
         -end        => $y,
         -strand     => 1,
@@ -319,19 +399,28 @@ sub write_range {
     return;
 }
 
-sub get_lengths
+sub parse_fastas
 {
-    my ($fasta) = @_;
+    my ($fasta,$output_base) = @_;
 
-    my %lengths;
+    my %seqs;
     
     my $in = Bio::SeqIO->new(-format=>'fasta',-file=>$fasta);
 
     while ( my $seq = $in->next_seq())
     {
-        $lengths{$seq->display_id} = $seq->length;
+        $seqs{$seq->display_id}{'length'}= $seq->length;
+
+        my $filename = $output_base . '/'.$seq->display_id();
+        $filename =~ s/\|$//;
+        $filename =~ s/\|/_/g;
+        $filename .= '.fasta';
+        
+        my $out = Bio::SeqIO->new(-format=>'fasta',-file=>">$filename");
+        $out->write_seq($seq);
+        $seqs{$seq->display_id}{'fasta'}= $filename;
     }
-    return \%lengths;
+    return \%seqs;
 }
 
 
@@ -402,3 +491,34 @@ sub create_streamers {
     
 }
 
+
+
+sub parse_invalid 
+{
+    my ($file) =  @_;
+    my %invalid;
+
+    open(my $fh, "<" , "$file") or die "Could not open $file: $!";
+
+    while(my $line = readline($fh))
+    {
+	chomp $line;
+	my ($sub_line) = ($line =~ /^([^#]*)/);
+	my ($chrom,$start,$end) = split(/\t/,$sub_line);
+	next if (not defined $chrom or $chrom eq '');
+	next if ($start !~ /^\d+$/);
+	next if ($end !~ /^\d+$/);
+
+	# swap in case start/end are reversed
+	my $real_start = ($start < $end) ? $start : $end;
+	my $real_end = ($start < $end) ? $end : $start;
+
+
+        foreach my $i ( $real_start..$real_end ) {
+	    $invalid{"${chrom}_${i}"} = 1;
+        }
+    }
+
+    close($fh);
+    return  \%invalid
+}
