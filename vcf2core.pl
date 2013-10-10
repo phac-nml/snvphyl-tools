@@ -135,24 +135,61 @@ die "No *.vcf.gz files found in $mpileup_dir.  Perhas you need to compress and i
 
 my $snps = read_snps($positions,$output_base);
 
-my $info = determine_core($snps,$output_base,\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff);
+my $info = determine_core($snps,$output_base,\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff,$invalid);
 
-#reduce total length if an invalid bad position file was given
-if ($invalid)
-{
-    my $pos = parse_invalid($invalid);
-    $info->{'invalid'} = scalar keys %$pos;
-    $info->{'length'} = $info->{'length'} - $info->{'invalid'};
+print_results($info);
     
-}
-
-
-printf("#Percentage of base pair in the core: %.2f \n",($info->{'core'}/$info->{'length'}*100));
-print "#Number of invalid position : " . $info->{'invalid'} . "\n" if exists $info->{'invalid'};
-
 create_figures($gview,$gview_style,$info,$requested_cpus);
 
 exit;
+
+
+sub print_results {
+    my ($info) = @_;
+    
+    print "#Reference,total length,total invalid pos, total core,Percentage in core\n";
+
+    foreach my $ref( keys %{$info->{'results'}}) {
+        my ($core,$total) = ($info->{'results'}{$ref}{'core'},$info->{'results'}{$ref}{'total'});
+        my $invalid = 'N/A';
+        my $perc;
+        if ( exists $info->{'results'}{$ref}{'invalid'}) {
+            $invalid = $info->{'results'}{$ref}{'invalid'};
+            
+            if ($total == $info->{'results'}{$ref}{'invalid'} ) {
+                $perc =0;
+            }
+            else {
+                $perc = sprintf("%.2f",($core/($total-$info->{'results'}{$ref}{'invalid'})*100));            
+            }
+            
+        }
+        else {
+            $perc = sprintf("%.2f",($core/$total*100));
+        }
+        print join (',', ($ref,$total,$invalid,$core,$perc)) . "\n";
+    }
+
+
+    #getting the total for all references
+    my ($perc,$invalid_total)= (0,'N/A');
+    if ( exists $info->{'invalid'}) {
+        $invalid_total = $info->{'invalid'};
+        if ($info->{'total'} == $info->{'invalid'} ) {
+            $perc =0;
+        }
+        else {
+            $perc = sprintf("%.2f",$info->{'core'}/($info->{'total'}-$info->{'invalid'})*100);        
+        }
+    }
+    else {
+        $perc = ($info->{'core'}/$info->{'total'}*100);
+    }
+
+    print join (',','all',$info->{'total'},$invalid_total,$info->{'core'},$perc) . "\n";
+
+    return;
+}
 
 
 sub read_snps
@@ -192,7 +229,14 @@ sub read_snps
 
 sub determine_core
 {
-    my ($snps,$output_base,$mpileup_files,$requested_cpus,$fasta,$coverage_cutoff) = @_;
+    my ($snps,$output_base,$mpileup_files,$requested_cpus,$fasta,$coverage_cutoff,$invalid) = @_;
+
+
+
+    #reduce total length if an invalid bad position file was given
+    my %invalid_pos;
+    
+    %invalid_pos = %{parse_invalid($invalid)} if $invalid;
     
     my $pm;
     my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
@@ -213,12 +257,13 @@ sub determine_core
             # retrieve data structure from child
             if (defined($child_data)) {  # children are forced to send anything
                 $total_core += $child_data->{'core'};
-                if ( exists $files{$child_data->{'chrom'}}) {
-                    push @{$files{$child_data->{'chrom'}}},$child_data->{'file'};
+                if ( exists $files{$child_data->{'chrom'}}{'files'}) {
+                    push @{$files{$child_data->{'chrom'}}{'files'}},$child_data->{'file'};
                 }
                 else {
-                    $files{$child_data->{'chrom'}}=  [($child_data->{'file'})];
+                    $files{$child_data->{'chrom'}}{'files'}=  [($child_data->{'file'})];
                 }
+                $files{$child_data->{'chrom'}}{'core'} += $child_data->{'core'};
 
             } else {
                 die "One or more vcf file did not produce any data!\n";
@@ -267,10 +312,21 @@ sub determine_core
             my $last_range_start;
             while (all { $_ ne 'EOF' } @data) {
             
-            
-                if (scalar @data >=1 && all { $_ && $_->{'cov'} >= $coverage_cutoff } @data ) {
-                    $core++;
-                    $last_range_start=$cur_pos if ! $last_range_start;
+
+                
+                if (scalar @data >=1 && all { $_ && $_->{'cov'} >= $coverage_cutoff } @data  ) {
+
+                    if (exists $invalid_pos{$chrom}{$cur_pos} ) {
+                        if ( $last_range_start) {
+                            write_range($last_range_start,$cur_pos-1,'task_2',$gffout);
+                        }
+                        $last_range_start=0;                        
+                    }  
+                    else {
+                        $core++;
+                        $last_range_start=$cur_pos if ! $last_range_start;                        
+                    }
+
                 }
                 else {
                     #end of a range, may be one base pair or could be hundreds
@@ -312,7 +368,7 @@ sub determine_core
         my $final = "$output_base/$name" . '.gff';
 
         #combine all segment for a single reference
-        foreach ( @ {$files{$chrom}}) {
+        foreach ( @ {$files{$chrom}{'files'}}) {
             `sed 1d $_ >> $combine`
         }
 
@@ -333,12 +389,23 @@ sub determine_core
         if ( exists $refs{$chrom}{'fasta'} ) {
             $results{$chrom}{'fasta'} = $refs{$chrom}{'fasta'};
         }
+        $results{$chrom}{'core'} = $files{$chrom}{'core'};
+        $results{$chrom}{'total'} = $refs{$chrom}{'length'};
+        if ( exists $invalid_pos{$chrom} ) {
+            $results{$chrom}{'invalid'} = scalar keys %{$invalid_pos{$chrom}};
+        }
+        else {
+        }
 
-        
     }
     
     $info{'core'} = $total_core;
-    $info{'length'} = $total_length;
+
+    if (%invalid_pos ) {
+        map {$info{'invalid'} += scalar keys %{$invalid_pos{$_}} } keys %invalid_pos;
+    }
+    
+    $info{'total'} = $total_length;
     $info{'results'} = \%results;
 
     return \%info;
@@ -495,7 +562,7 @@ sub parse_invalid
 {
     my ($file) =  @_;
     my %invalid;
-
+    
     open(my $fh, "<" , "$file") or die "Could not open $file: $!";
 
     while(my $line = readline($fh))
@@ -513,7 +580,7 @@ sub parse_invalid
 
 
         foreach my $i ( $real_start..$real_end ) {
-	    $invalid{"${chrom}_${i}"} = 1;
+	    $invalid{$chrom}{$i} = 1;
         }
     }
 
