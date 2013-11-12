@@ -58,10 +58,22 @@ sub parse_invalid
     {
 	chomp $line;
 	my ($sub_line) = ($line =~ /^([^#]*)/);
-	my ($chrom,$start,$end) = split(/\t/,$sub_line);
-	next if (not defined $chrom or $chrom eq '');
-	next if ($start !~ /^\d+$/);
-	next if ($end !~ /^\d+$/);
+	my ($chrom,$start,$end) = split(/\s+/,$sub_line);
+	if (not defined $chrom or $chrom eq '')
+	{
+		print STDERR "Warning: line '$line' not valid for invalid positions file $file\n";
+		next;
+	}
+	if ($start !~ /^\d+$/)
+	{
+		print STDERR "Warning: line '$line' not valid for invalid positions file $file\n";
+		next;
+	}
+	if ($end !~ /^\d+$/)
+	{
+		print STDERR "Warning: line '$line' not valid for invalid positions file $file\n";
+		next;
+	}
 
 	# swap in case start/end are reversed
 	my $real_start = ($start < $end) ? $start : $end;
