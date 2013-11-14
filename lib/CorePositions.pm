@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 use File::Basename;
+use InvalidPositions;
 
 sub new
 {
@@ -85,41 +86,17 @@ sub _parse_gff_line
         return ($real_start,$real_end);
 }
 
-sub _parse_bad_pos_line
-{
-	my ($self,$line) = @_;
-
-        chomp $line;
-        my ($sub_line) = ($line =~ /^([^#]*)/);
-        my ($chrom,$start,$end) = split(/\t/,$sub_line);
-
-	my ($real_start, $real_end) = $self->_parse_coords($chrom,$start,$end,$line);
-
-        return ($chrom,$real_start,$real_end);
-}
-
 sub _remove_bad_pos
 {
 	my ($self,$core_chrom,$core_pos,$bad_pos_file) = @_;
 
         # open bad positions file
-        open(my $bfh, "<$bad_pos_file") or die "Could not open $bad_pos_file: $!";
-        while(my $line = readline($bfh))
+	my $bad_positions_parser = InvalidPositions->new;
+	my $bad_positions = $bad_positions_parser->read_invalid_positions($bad_pos_file);
+	for my $chrom_pos (keys %$bad_positions)
         {
-                my ($chrom,$start,$end) = $self->_parse_bad_pos_line($line);
-                next if (not defined $chrom or not defined $start or not defined $end);
-
-		die "error: chromosome name: $core_chrom from GFF file not same as".
-		" chromosome name: $chrom from bad_pos file" if ($core_chrom ne $chrom);
-
-                # remove any bad positions from core
-                for (my $i = $start; $i <= $end; $i++)
-                {
-                        delete $core_pos->{"${chrom}_${i}"}
-                                if (exists $core_pos->{"${chrom}_${i}"});
-                }
+        	delete $core_pos->{$chrom_pos};
         }
-        close($bfh);
 }
 
 sub _parse_core_positions

@@ -17,6 +17,10 @@ use Bio::SimpleAlign;
 use Vcf;
 use File::Temp qw /tempdir/;
 
+use FindBin;
+use lib $FindBin::Bin.'/lib';
+
+use InvalidPositions;
 
 my $verbose;
 my $unknown_base = 'N';
@@ -43,50 +47,6 @@ sub usage
 	"\t--verbose:  More information printed\n".
 	"\t--keep-ambiguous:  Keep ambiguous characters in alignment output file\n".
 	"\t-h|--help:  Help\n";
-}
-
-
-
-sub parse_invalid 
-{
-    my ($file) =  @_;
-    my %invalid;
-
-    open(my $fh, "<" , "$file") or die "Could not open $file: $!";
-
-    while(my $line = readline($fh))
-    {
-	chomp $line;
-	my ($sub_line) = ($line =~ /^([^#]*)/);
-	my ($chrom,$start,$end) = split(/\s+/,$sub_line);
-	if (not defined $chrom or $chrom eq '')
-	{
-		print STDERR "Warning: line '$line' not valid for invalid positions file $file\n";
-		next;
-	}
-	if ($start !~ /^\d+$/)
-	{
-		print STDERR "Warning: line '$line' not valid for invalid positions file $file\n";
-		next;
-	}
-	if ($end !~ /^\d+$/)
-	{
-		print STDERR "Warning: line '$line' not valid for invalid positions file $file\n";
-		next;
-	}
-
-	# swap in case start/end are reversed
-	my $real_start = ($start < $end) ? $start : $end;
-	my $real_end = ($start < $end) ? $end : $start;
-
-
-        foreach my $i ( $real_start..$real_end ) {
-	    $invalid{"${chrom}_${i}"} = 1;
-        }
-    }
-
-    close($fh);
-    return  \%invalid
 }
 
 sub create_mpileup_table
@@ -724,11 +684,13 @@ else
 my $vcf_data = parse_variants(\%vcf_files,$requested_cpus);
 my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data,$requested_cpus);
 
-
-
 my $invalid_pos;
 
-$invalid_pos = parse_invalid($invalid) if $invalid;
+if ($invalid)
+{
+	my $invalid_positions_parser = InvalidPositions->new;
+	$invalid_pos = $invalid_positions_parser->read_invalid_positions($invalid);
+}
 
 my @samples_list = sort {$a cmp $b } keys %vcf_files;
 my %chromosome_align;
