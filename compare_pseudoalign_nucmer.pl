@@ -19,6 +19,7 @@ use FindBin;
 use lib $FindBin::Bin.'/lib';
 
 use PositionsTable;
+use CorePositions;
 
 my ($input_align,$genome,$output,$reference,$bad_positions_file,$core_positions_file,$verbose);
 $verbose = 0;
@@ -506,65 +507,6 @@ sub usage
 	"\t-v|--verbose\n";
 }
 
-sub parse_positions_line
-{
-	my ($line) = @_;
-
-	chomp $line;
-	my ($sub_line) = ($line =~ /^([^#]*)/);
-	my ($chrom,$start,$end) = split(/\t/,$sub_line);
-	my $real_start = undef;
-	my $real_end = undef;
-
-	# swap in case start/end are reversed
-	if (defined $chrom and $chrom ne '' and defined $start and defined $end
-		and $start =~ /^\d+$/ and $end =~ /^\d+$/)
-	{
-		$real_start = ($start < $end) ? $start : $end;
-		$real_end = ($start < $end) ? $end : $start;
-	}
-
-	return ($chrom,$real_start,$real_end);
-}
-
-sub build_core_positions
-{
-        my ($core_pos_file, $bad_pos_file) = @_;
-	my %core_positions;
-
-	# open core positions file
-        open(my $cfh, "<$core_pos_file") or die "Could not open $core_pos_file: $!";
-        while(my $line = readline($cfh))
-        {
-                my ($chrom,$start,$end) = parse_positions_line($line);
-                next if (not defined $chrom or not defined $start or not defined $end);
-
-                for (my $i = $start; $i <= $end; $i++)
-                {
-                        $core_positions{"${chrom}_${i}"} = 1;
-                }
-        }
-        close($cfh);
-
-	# open bad positions file
-        open(my $bfh, "<$bad_pos_file") or die "Could not open $bad_pos_file: $!";
-        while(my $line = readline($bfh))
-        {
-                my ($chrom,$start,$end) = parse_positions_line($line);
-                next if (not defined $chrom or not defined $start or not defined $end);
-
-		# remove any bad positions from core
-                for (my $i = $start; $i <= $end; $i++)
-                {
-                        delete $core_positions{"${chrom}_${i}"}
-				if (exists $core_positions{"${chrom}_${i}"});
-                }
-        }
-        close($bfh);
-
-	return \%core_positions;
-}
-
 # MAIN
 if (!GetOptions('i|input-align=s' => \$input_align,
 		'r|reference=s' => \$reference,
@@ -605,7 +547,8 @@ die "error: no entry in table $input_align for $genome" if (not defined $genome_
 my $genome_core_snp_count = $genomes_core_snp_count->{$genome_name};
 die "error: could not find SNP count in $input_align for $genome_name" if (not defined $genome_core_snp_count);
 
-my $core_positions = build_core_positions($core_positions_file, $bad_positions_file);
+my $core_positions_parser = CorePositions->new($core_positions_file,$bad_positions_file,'tsv');
+my $core_positions = $core_positions_parser->get_core_positions;
 
 my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snp);
 my ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);

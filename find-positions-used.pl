@@ -61,7 +61,7 @@ die "Error: file $reference does not exist" if (not -e $reference);
 die "Error: no bad positions file defined\n".usage if (not defined $bad_pos);
 die "Error: bad positions file $bad_pos does not exist\n".usage if (not -e $bad_pos);
 
-my $core_positions = CorePositions->new($core_pos,$bad_pos);
+my $core_positions = CorePositions->new($core_pos,$bad_pos,'gff');
 my $ref_length = get_reference_length($reference);
 my $core_count = $core_positions->get_core_pos_count;
 my $used_count = $core_positions->get_used_pos_count;
