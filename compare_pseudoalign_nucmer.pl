@@ -494,6 +494,92 @@ sub build_pipeline_set
 	return $pipeline_set;
 }
 
+sub print_snp_results
+{
+	my ($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$core_positions,$number_changed_positions,$genome_core_snp_count) = @_;
+
+	my $reference_base = basename($reference);
+	my $genome_base = basename($genome);
+	my $bad_positions_base = basename($bad_positions_file);
+	my $core_positions_base = basename($core_positions_file);
+
+	# compare sets of snps
+	my $intersection = $pipeline_set * $nucmer_set;
+	my $uniq_pipeline = $pipeline_set - $nucmer_set;
+	my $uniq_nucmer = $nucmer_set - $pipeline_set;
+	
+	my $intersection_core_pos = $pipeline_set * $nucmer_set_core_pos;
+	my $uniq_pipeline_core = $pipeline_set - $nucmer_set_core_pos;
+	my $uniq_nucmer_core = $nucmer_set_core_pos - $pipeline_set;
+	
+	my $total_bases_kept = scalar(keys %$core_positions);
+	my $total_bases_reference = get_reference_length($reference);
+	
+	my $nucmer_snps = $nucmer_set->size - $number_changed_positions;
+	my $nucmer_filtered_snps = $nucmer_set_core_pos->size - $number_changed_positions;
+	
+	print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tCore Pipeline SNPs\tNucmer Positions\tNucmer SNPs\tNucmer Filtered Positions\tNucmer Filtered SNPs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
+	print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
+	printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
+	print $pipeline_set->size."\t$genome_core_snp_count\t".$nucmer_set->size."\t$nucmer_snps\t".$nucmer_set_core_pos->size."\t$nucmer_filtered_snps\t".
+		$intersection_core_pos->size."\t".$uniq_pipeline_core->size."\t".$uniq_nucmer_core->size."\t";
+	
+	my $true_positive;
+	my $false_positive;
+	my $false_negative;
+	if ($nucmer_set_core_pos->size > 0)
+	{
+		$false_negative = sprintf "%0.1f",($uniq_nucmer_core->size/$nucmer_set_core_pos->size)*100;
+	}
+	else
+	{
+		$false_negative = 'undefined';
+	}
+	
+	if ($pipeline_set->size > 0)
+	{
+		$false_positive = sprintf "%0.1f",($uniq_pipeline_core->size/$pipeline_set->size)*100;
+		$true_positive = sprintf "%0.1f",($intersection_core_pos->size/$pipeline_set->size)*100;
+	}
+	else
+	{
+		$false_positive = 'undefined';
+		$true_positive = 'undefined';
+	}
+	
+	print "$true_positive\t$false_positive\t$false_negative\n";
+	
+	open(my $oh, ">$output") or die "Could not open file $output for writing: $!";
+	print $oh "Working on $input_align\n";
+	print $oh "Working with core positions $core_positions_file\n";
+	print $oh "Working with bad positions $bad_positions_file\n";
+	print $oh "Working with genome $genome\n";
+	print $oh "Working with reference $reference\n\n";
+	
+	print $oh "Intersection\t".$intersection_core_pos->size."\n";
+	print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
+	for my $e (sort $intersection_core_pos->elements)
+	{
+		print $oh "$e\n";
+	}
+	
+	print $oh "\nUnique to Nucmer\t".$uniq_nucmer_core->size."\n";
+	print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
+	for my $e (sort $uniq_nucmer_core->elements)
+	{
+		print $oh "$e\n";
+	}
+	
+	print $oh "\nUnique to Core Pipeline\t".$uniq_pipeline_core->size."\n";
+	print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
+	for my $e (sort $uniq_pipeline->elements)
+	{
+		print $oh "$e\n";
+	}
+	
+	close($oh);
+}
+
 sub usage
 {
 	"Usage: $0 -i [pseudoalign-positions.tsv] -r [reference file] -g [genome file] [-v]\n".
@@ -531,10 +617,6 @@ die "Error: no core-positions defind" if (not defined $core_positions_file);
 die "Error: core-positions=$core_positions_file does not exist" if (not -e $core_positions_file);
 die "Error: no output file defined" if (not defined $output);
 
-my $reference_base = basename($reference);
-my $genome_base = basename($genome);
-my $bad_positions_base = basename($bad_positions_file);
-my $core_positions_base = basename($core_positions_file);
 
 $keep_temp = 0 if ($verbose);
 
@@ -553,78 +635,4 @@ my $core_positions = $core_positions_parser->get_core_positions;
 my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snp);
 my ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);
 
-# compare sets of snps
-my $intersection = $pipeline_set * $nucmer_set;
-my $uniq_pipeline = $pipeline_set - $nucmer_set;
-my $uniq_nucmer = $nucmer_set - $pipeline_set;
-
-my $intersection_core_pos = $pipeline_set * $nucmer_set_core_pos;
-my $uniq_pipeline_core = $pipeline_set - $nucmer_set_core_pos;
-my $uniq_nucmer_core = $nucmer_set_core_pos - $pipeline_set;
-
-my $total_bases_kept = scalar(keys %$core_positions);
-my $total_bases_reference = get_reference_length($reference);
-
-my $nucmer_snps = $nucmer_set->size - $number_changed_positions;
-my $nucmer_filtered_snps = $nucmer_set_core_pos->size - $number_changed_positions;
-
-print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tCore Pipeline SNPs\tNucmer Positions\tNucmer SNPs\tNucmer Filtered Positions\tNucmer Filtered SNPs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
-print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
-printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
-print $pipeline_set->size."\t$genome_core_snp_count\t".$nucmer_set->size."\t$nucmer_snps\t".$nucmer_set_core_pos->size."\t$nucmer_filtered_snps\t".
-	$intersection_core_pos->size."\t".$uniq_pipeline_core->size."\t".$uniq_nucmer_core->size."\t";
-
-my $true_positive;
-my $false_positive;
-my $false_negative;
-if ($nucmer_set_core_pos->size > 0)
-{
-	$false_negative = sprintf "%0.1f",($uniq_nucmer_core->size/$nucmer_set_core_pos->size)*100;
-}
-else
-{
-	$false_negative = 'undefined';
-}
-
-if ($pipeline_set->size > 0)
-{
-	$false_positive = sprintf "%0.1f",($uniq_pipeline_core->size/$pipeline_set->size)*100;
-	$true_positive = sprintf "%0.1f",($intersection_core_pos->size/$pipeline_set->size)*100;
-}
-else
-{
-	$false_positive = 'undefined';
-	$true_positive = 'undefined';
-}
-
-print "$true_positive\t$false_positive\t$false_negative\n";
-
-open(my $oh, ">$output") or die "Could not open file $output for writing: $!";
-print $oh "Working on $input_align\n";
-print $oh "Working with core positions $core_positions_file\n";
-print $oh "Working with bad positions $bad_positions_file\n";
-print $oh "Working with genome $genome\n";
-print $oh "Working with reference $reference\n\n";
-
-print $oh "Intersection\t".$intersection_core_pos->size."\n";
-print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
-for my $e (sort $intersection_core_pos->elements)
-{
-	print $oh "$e\n";
-}
-
-print $oh "\nUnique to Nucmer\t".$uniq_nucmer_core->size."\n";
-print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
-for my $e (sort $uniq_nucmer_core->elements)
-{
-	print $oh "$e\n";
-}
-
-print $oh "\nUnique to Core Pipeline\t".$uniq_pipeline_core->size."\n";
-print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
-for my $e (sort $uniq_pipeline->elements)
-{
-	print $oh "$e\n";
-}
-
-close($oh);
+print_snp_results($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$core_positions,$number_changed_positions,$genome_core_snp_count);
