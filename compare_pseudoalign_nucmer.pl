@@ -15,6 +15,11 @@ use Bio::SeqIO;
 use Bio::LiveSeq::Mutation;
 use Bio::SeqUtils;
 
+use FindBin;
+use lib $FindBin::Bin.'/lib';
+
+use PositionsTable;
+
 my ($input_align,$genome,$output,$reference,$bad_positions_file,$core_positions_file,$verbose);
 $verbose = 0;
 my $keep_temp = 1;
@@ -488,72 +493,6 @@ sub build_pipeline_set
 	return $pipeline_set;
 }
 
-# returns a table mapping
-# strain_id => chrom => pos => {'reference' => $ref_base, 'alternative' => $alt_base}
-sub generate_core_genome_snps
-{
-	my ($input_align) = @_;
-
-	open(my $fh, "<$input_align") or die "Could not open $input_align: $!";
-	
-	my $line = readline($fh);
-	chomp($line);
-	
-	die "Error: no header line defined in $input_align" if ($line !~ /^#Chromosome\tPosition\tStatus\tReference/);
-	my (undef,undef,undef,@strains) = split(/\t/,$line);
-	die "Error: no strains defined in $input_align" if (@strains <= 0);
-	die "Error: reference not in correct column" if ($strains[0] ne 'Reference');
-	my %genomes_core_snp;
-	my %genomes_core_snp_count;
-
-	# initialize empty table for each strain
-	for my $strain (@strains)
-	{
-		$genomes_core_snp{$strain} = undef;
-		$genomes_core_snp_count{$strain} = 0;
-	}
-	
-	my $valid = 0;
-	my $total = 0;
-	while(my $line = readline($fh))
-	{
-		chomp $line;
-		my @values = split(/\t/,$line);
-	
-		my ($chrom,$pos,$status,@dna) = @values;
-	
-		if (scalar(@dna) != scalar(@strains))
-	        {
-	                die "Error: line $line does not have same number of entries as header for $input_align";
-	        }
-		elsif ($status ne 'valid')
-		{
-			print STDERR "skipping over line \"$line\": invalid\n" if ($verbose);
-		}
-		else
-		{
-			for (my $i = 1; $i < @dna; $i++)
-			{
-				$genomes_core_snp{$strains[$i]}{$chrom}{$pos} = {'reference' => $dna[0], 
-					'alternative' => $dna[$i]};
-
-				if ($dna[0] ne $dna[$i])
-				{
-					$genomes_core_snp_count{$strains[$i]}++;
-				}
-				
-			}
-			$valid++;
-		}
-		$total++;
-	}
-	close $fh;
-	
-	print STDERR "Kept $valid valid positions out of $total total positions\n" if ($verbose);
-
-	return (\%genomes_core_snp,\%genomes_core_snp_count);
-}
-
 sub usage
 {
 	"Usage: $0 -i [pseudoalign-positions.tsv] -r [reference file] -g [genome file] [-v]\n".
@@ -657,7 +596,8 @@ my $core_positions_base = basename($core_positions_file);
 
 $keep_temp = 0 if ($verbose);
 
-my ($genomes_core_snp,$genomes_core_snp_count) = generate_core_genome_snps($input_align);
+my $positions_table_parser = PositionsTable->new($verbose);
+my ($genomes_core_snp,$genomes_core_snp_count) = $positions_table_parser->read_table($input_align);
 
 my $genome_name = determine_genome_name($genomes_core_snp,$genome);
 die "error: no entry in table $input_align for $genome" if (not defined $genome_name);
