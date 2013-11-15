@@ -1,0 +1,1 @@
+Testing multiple reference and query contigs, should both align properly (ref - query, ref2 - query2)

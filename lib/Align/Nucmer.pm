@@ -237,9 +237,13 @@ sub _parse_alignments {
 			$ref_bp = uc($ref_bp);
 			my $query_bp = uc(shift @qseq);
 			#we do not care about indels at the moment.
-			if ( $query_bp eq '.' or $ref_bp eq '.') {
-				print "Found indel @ '$pos'. Skipping\n" if $verbose;
+			if ( $query_bp eq '.') {
+				print "Found deletion on query @ ref:'$ref:$pos'. Skipping\n" if $verbose;
 				$pos +=$next;
+			}
+			elsif ($ref_bp eq '.') {
+				print "Found insertion on query @ ref:'$ref:$pos'. Skipping\n" if $verbose;
+				# no increment of position as we want to keep same reference coordinates
 			}
 			else {
 				if ( exists $bp->{$ref}->{$pos}) {
