@@ -23,7 +23,7 @@ opendir(my $td,$tests_dir) or die "Could not open $tests_dir: $!";
 my @tests = map {"$tests_dir/$_"} sort {$a <=> $b} grep {$_ !~ /^\./} readdir($td);
 closedir($td);
 
-my $nucmer_align_parser = Align::Nucmer->new;
+my $nucmer_align_parser = Align::Nucmer->new($verbose);
 
 for my $dir (@tests)
 {

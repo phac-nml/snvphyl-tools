@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 use File::Temp 'tempdir';
+use Bio::SeqIO;
 use File::Basename;
 use Cwd qw(abs_path getcwd);
 
@@ -22,6 +23,19 @@ sub new {
 	return $self;
 }
 
+sub _fasta_lengths {
+	my ($self,$file) = @_;
+
+	my %lengths;
+	my $in = Bio::SeqIO->new(-format=>'fasta',-file=>$file);
+
+	while ( my $seq = $in->next_seq()) {
+		$lengths{$seq->display_id} = $seq->length();
+	}
+
+	return \%lengths;
+}
+
 # aligns the given files with nucmer and parses the alignment
 # input
 #	reference:  The reference file to align
@@ -32,12 +46,18 @@ sub align_and_parse
 {
 	my ($self,$reference,$query) = @_;
 
+	my $verbose = $self->{'verbose'};
+
+	my %bp;
+	my %alignments;
+
 	die "error: reference file is not defind" if (not defined $reference);
 	die "error: reference=$reference file does not exist" if (not -e $reference);
 	die "error: query file is not defind" if (not defined $query);
 	die "error: query=$query file does not exist" if (not -e $query);
 
-	my $nucmer_dir = tempdir("ncumer.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+	my $nucmer_dir = tempdir("ncumer.XXXXXX", TMPDIR => 1, CLEANUP => !$verbose);
+	print "Nucmer dir: $nucmer_dir\n" if ($verbose);
 	my $cwd = getcwd;
 
 	my $reference_name = basename($reference);
@@ -49,21 +69,38 @@ sub align_and_parse
 	my $command = "nucmer --prefix=$delta_prefix $reference $query 2> /dev/null 1> /dev/null";
 	system($command) == 0 or die "Could not execute '$command'";
 
-	my $align_file = "$nucmer_dir/align";
-	$command = "show-aligns $delta_file ref query 1> $align_file";
-
-	system($command) == 0 or die "Could not execute '$command'";
-
 	my $snps_file = "$nucmer_dir/snps";
 	$command = "show-snps -CTr $delta_file > $snps_file";
 	system($command) == 0 or die "Could not execute '$command'";
 
 	chdir($cwd);
 
-	my %bp;
-	my %alignments;
+	my $ref_lengths = $self->_fasta_lengths($reference);
+	my $query_lengths = $self->_fasta_lengths($query);
 
-	$self->_parse_alignments(\%bp,$align_file);
+	for my $ref_id (keys %$ref_lengths)
+	{
+		for my $query_id (keys %$query_lengths)
+		{
+			my $align_file = "$nucmer_dir/${ref_id}_${query_id}.align";
+			$command = "show-aligns $delta_file $ref_id $query_id 1> $align_file";
+
+			system($command) == 0 or die "Could not execute '$command'";
+
+			$self->_parse_alignments(\%bp,$align_file);
+		}
+	}
+
+	# remove any empty datasets
+	for my $ref_id (keys %bp)
+	{
+		my $positions = $bp{$ref_id};
+		if (keys %$positions <= 0)
+		{
+			# delete empty positions hash
+			$bp{$ref_id} = undef;
+		}
+	}
 
 	$alignments{'all'} = \%bp;
 	$alignments{'snps'} = $self->_handle_show_snps($snps_file);
@@ -180,32 +217,24 @@ sub _parse_alignments {
 			if ( $query_bp eq '.' or $ref_bp eq '.') {
 				print "Found indel @ '$pos'. Skipping\n" if $verbose;
 				$pos +=$next;
-				next;
 			}
 			else {
-				if ( exists $bp->{$ref}->{$pos} && $bp->{$ref}->{$pos}->{'alt'} ne $query_bp) {
-					print "Seen already '$pos' with " . $bp->{$ref}->{$pos}->{'alt'} ." against $query_bp. Removing both entries\n" if $verbose;
+				if ( exists $bp->{$ref}->{$pos}) {
+					print "Seen already '$ref:$pos'. Removing.\n" if $verbose;
 					delete $bp->{$ref}->{$pos}; # get rid of position already in the good pile
 					$bad{$ref}{$pos}++; # ensure that if we see that position again that we ignore it
 					$pos +=$next;
-					next;
-				}
-				elsif (exists $bp->{$ref}->{$pos} && $bp->{$ref}->{$pos}->{'alt'} eq $query_bp ) {
-					print "Same base pair for $pos\n" if $verbose;
 				}
 				elsif ( exists $bad{$ref}{$pos}) {
 					$pos +=$next;
-					next;
 				}
-				
-				$bp->{$ref}->{$pos}={'alt'=>$query_bp,'ref'=> $ref_bp};
-				#increment/decrement to next pos
-				$pos +=$next;
-				
+				else {		
+					$bp->{$ref}->{$pos}={'alt'=>$query_bp,'ref'=> $ref_bp};
+					#increment/decrement to next pos
+					$pos +=$next;
+				}
 			}
-			
 		}
-			
 	}
 	
 	close $in;

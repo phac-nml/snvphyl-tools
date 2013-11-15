@@ -1,0 +1,1 @@
+Testing two basic alignments with duplicate region, should filter out region
