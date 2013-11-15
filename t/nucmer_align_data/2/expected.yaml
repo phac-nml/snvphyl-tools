@@ -16,7 +16,7 @@ all:
 			alt: A
 		5:
 			ref: A
-			alt: A
+			alt: T
 		6:
 			ref: T
 			alt: T
@@ -288,3 +288,7 @@ all:
 			ref: A
 			alt: A
 snps:
+	ref:
+		5:
+			ref: A
+			alt: T

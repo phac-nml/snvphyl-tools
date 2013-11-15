@@ -14,6 +14,7 @@ use lib $FindBin::Bin.'/../lib';
 use Align::Nucmer;
 
 my $script_dir = $FindBin::Bin;
+my $verbose = 0;
 
 ### MAIN ###
 my $tests_dir = "$script_dir/nucmer_align_data";
@@ -26,10 +27,13 @@ my $nucmer_align_parser = Align::Nucmer->new;
 
 for my $dir (@tests)
 {
-	print "\nTesting $dir:\n";
+	print "\nTesting $dir:\n" if ($verbose);
+	my $info_file = "$dir/info.txt";
 	my $reference_file = "$dir/reference.fasta";
 	my $query_file = "$dir/query.fasta";
 	my $expected_file = "$dir/expected.yaml";
+
+	print `cat $info_file` if ($verbose);
 
 	my $yaml = YAML::Tiny->read($expected_file);
 	die "error: yaml file $expected_file not valid" if (not defined $yaml);

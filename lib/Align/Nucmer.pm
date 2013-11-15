@@ -60,9 +60,18 @@ sub align_and_parse
 
 	chdir($cwd);
 
-	return $self->parse_alignments($align_file,$snps_file);
+	my %bp;
+	my %alignments;
+
+	$self->_parse_alignments(\%bp,$align_file);
+
+	$alignments{'all'} = \%bp;
+	$alignments{'snps'} = $self->_handle_show_snps($snps_file);
+
+	return \%alignments;
 }
 
+# returns a data structure containing SNPs, or undef if no SNPs
 sub _handle_show_snps
 {
 	my ($self,$show_snps_file) = @_;
@@ -78,6 +87,7 @@ sub _handle_show_snps
 	# skip first line
 	$line = readline($fh);
 
+	return undef if (not defined $line);
 	$line = readline($fh);
 	die "error: $show_snps_file not valid show-snps file. try running 'show-snps -CTr'"
 		if ($line ne "NUCMER\n");
@@ -107,7 +117,14 @@ sub _handle_show_snps
 
 	close($fh);
 
-	return \%snps;
+	if (keys %snps <= 0)
+	{
+		return undef;
+	}
+	else
+	{
+		return \%snps;
+	}
 }
 
 # Parses alignments and returns a hash table storing all positions
@@ -116,14 +133,12 @@ sub _handle_show_snps
 #	show-snps-file: The show-snps file
 # Output
 #	bp:  A hash table storing all positions
-sub parse_alignments {
+sub _parse_alignments {
 	#grabbing arguments either from command line or from another module/script
-	my ($self,$show_aligns_file,$show_snps_file) = @_;
+	my ($self,$bp,$show_aligns_file) = @_;
 
 	my $verbose = $self->{'verbose'};
 	
-	my %alignments;
-	my %bp;
 	my %bad;
 	
 	open my $in , '<', $show_aligns_file;
@@ -168,14 +183,14 @@ sub parse_alignments {
 				next;
 			}
 			else {
-				if ( exists $bp{$ref}->{$pos} && $bp{$ref}->{$pos}->{'alt'} ne $query_bp) {
-					print "Seen already '$pos' with " . $bp{$ref}->{$pos}->{'alt'} ." against $query_bp. Removing both entries\n" if $verbose;
-					delete $bp{$ref}->{$pos}; # get rid of position already in the good pile
+				if ( exists $bp->{$ref}->{$pos} && $bp->{$ref}->{$pos}->{'alt'} ne $query_bp) {
+					print "Seen already '$pos' with " . $bp->{$ref}->{$pos}->{'alt'} ." against $query_bp. Removing both entries\n" if $verbose;
+					delete $bp->{$ref}->{$pos}; # get rid of position already in the good pile
 					$bad{$ref}{$pos}++; # ensure that if we see that position again that we ignore it
 					$pos +=$next;
 					next;
 				}
-				elsif (exists $bp{$ref}->{$pos} && $bp{$ref}->{$pos}->{'alt'} eq $query_bp ) {
+				elsif (exists $bp->{$ref}->{$pos} && $bp->{$ref}->{$pos}->{'alt'} eq $query_bp ) {
 					print "Same base pair for $pos\n" if $verbose;
 				}
 				elsif ( exists $bad{$ref}{$pos}) {
@@ -183,7 +198,7 @@ sub parse_alignments {
 					next;
 				}
 				
-				$bp{$ref}->{$pos}={'alt'=>$query_bp,'ref'=> $ref_bp};
+				$bp->{$ref}->{$pos}={'alt'=>$query_bp,'ref'=> $ref_bp};
 				#increment/decrement to next pos
 				$pos +=$next;
 				
@@ -194,11 +209,6 @@ sub parse_alignments {
 	}
 	
 	close $in;
-
-	$alignments{'all'} = \%bp;
-	$alignments{'snps'} = $self->_handle_show_snps($show_snps_file);
-	
-	return \%alignments;
 }
 
 
