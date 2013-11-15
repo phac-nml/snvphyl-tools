@@ -3,6 +3,10 @@ package Align::Nucmer;
 use warnings;
 use strict;
 
+use File::Temp 'tempdir';
+use File::Basename;
+use Cwd qw(abs_path getcwd);
+
 # Builds a new Align::Nucmer object
 # Input
 #	verbose: Turn on verbose information
@@ -24,21 +28,40 @@ sub new {
 #	query: The query file to align
 # output
 #	bp:  A hash table of alignments
-#sub align_and_parse
-#{
-#	my ($self,$reference,$query) = @_;
-#
-#	die "error: reference file is not defind" if (not defined $reference);
-#	die "error: reference=$reference file does not exist" if (not -e $reference);
-#	die "error: query file is not defind" if (not defined $query);
-#	die "error: query=$query file does not exist" if (not -e $query);
-#
-#	# do alignment here
-#	my $show_aligns_file;
-#	my $show_snps_file;
-#
-#	return $self->parse_alignments($show_aligns_file,$show_snps_file);
-#}
+sub align_and_parse
+{
+	my ($self,$reference,$query) = @_;
+
+	die "error: reference file is not defind" if (not defined $reference);
+	die "error: reference=$reference file does not exist" if (not -e $reference);
+	die "error: query file is not defind" if (not defined $query);
+	die "error: query=$query file does not exist" if (not -e $query);
+
+	my $nucmer_dir = tempdir("ncumer.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+	my $cwd = getcwd;
+
+	my $reference_name = basename($reference);
+	my $query_name = basename($query);
+
+	chdir($nucmer_dir);
+	my $delta_prefix = "${reference_name}_${query_name}";
+	my $delta_file = "$nucmer_dir/$delta_prefix.delta";
+	my $command = "nucmer --prefix=$delta_prefix $reference $query 2> /dev/null 1> /dev/null";
+	system($command) == 0 or die "Could not execute '$command'";
+
+	my $align_file = "$nucmer_dir/align";
+	$command = "show-aligns $delta_file ref query 1> $align_file";
+
+	system($command) == 0 or die "Could not execute '$command'";
+
+	my $snps_file = "$nucmer_dir/snps";
+	$command = "show-snps -CTr $delta_file > $snps_file";
+	system($command) == 0 or die "Could not execute '$command'";
+
+	chdir($cwd);
+
+	return $self->parse_alignments($align_file,$snps_file);
+}
 
 sub _handle_show_snps
 {
