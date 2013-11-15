@@ -69,8 +69,12 @@ sub align_and_parse
 	my $command = "nucmer --prefix=$delta_prefix $reference $query 2> /dev/null 1> /dev/null";
 	system($command) == 0 or die "Could not execute '$command'";
 
+	my $delta_filter = "$nucmer_dir/$delta_prefix.filter.delta";
+	$command = "delta-filter -q -r $delta_file > $delta_filter";
+	system($command) == 0 or die "Could not execute '$command'";
+
 	my $snps_file = "$nucmer_dir/snps";
-	$command = "show-snps -CTr $delta_file > $snps_file";
+	$command = "show-snps -CTr $delta_filter > $snps_file";
 	system($command) == 0 or die "Could not execute '$command'";
 
 	chdir($cwd);
@@ -83,9 +87,26 @@ sub align_and_parse
 		for my $query_id (keys %$query_lengths)
 		{
 			my $align_file = "$nucmer_dir/${ref_id}_${query_id}.align";
-			$command = "show-aligns $delta_file $ref_id $query_id 1> $align_file";
+			$command = "show-aligns $delta_filter $ref_id $query_id 1> $align_file 2>/dev/null";
 
-			system($command) == 0 or die "Could not execute '$command'";
+			# shift by 8 to get real return value
+			my $ret_value = (system($command) >> 8);
+			if ($ret_value != 0)
+			{
+				if ($ret_value == 1)
+				{
+					print "no alignments for $ref_id $query_id, command '$command'" if ($verbose);
+				}
+				else
+				{
+					die "Error: could not execute '$command', retvalue=$ret_value";
+				}
+			}
+
+			if (not exists $bp{$ref_id})
+			{
+				$bp{$ref_id} = undef;
+			}
 
 			$self->_parse_alignments(\%bp,$align_file);
 		}
@@ -185,6 +206,8 @@ sub _parse_alignments {
 		<$in>;
 	}
 	my $alignment = <$in>;
+	return undef if (not defined $alignment);
+
 	chomp $alignment;
 	my ($ref,$alt) = $alignment =~ /.*between (.+) and (.+)/;
 		
