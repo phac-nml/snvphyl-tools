@@ -19,274 +19,12 @@ use FindBin;
 use lib $FindBin::Bin.'/lib';
 
 use PositionsTable;
+use Align::Nucmer;
 use CorePositions;
 
 my ($input_align,$genome,$output,$reference,$bad_positions_file,$core_positions_file,$verbose);
 $verbose = 0;
 my $keep_temp = 1;
-
-sub parse_single_genome
-{
-	my ($genome_file, $reference, $out_dir, $changed_positions, $genome_name, $core_positions) = @_;
-
-	my %results;
-	my %results_in_core;
-	my %results_unable_to_validate;
-	my %multiple_overlapping_snps; # stores information about multiple overlapping SNPs
-	my %indels; # stores information about indels (one of the cases when validating reference bases)
-	$results{$genome_name} = Set::Scalar->new;
-	$results_in_core{$genome_name} = Set::Scalar->new;
-	$results_unable_to_validate{$genome_name} = Set::Scalar->new;
-	my $seen_changed_positions = {};
-
-	my $cwd = getcwd;
-	my $reference_name = basename($reference, '.fasta');
-
-	my $delta_prefix = "${reference_name}_${genome_name}";
-	my $snps_file_name = "$delta_prefix.snps";
-
-	my $genome_file_abs_path = abs_path($genome_file);
-	my $ref_file_abs_path = abs_path($reference);
-
-	chdir $out_dir;
-	my $command = "nucmer --prefix=$delta_prefix $ref_file_abs_path $genome_file_abs_path 2> $delta_prefix.nucmer.err.log 1> $delta_prefix.nucmer.out.log";
-	print STDERR $command if ($verbose);
-	system($command) == 0 or die "Could not execute \"$command\"";
-
-	$command = "show-snps -TH $delta_prefix.delta 2> $delta_prefix.delta.show-snps.log 1> $snps_file_name";
-	print STDERR $command if ($verbose);
-	system($command) == 0 or die "Could not execute \"$command\"";
-
-	open(my $fh, "<$snps_file_name") or die "Could not open $snps_file_name";
-	while(readline($fh))
-	{
-		chomp;
-		my @fields = split(/\t/);
-		my $is_overlapping = 0;
-		my $is_single_indel = 0;
-		my ($ref_pos, $ref, $alt, $alt_pos, $ref_count, $alt_count, $ref_name, $alt_name) = ($fields[0],$fields[1],$fields[2],$fields[3],$fields[6],$fields[7],$fields[10],$fields[11]);
-		die "error: undefined value for ref_pos" if (not defined $ref_pos);
-		die "error: undefined value for ref" if (not defined $ref);
-		die "error: undefined value for alt" if (not defined $alt);
-		die "error: undefined value for alt_pos" if (not defined $alt_pos);
-		die "error: undefined value for ref_count" if (not defined $ref_count);
-		die "error: undefined value for alt_count" if (not defined $alt_count);
-		die "error: undefined value for ref_name" if (not defined $ref_name);
-		die "error: undefined value for alt_name" if (not defined $alt_name);
-
-		$is_overlapping = ($ref_count > 0 or $alt_count > 0);
-		$is_single_indel = ($ref !~ /^[ACTG]$/i or $alt !~ /^[ACTG]$/i);
-
-		# if this position has mutliple alignments, store in hash table to handle later
-		if ($is_overlapping)
-		{
-			if (exists $multiple_overlapping_snps{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt})
-			{
-				my @original_alt = (keys %{$multiple_overlapping_snps{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}});
-				warn "warning: multiple overlapping positions for same coordinates: ".
-					"original[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:@original_alt]".
-					", new[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:$alt]";
-			}
-
-			$multiple_overlapping_snps{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt} = $ref;
-		}
-		elsif ($is_single_indel)
-		{
-			if (exists $indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt})
-			{
-				my @original_alt = (keys %{$indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}});
-				warn "warning: multiple overlapping indel positions for same coordinates: ".
-					"original[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:@original_alt]".
-					", new[ref: $ref_name:$ref_pos:$ref, alt: $alt_name:$alt_pos:$alt]";
-			}
-
-			$indels{$ref_name}{$ref_pos}{$alt_name}{$alt_pos}{$alt} = $ref;
-		}
-		else
-		{
-			print STDERR "$genome_name: $ref_name\t$ref_pos\t$ref\t$alt\n" if ($verbose);
-			# if this was one of the positions we purposely changed to validate reference base calls
-			if (defined $changed_positions->{$genome_name}{$ref_name}{$ref_pos})
-			{
-				my $original_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'reference'};
-				my $changed_position = $changed_positions->{$genome_name}{$ref_name}{$ref_pos}{'changed'};
-				if ($changed_position ne $ref)
-				{
-					die "error: change on reference for $ref_name:$ref_pos [r:$original_position => r:$changed_position] did not work";
-				}
-				elsif ($original_position ne $alt)
-				{
-					print STDERR "picked up invalid reference call from snp in a changed position on reference $genome_name:$ref_name:$ref_pos should be [r:$original_position => r:$changed_position], was [r:$ref => r:$alt]\n";
-					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
-					{
-						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-					}
-				}
-				else
-				{
-					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
-					{
-						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$original_position\t$alt");
-					}
-				}
-	
-				$seen_changed_positions->{$ref_name}{$ref_pos} = 1;
-			}
-			else
-			{
-				$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
-				if (exists $core_positions->{"${ref_name}_${ref_pos}"})
-				{
-					$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$alt");
-				}
-			}
-		}
-	}
-	close($fh);
-	chdir ($cwd);
-
-	# check for any positions where we swapped the reference base and it wasn't identified as a SNP
-	# (sign of an invalid reference base call)
-	# three cases:
-	#	case: SNP called but in an overlapping position
-	#		eg. pos=10 ref_original=A, changed=T
-	#			alt:11 @ ref:10 is A
-	#			alt:121 @ ref:10 is T
-	#		real call depends on what are the other overlapping positions
-	#	case: indel called at this position
-	#		eg. pos=10 ref_original=A, changed=T
-	#			alt:12 is .
-	#		real call is ref=A, alt=.
-	#	case: the swapped reference base is the real base call
-	#		eg. pos=10 ref_original=A, changed=T
-	#			alt:12 is T
-	#		real call is ref=A, alt=T
-	my $genome_changed_positions = $changed_positions->{$genome_name};
-	for my $ref_name (keys %$genome_changed_positions)
-	{
-		my $ref_name_table = $genome_changed_positions->{$ref_name};
-		for my $ref_pos (keys %$ref_name_table)
-		{
-			my $ref = $ref_name_table->{$ref_pos}{'reference'};
-			my $changed = $ref_name_table->{$ref_pos}{'changed'};
-			if (not exists $seen_changed_positions->{$ref_name}{$ref_pos})
-			{
-				my $true_nucmer_alt_call = undef;
-				# case: overlapping position
-				if (exists $multiple_overlapping_snps{$ref_name}{$ref_pos})
-				{
-					my $multiple_alt_name_table = $multiple_overlapping_snps{$ref_name}{$ref_pos};
-					if (keys %$multiple_alt_name_table > 1)
-					{
-						warn "warning: reference position $ref_name:$ref_pos".
-							"has multiple alignments to multiple contigs: "
-							.(keys %$multiple_alt_name_table);
-					}
-					else
-					{
-						my ($alt_name) = (keys %$multiple_alt_name_table);
-						my $multiple_alt_pos_table = $multiple_alt_name_table->{$alt_name};
-						# if only one single position check all alternative calls
-						if (keys %$multiple_alt_pos_table == 1)
-						{
-							my ($alt_pos) = (keys %$multiple_alt_pos_table);
-							my $alt_base_table = $multiple_alt_pos_table->{$alt_pos};
-
-							# if only one alternative call, mark as a SNP from ref to changed
-							if (keys %$alt_base_table == 1)
-							{
-								my ($alt) = (keys %$alt_base_table);
-								$true_nucmer_alt_call = $alt;
-							}
-							else
-							{
-								my @alt_bases = keys %$alt_base_table;
-								warn "warning: multiple alternative bases for positions: ref: $ref_name:$ref_pos,".
-									"alt: $alt_name:$alt_pos:(@alt_bases)";
-							}
-						}
-						else
-						{
-							my @alt_pos = keys %$multiple_alt_pos_table;
-							warn "warning: multiple alternative mappings to $ref_name:$ref_pos,".
-								"$alt_name:(@alt_pos)";
-						}
-					}
-				}
-				# case: indel in position
-				elsif (exists $indels{$ref_name}{$ref_pos})
-				{
-					my $alt_mapping_name = $indels{$ref_name}{$ref_pos};
-					if (keys %$alt_mapping_name > 1)
-					{
-						warn "warning: multiple indel entries for $ref_name:$ref_pos";
-					}
-					else
-					{
-						my ($alt_name) = (keys %$alt_mapping_name);
-						my $alt_mapping_pos = $alt_mapping_name->{$alt_name};
-						if (keys %$alt_mapping_pos > 1)
-						{
-							warn "error: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name";
-						}
-						else
-						{
-							my ($alt_pos) = (keys %$alt_mapping_pos);
-							my $alt_mapping_base = $alt_mapping_pos->{$alt_pos};
-
-							if (keys %$alt_mapping_base > 1)
-							{
-								warn "warning: multiple indel entries for $ref_name:$ref_pos, alt:$alt_name:$alt_pos";
-							}
-							else
-							{
-								my ($alt) = (keys %$alt_mapping_base);
-								$true_nucmer_alt_call = $alt;
-							}
-						}
-					}
-				}
-				# case: swapped reference base is real base call
-				else
-				{
-					$true_nucmer_alt_call = $changed;
-				}
-
-				if (defined $true_nucmer_alt_call)
-				{
-					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
-					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
-					{
-						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\t$true_nucmer_alt_call");
-					}
-					else
-					{
-						die "error: found position in pseudoalign table: $ref_name:$ref_pos:$ref".
-							"which is not identified as part of core";
-					}
-				}
-				# if we could not validate this reference position, then mark it as unknown
-				else
-				{
-					$results{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\tunknown");
-					if (exists $core_positions->{"${ref_name}_${ref_pos}"})
-					{
-						$results_in_core{$genome_name}->insert("$ref_name\t$ref_pos\t$ref\tunknown");
-					}
-					else
-					{
-						die "error: found position in pseudoalign table: $ref_name:$ref_pos:$ref".
-							"which is not identified as part of core";
-					}
-				}
-			}
-		}
-	}
-
-	return (\%results,\%results_in_core);
-}
 
 sub generate_genome_file_mapping
 {
@@ -378,93 +116,96 @@ sub parse_genome_nucmer
 {
 	my ($genome, $reference, $genomes_core_snp, $genome_name, $core_positions) = @_;
 
-	my $nucmer_set = undef;
-	my $nucmer_set_core_pos = undef;
-	my $number_changed_positions = 0;
-	# map defining how to swap out bases in closed/finished genome to detect same as reference "snps"
-	my $base_sub_map =
-		{'A' => 'T', 'C' => 'G', 'G' => 'C', 'T' => 'A'};
+	my $nucmer_snp_set = Set::Scalar->new;
+	my $nucmer_snp_set_core_pos = Set::Scalar->new;
+	my $nucmer_ref_set = Set::Scalar->new;
+	my $nucmer_ref_set_core_pos = Set::Scalar->new;
 
-	my $out_dir = tempdir("SNP_Check_XXXXXX", TMPDIR => 1, CLEANUP => $keep_temp);
-	print STDERR "Tempdir=$out_dir\n" if ($verbose);
+	my $nucmer_align_parser = Align::Nucmer->new($verbose);
+	my $nucmer_results = $nucmer_align_parser->align_and_parse($reference,$genome);
+	die "error: could not parse nucmer results for $reference vs. $genome" if (not defined $nucmer_results);
 
-	my $reference_copy = "$out_dir/".basename($reference);
-	my $genome_file_name = basename($genome);
+	my $nucmer_snps = $nucmer_results->{'snps'};
+	insert_nucmer_snps($nucmer_snps,$nucmer_snp_set,$nucmer_snp_set_core_pos,$core_positions);
 
-	my %changed_positions;
-	my $reference_contig_map = generate_reference_contig_map($reference);
-	my $genome_core_snp = $genomes_core_snp->{$genome_name};
-	if (not defined $genome_core_snp)
+	my $pipeline_snps = $genomes_core_snp->{$genome_name};
+	insert_nucmer_reference($pipeline_snps,$nucmer_ref_set,$nucmer_ref_set_core_pos,$nucmer_snp_set,$nucmer_results,$core_positions);
+
+	return ($nucmer_snp_set,$nucmer_snp_set_core_pos,$nucmer_ref_set,
+		$nucmer_ref_set_core_pos);
+}
+
+sub insert_nucmer_reference
+{
+	my ($pipeline_snps,$nucmer_set,$nucmer_set_core_pos,$nucmer_snp_set,$nucmer_results,$core_positions) = @_;
+
+	for my $chrom (keys %$pipeline_snps)
 	{
-		warn "warning: no genome_core_snp for $genome_name";
-	}
-
-	for my $chrom (keys %$genome_core_snp)
-	{
-		my $pos_map = $genome_core_snp->{$chrom};
-		my $contig = $reference_contig_map->{$chrom};
-		die "error: no contig found for $chrom" if (not defined $contig);
-		my $seq_string = $contig->seq;
-		die "error: no seq string for contig: $chrom" if (not defined $seq_string);
-		die "error: no sequence letters for contig: $chrom" if ($seq_string eq '');
-		my @seq_array = split(//,$seq_string);
-		my $seq_length = scalar(@seq_array);
-
-		for my $pos (keys %$pos_map)
+		my $positions = $pipeline_snps->{$chrom};
+		for my $pos (keys %$positions)
 		{
-			die "error: found $chrom:$pos from pseudoalign which is not part of core - bad_positions" if (not exists $core_positions->{"${chrom}_${pos}"});
-			die "error: $chrom:$pos out of bounds of array for $chrom" if ($pos > $seq_length);
+			my $nucmer_results_all = $nucmer_results->{'all'};
+			die "error: nucmer_results table is invalid" if (not defined $nucmer_results_all);
+			my $nucmer_results_for_pos = $nucmer_results_all->{$chrom}->{$pos};
+			my $nucmer_ref;
+			my $nucmer_alt;
+			my $pipeline_ref = $positions->{$pos}->{'reference'};
+			my $pipeline_alt = $positions->{$pos}->{'alternative'};;
+			die "error: no pipline_ref or pipeline_alt defined" if (not defined $pipeline_ref or not defined $pipeline_alt);
 
-			my $ref_base = $pos_map->{$pos}->{'reference'};
-			my $alt_base = $pos_map->{$pos}->{'alternative'};
-			die "error: no ref_base for $genome_name:$chrom:$pos" if (not defined $ref_base);
-			die "error: no alt_base for $genome_name:$chrom:$pos" if (not defined $alt_base);
-
-			# if not snp but reference base, need to swap out for another base in reference file
-			# in order to get nucmer + show-snps to detect
-			if ($ref_base eq $alt_base)
+			if (not defined $nucmer_results_for_pos)
 			{
-				my $swapped_base = $base_sub_map->{$ref_base};
-				die "error: could not find alternative base for $ref_base" if (not defined $swapped_base);
-				$seq_array[$pos-1] = $swapped_base; # pos-1 since position is 1-based, array is 0-based
-			
-				$changed_positions{$genome_name}{$chrom}{$pos} = {'reference' => $ref_base, 'changed' => $swapped_base};
-				print STDERR "changed $genome_name:$chrom:$pos [r:$ref_base => r:$swapped_base, a:$alt_base]\n" if ($verbose);
+				$nucmer_ref = 'UNKNOWN';
+				$nucmer_alt = 'UNKNOWN';
 
-				$number_changed_positions++;
+				print STDERR "warning: no nucmer results for $chrom:$pos, using 'UNKNOWN'\n";
 			}
 			else
 			{
-				print STDERR "kept $genome_name:$chrom:$pos [r:$ref_base, a:$alt_base]\n" if ($verbose);
+				$nucmer_ref = $nucmer_results_for_pos->{'ref'};
+				$nucmer_alt = $nucmer_results_for_pos->{'alt'};
+			}
+
+			# if this was a snp, should have been found in the nucmer snp results
+			if ($nucmer_ref ne $nucmer_alt)
+			{
+				if (not $nucmer_snp_set->has("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt"))
+				{
+					die "error: snp $chrom:$pos:$nucmer_ref:$nucmer_alt found from nucmer align results not present in show-snps results";
+				}
+			}
+			else
+			{
+				$nucmer_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+				if (exists $core_positions->{"${chrom}_$pos"})
+				{
+					$nucmer_set_core_pos->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+				}
 			}
 		}
-
-		$contig->seq(join('',@seq_array));
 	}
+}
 
-	my $out_io = Bio::SeqIO->new(-file=>">$reference_copy", -format=>"fasta");
-	for my $contig (keys %$reference_contig_map)
+sub insert_nucmer_snps
+{
+	my ($nucmer_snps,$nucmer_set,$nucmer_set_core_pos,$core_positions) = @_;
+
+	for my $contig (keys %$nucmer_snps)
 	{
-		$out_io->write_seq($reference_contig_map->{$contig});
-	}
-	print STDERR "Wrote changed reference to $reference_copy\n" if ($verbose);
+		my $positions = $nucmer_snps->{$contig};
+		for my $pos (keys %$positions)
+		{
+			my $snp_data  = $positions->{$pos};
+			my $ref = $snp_data->{'ref'};
+			my $alt = $snp_data->{'alt'};
 
-	my ($genome_nucmer_set, $genome_nucmer_set_core_pos) = parse_single_genome($genome,$reference_copy,$out_dir, \%changed_positions, $genome_name, $core_positions);
-	$nucmer_set = $genome_nucmer_set->{$genome_name};
-	if (not defined $nucmer_set)
-	{
-		warn "nucer_set undefind for $genome_name, assuming no SNPs";
-		$nucmer_set = Set::Scalar->new;
+			$nucmer_set->insert("$contig\t$pos\t$ref\t$alt");
+			if (exists $core_positions->{"${contig}_$pos"})
+			{
+				$nucmer_set_core_pos->insert("$contig\t$pos\t$ref\t$alt");
+			}
+		}
 	}
-
-	$nucmer_set_core_pos = $genome_nucmer_set_core_pos->{$genome_name};
-	if (not defined $nucmer_set_core_pos)
-	{
-		warn "nucer_set undefind for $genome_name, assuming no SNPs";
-		$nucmer_set_core_pos = Set::Scalar->new;
-	}
-
-	return ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions);
 }
 
 sub build_pipeline_set
@@ -496,40 +237,43 @@ sub build_pipeline_set
 
 sub print_snp_results
 {
-	my ($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$core_positions,$number_changed_positions,$genome_core_snp_count) = @_;
+	my ($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$nucmer_ref_set,$nucmer_ref_set_core_pos,$core_positions,$genome_core_snp_count) = @_;
 
 	my $reference_base = basename($reference);
 	my $genome_base = basename($genome);
 	my $bad_positions_base = basename($bad_positions_file);
 	my $core_positions_base = basename($core_positions_file);
 
+	my $nucmer_all = ($nucmer_set + $nucmer_ref_set);
+	my $nucmer_core_all = ($nucmer_set_core_pos + $nucmer_ref_set_core_pos);
+
 	# compare sets of snps
-	my $intersection = $pipeline_set * $nucmer_set;
-	my $uniq_pipeline = $pipeline_set - $nucmer_set;
-	my $uniq_nucmer = $nucmer_set - $pipeline_set;
+	my $intersection = $pipeline_set * $nucmer_all;
+	my $uniq_pipeline = $pipeline_set - $nucmer_all;
+	my $uniq_nucmer = $nucmer_all - $pipeline_set;
 	
-	my $intersection_core_pos = $pipeline_set * $nucmer_set_core_pos;
-	my $uniq_pipeline_core = $pipeline_set - $nucmer_set_core_pos;
-	my $uniq_nucmer_core = $nucmer_set_core_pos - $pipeline_set;
+	my $intersection_core_pos = $pipeline_set * $nucmer_core_all;
+	my $uniq_pipeline_core = $pipeline_set - $nucmer_core_all;
+	my $uniq_nucmer_core = $nucmer_core_all - $pipeline_set;
 	
 	my $total_bases_kept = scalar(keys %$core_positions);
 	my $total_bases_reference = get_reference_length($reference);
 	
-	my $nucmer_snps = $nucmer_set->size - $number_changed_positions;
-	my $nucmer_filtered_snps = $nucmer_set_core_pos->size - $number_changed_positions;
+	my $nucmer_snps = $nucmer_set->size;
+	my $nucmer_filtered_snps = $nucmer_set_core_pos->size;
 	
 	print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tCore Pipeline SNPs\tNucmer Positions\tNucmer SNPs\tNucmer Filtered Positions\tNucmer Filtered SNPs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\n";
 	print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
 	printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
-	print $pipeline_set->size."\t$genome_core_snp_count\t".$nucmer_set->size."\t$nucmer_snps\t".$nucmer_set_core_pos->size."\t$nucmer_filtered_snps\t".
+	print $pipeline_set->size."\t$genome_core_snp_count\t".$nucmer_all->size."\t$nucmer_snps\t".$nucmer_core_all->size."\t$nucmer_filtered_snps\t".
 		$intersection_core_pos->size."\t".$uniq_pipeline_core->size."\t".$uniq_nucmer_core->size."\t";
 	
 	my $true_positive;
 	my $false_positive;
 	my $false_negative;
-	if ($nucmer_set_core_pos->size > 0)
+	if ($nucmer_core_all->size > 0)
 	{
-		$false_negative = sprintf "%0.1f",($uniq_nucmer_core->size/$nucmer_set_core_pos->size)*100;
+		$false_negative = sprintf "%0.1f",($uniq_nucmer_core->size/$nucmer_core_all->size)*100;
 	}
 	else
 	{
@@ -633,6 +377,6 @@ my $core_positions_parser = CorePositions->new($core_positions_file,$bad_positio
 my $core_positions = $core_positions_parser->get_core_positions;
 
 my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snp);
-my ($nucmer_set,$nucmer_set_core_pos,$number_changed_positions) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);
+my ($nucmer_set,$nucmer_set_core_pos,$nucmer_ref_set,$nucmer_ref_set_core_pos) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);
 
-print_snp_results($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$core_positions,$number_changed_positions,$genome_core_snp_count);
+print_snp_results($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$nucmer_ref_set,$nucmer_ref_set_core_pos,$core_positions,$genome_core_snp_count);

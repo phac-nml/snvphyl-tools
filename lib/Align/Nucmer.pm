@@ -63,10 +63,13 @@ sub align_and_parse
 	my $reference_name = basename($reference);
 	my $query_name = basename($query);
 
+	my $reference_path = abs_path($reference);
+	my $query_path = abs_path($query);
+
 	chdir($nucmer_dir);
 	my $delta_prefix = "${reference_name}_${query_name}";
 	my $delta_file = "$nucmer_dir/$delta_prefix.delta";
-	my $command = "nucmer --prefix=$delta_prefix $reference $query 2> /dev/null 1> /dev/null";
+	my $command = "nucmer --prefix=$delta_prefix $reference_path $query_path 2> /dev/null 1> /dev/null";
 	system($command) == 0 or die "Could not execute '$command'";
 
 	my $delta_filter = "$nucmer_dir/$delta_prefix.filter.delta";
@@ -79,8 +82,8 @@ sub align_and_parse
 
 	chdir($cwd);
 
-	my $ref_lengths = $self->_fasta_lengths($reference);
-	my $query_lengths = $self->_fasta_lengths($query);
+	my $ref_lengths = $self->_fasta_lengths($reference_path);
+	my $query_lengths = $self->_fasta_lengths($query_path);
 
 	for my $ref_id (keys %$ref_lengths)
 	{
