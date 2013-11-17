@@ -120,7 +120,8 @@ sub _insert_nucmer_reference
 			{
 				if (not $nucmer_snp_set->has("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt"))
 				{
-					die "error: snp $chrom:$pos:$nucmer_ref:$nucmer_alt found from nucmer align results not present in show-snps results";
+					print STDERR "warning: snp $chrom:$pos:$nucmer_ref:$nucmer_alt found from nucmer align results not present in show-snps results\n";
+					$nucmer_snp_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
 				}
 			}
 			else
