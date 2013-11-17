@@ -7,20 +7,16 @@ use warnings;
 use strict;
 
 use Getopt::Long;
-use Cwd qw(abs_path getcwd);
-use File::Temp 'tempdir';
 use Set::Scalar;
 use File::Basename;
 use Bio::SeqIO;
-use Bio::LiveSeq::Mutation;
-use Bio::SeqUtils;
 
 use FindBin;
 use lib $FindBin::Bin.'/lib';
 
 use PositionsTable;
-use Align::Nucmer;
 use CorePositions;
+use NucmerPositionsChecker;
 
 my ($input_align,$genome,$output,$reference,$bad_positions_file,$core_positions_file,$verbose);
 $verbose = 0;
@@ -112,102 +108,6 @@ sub determine_genome_name
 	return $genome_name;
 }
 
-sub parse_genome_nucmer
-{
-	my ($genome, $reference, $genomes_core_snp, $genome_name, $core_positions) = @_;
-
-	my $nucmer_snp_set = Set::Scalar->new;
-	my $nucmer_snp_set_core_pos = Set::Scalar->new;
-	my $nucmer_ref_set = Set::Scalar->new;
-	my $nucmer_ref_set_core_pos = Set::Scalar->new;
-
-	my $nucmer_align_parser = Align::Nucmer->new($verbose);
-	my $nucmer_results = $nucmer_align_parser->align_and_parse($reference,$genome);
-	die "error: could not parse nucmer results for $reference vs. $genome" if (not defined $nucmer_results);
-
-	my $nucmer_snps = $nucmer_results->{'snps'};
-	insert_nucmer_snps($nucmer_snps,$nucmer_snp_set,$nucmer_snp_set_core_pos,$core_positions);
-
-	my $pipeline_snps = $genomes_core_snp->{$genome_name};
-	insert_nucmer_reference($pipeline_snps,$nucmer_ref_set,$nucmer_ref_set_core_pos,$nucmer_snp_set,$nucmer_results,$core_positions);
-
-	return ($nucmer_snp_set,$nucmer_snp_set_core_pos,$nucmer_ref_set,
-		$nucmer_ref_set_core_pos);
-}
-
-sub insert_nucmer_reference
-{
-	my ($pipeline_snps,$nucmer_set,$nucmer_set_core_pos,$nucmer_snp_set,$nucmer_results,$core_positions) = @_;
-
-	for my $chrom (keys %$pipeline_snps)
-	{
-		my $positions = $pipeline_snps->{$chrom};
-		for my $pos (keys %$positions)
-		{
-			my $nucmer_results_all = $nucmer_results->{'all'};
-			die "error: nucmer_results table is invalid" if (not defined $nucmer_results_all);
-			my $nucmer_results_for_pos = $nucmer_results_all->{$chrom}->{$pos};
-			my $nucmer_ref;
-			my $nucmer_alt;
-			my $pipeline_ref = $positions->{$pos}->{'reference'};
-			my $pipeline_alt = $positions->{$pos}->{'alternative'};;
-			die "error: no pipline_ref or pipeline_alt defined" if (not defined $pipeline_ref or not defined $pipeline_alt);
-
-			if (not defined $nucmer_results_for_pos)
-			{
-				$nucmer_ref = 'UNKNOWN';
-				$nucmer_alt = 'UNKNOWN';
-
-				print STDERR "warning: no nucmer results for $chrom:$pos, using 'UNKNOWN'\n";
-			}
-			else
-			{
-				$nucmer_ref = $nucmer_results_for_pos->{'ref'};
-				$nucmer_alt = $nucmer_results_for_pos->{'alt'};
-			}
-
-			# if this was a snp, should have been found in the nucmer snp results
-			if ($nucmer_ref ne $nucmer_alt)
-			{
-				if (not $nucmer_snp_set->has("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt"))
-				{
-					die "error: snp $chrom:$pos:$nucmer_ref:$nucmer_alt found from nucmer align results not present in show-snps results";
-				}
-			}
-			else
-			{
-				$nucmer_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
-				if (exists $core_positions->{"${chrom}_$pos"})
-				{
-					$nucmer_set_core_pos->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
-				}
-			}
-		}
-	}
-}
-
-sub insert_nucmer_snps
-{
-	my ($nucmer_snps,$nucmer_set,$nucmer_set_core_pos,$core_positions) = @_;
-
-	for my $contig (keys %$nucmer_snps)
-	{
-		my $positions = $nucmer_snps->{$contig};
-		for my $pos (keys %$positions)
-		{
-			my $snp_data  = $positions->{$pos};
-			my $ref = $snp_data->{'ref'};
-			my $alt = $snp_data->{'alt'};
-
-			$nucmer_set->insert("$contig\t$pos\t$ref\t$alt");
-			if (exists $core_positions->{"${contig}_$pos"})
-			{
-				$nucmer_set_core_pos->insert("$contig\t$pos\t$ref\t$alt");
-			}
-		}
-	}
-}
-
 sub build_pipeline_set
 {
 	my ($genome_name, $genomes_core_snp) = @_;
@@ -237,7 +137,12 @@ sub build_pipeline_set
 
 sub print_snp_results
 {
-	my ($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$nucmer_ref_set,$nucmer_ref_set_core_pos,$core_positions,$genome_core_snp_count) = @_;
+	my ($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_position_checker,$core_positions,$genome_core_snp_count) = @_;
+
+	my $nucmer_set = $nucmer_position_checker->get_nucmer_snp_set;
+	my $nucmer_ref_set = $nucmer_position_checker->get_nucmer_ref_set;
+	my $nucmer_set_core_pos = $nucmer_position_checker->get_nucmer_snp_set_core_pos;
+	my $nucmer_ref_set_core_pos = $nucmer_position_checker->get_nucmer_ref_set_core_pos;
 
 	my $reference_base = basename($reference);
 	my $genome_base = basename($genome);
@@ -377,6 +282,7 @@ my $core_positions_parser = CorePositions->new($core_positions_file,$bad_positio
 my $core_positions = $core_positions_parser->get_core_positions;
 
 my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snp);
-my ($nucmer_set,$nucmer_set_core_pos,$nucmer_ref_set,$nucmer_ref_set_core_pos) = parse_genome_nucmer($genome,$reference, $genomes_core_snp, $genome_name, $core_positions);
 
-print_snp_results($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_set,$nucmer_set_core_pos,$nucmer_ref_set,$nucmer_ref_set_core_pos,$core_positions,$genome_core_snp_count);
+my $nucmer_position_checker = NucmerPositionsChecker->new($reference,$genome,$genome_name,$genomes_core_snp,$core_positions,$verbose);
+
+print_snp_results($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_position_checker,$core_positions,$genome_core_snp_count);
