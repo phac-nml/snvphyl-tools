@@ -1,0 +1,15 @@
+Working on [% pseudoalign %]
+Working with core positions [% core_positions %]
+Working with bad positions [% bad_positions %]
+Working with genome [% query %]
+Working with reference [% reference %]
+
+Intersection	1
+Contig	Position	[% reference_base %]	[% query_base %]
+chr	5	A	T
+
+Unique to Nucmer	0
+Contig	Position	[% reference_base %]	[% query_base %]
+
+Unique to Core Pipeline	0
+Contig	Position	[% reference_base %]	[% query_base %]

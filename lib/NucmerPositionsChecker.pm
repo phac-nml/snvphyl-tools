@@ -139,6 +139,8 @@ sub _insert_nucmer_snps
 {
 	my ($self,$nucmer_snps,$nucmer_set,$nucmer_set_core_pos,$core_positions) = @_;
 
+	my $verbose = $self->{'verbose'};
+
 	for my $contig (keys %$nucmer_snps)
 	{
 		my $positions = $nucmer_snps->{$contig};
@@ -148,10 +150,17 @@ sub _insert_nucmer_snps
 			my $ref = $snp_data->{'ref'};
 			my $alt = $snp_data->{'alt'};
 
-			$nucmer_set->insert("$contig\t$pos\t$ref\t$alt");
-			if (exists $core_positions->{"${contig}_$pos"})
+			if ($ref eq '.' or $alt eq '.')
 			{
-				$nucmer_set_core_pos->insert("$contig\t$pos\t$ref\t$alt");
+				print STDERR "Indel found at $contig:$pos:ref=$ref:alt=$alt, skipping\n" if ($verbose);
+			}
+			else
+			{
+				$nucmer_set->insert("$contig\t$pos\t$ref\t$alt");
+				if (exists $core_positions->{"${contig}_$pos"})
+				{
+					$nucmer_set_core_pos->insert("$contig\t$pos\t$ref\t$alt");
+				}
 			}
 		}
 	}
