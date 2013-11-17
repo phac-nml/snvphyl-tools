@@ -238,7 +238,7 @@ sub print_snp_results
 	
 	print $oh "\nUnique to Core Pipeline\t".$uniq_pipeline_core->size."\n";
 	print $oh "Contig\tPosition\t$reference_base\t$genome_base\n";
-	for my $e (sort $uniq_pipeline->elements)
+	for my $e (sort $uniq_pipeline_core->elements)
 	{
 		print $oh "$e\n";
 	}
