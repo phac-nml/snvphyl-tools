@@ -57,7 +57,7 @@ sub align_and_parse
 	die "error: query=$query file does not exist" if (not -e $query);
 
 	my $nucmer_dir = tempdir("ncumer.XXXXXX", TMPDIR => 1, CLEANUP => !$verbose);
-	print "Nucmer dir: $nucmer_dir\n" if ($verbose);
+	print STDERR "Nucmer dir: $nucmer_dir\n" if ($verbose);
 	my $cwd = getcwd;
 
 	my $reference_name = basename($reference);
@@ -98,7 +98,7 @@ sub align_and_parse
 			{
 				if ($ret_value == 1)
 				{
-					print "no alignments for $ref_id $query_id, command '$command'" if ($verbose);
+					print STDERR "no alignments for $ref_id $query_id, command '$command'" if ($verbose);
 				}
 				else
 				{
@@ -241,16 +241,16 @@ sub _parse_alignments {
 			my $query_bp = uc(shift @qseq);
 			#we do not care about indels at the moment.
 			if ( $query_bp eq '.') {
-				print "Found deletion on query @ ref:'$ref:$pos'. Skipping\n" if $verbose;
+				print STDERR "Found deletion on query @ ref:'$ref:$pos'. Skipping\n" if $verbose;
 				$pos +=$next;
 			}
 			elsif ($ref_bp eq '.') {
-				print "Found insertion on query @ ref:'$ref:$pos'. Skipping\n" if $verbose;
+				print STDERR "Found insertion on query @ ref:'$ref:$pos'. Skipping\n" if $verbose;
 				# no increment of position as we want to keep same reference coordinates
 			}
 			else {
 				if ( exists $bp->{$ref}->{$pos}) {
-					print "Seen already '$ref:$pos'. Removing.\n" if $verbose;
+					print STDERR "Seen already '$ref:$pos'. Removing.\n" if $verbose;
 					delete $bp->{$ref}->{$pos}; # get rid of position already in the good pile
 					$bad{$ref}{$pos}++; # ensure that if we see that position again that we ignore it
 					$pos +=$next;
