@@ -12,3 +12,6 @@ Contig	Position	[% reference_base %]	[% query_base %]
 
 Unique to Core Pipeline	0
 Contig	Position	[% reference_base %]	[% query_base %]
+
+Core Pipeline Unknown	0
+Contig	Position	[% reference_base %]	[% query_base %]

@@ -14,3 +14,6 @@ chr	5	A	T
 Unique to Core Pipeline	1
 Contig	Position	[% reference_base %]	[% query_base %]
 chr	5	A	A
+
+Core Pipeline Unknown	0
+Contig	Position	[% reference_base %]	[% query_base %]

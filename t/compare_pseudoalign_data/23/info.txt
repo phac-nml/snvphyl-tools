@@ -1,0 +1,1 @@
+Test pipeline ref base in region that can't be evaluated due to conflicting alignments from nucmer

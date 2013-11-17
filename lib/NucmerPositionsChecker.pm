@@ -84,9 +84,26 @@ sub get_nucmer_ref_set
 	return $self->{'nucmer_ref_set'};
 }
 
+sub get_unknown_pipeline_positions
+{
+	my ($self) = @_;
+
+	return $self->{'unknown_pipeline_positions'};
+}
+
+sub get_unknown_snps_removed_count
+{
+	my ($self) = @_;
+
+	return $self->{'unknown_snps_removed_count'};
+}
+
 sub _insert_nucmer_reference
 {
 	my ($self,$pipeline_snps,$nucmer_set,$nucmer_set_core_pos,$nucmer_snp_set,$nucmer_results,$core_positions) = @_;
+
+	my $unknown_pipeline_positions = Set::Scalar->new;
+	my $unknown_snps_removed_count = 0; # snps removed when removing unknown positions
 
 	for my $chrom (keys %$pipeline_snps)
 	{
@@ -96,44 +113,44 @@ sub _insert_nucmer_reference
 			my $nucmer_results_all = $nucmer_results->{'all'};
 			die "error: nucmer_results table is invalid" if (not defined $nucmer_results_all);
 			my $nucmer_results_for_pos = $nucmer_results_all->{$chrom}->{$pos};
-			my $nucmer_ref;
-			my $nucmer_alt;
 			my $pipeline_ref = $positions->{$pos}->{'reference'};
 			my $pipeline_alt = $positions->{$pos}->{'alternative'};;
 			die "error: no pipline_ref or pipeline_alt defined" if (not defined $pipeline_ref or not defined $pipeline_alt);
 
 			if (not defined $nucmer_results_for_pos)
 			{
-				$nucmer_ref = 'UNKNOWN';
-				$nucmer_alt = 'UNKNOWN';
-
-				print STDERR "warning: no nucmer results for $chrom:$pos, using 'UNKNOWN'\n";
+				print STDERR "warning: no nucmer results for $chrom:$pos, adding to uknown set\n";
+				$unknown_pipeline_positions->insert("$chrom\t$pos\t$pipeline_ref\t$pipeline_alt");
+				$unknown_snps_removed_count++ if ($pipeline_ref ne $pipeline_alt);
 			}
 			else
 			{
-				$nucmer_ref = $nucmer_results_for_pos->{'ref'};
-				$nucmer_alt = $nucmer_results_for_pos->{'alt'};
-			}
+				my $nucmer_ref = $nucmer_results_for_pos->{'ref'};
+				my $nucmer_alt = $nucmer_results_for_pos->{'alt'};
 
-			# if this was a snp, should have been found in the nucmer snp results
-			if ($nucmer_ref ne $nucmer_alt)
-			{
-				if (not $nucmer_snp_set->has("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt"))
+				# if this was a snp, should have been found in the nucmer snp results
+				if ($nucmer_ref ne $nucmer_alt)
 				{
-					print STDERR "warning: snp $chrom:$pos:$nucmer_ref:$nucmer_alt found from nucmer align results not present in show-snps results\n";
-					$nucmer_snp_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+					if (not $nucmer_snp_set->has("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt"))
+					{
+						print STDERR "warning: snp $chrom:$pos:$nucmer_ref:$nucmer_alt found from nucmer align results not present in show-snps results\n";
+						$nucmer_snp_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+					}
 				}
-			}
-			else
-			{
-				$nucmer_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
-				if (exists $core_positions->{"${chrom}_$pos"})
+				else
 				{
-					$nucmer_set_core_pos->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+					$nucmer_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+					if (exists $core_positions->{"${chrom}_$pos"})
+					{
+						$nucmer_set_core_pos->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+					}
 				}
 			}
 		}
 	}
+
+	$self->{'unknown_pipeline_positions'} = $unknown_pipeline_positions;
+	$self->{'unknown_snps_removed_count'} = $unknown_snps_removed_count;
 }
 
 sub _insert_nucmer_snps
