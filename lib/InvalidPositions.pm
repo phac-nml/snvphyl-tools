@@ -31,10 +31,12 @@ sub read_invalid_positions
 	{
 		chomp $line;
 		my ($sub_line) = ($line =~ /^([^#]*)/);
+		next if ($sub_line eq ''); # comment line
+
 		my ($chrom,$start,$end) = split(/\s+/,$sub_line);
 		if (not defined $chrom or $chrom eq '')
 		{
-			print STDERR "Warning: line '$line' not valid for invalid positions file $invalid_positions_file\n";
+			print STDERR "warning: line '$line' contains no information for invalid positions file $invalid_positions_file, skipping...\n";
 			next;
 		}
 		if ($start !~ /^\d+$/)
