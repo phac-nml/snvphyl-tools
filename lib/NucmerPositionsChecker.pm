@@ -47,7 +47,7 @@ sub _parse_genome_nucmer
 	$self->_insert_nucmer_snps($nucmer_snps,$nucmer_snp_set,$nucmer_snp_set_core_pos,$core_positions);
 
 	my $pipeline_snps = $pipeline_core_snp->{$genome_name};
-	$self->_insert_nucmer_reference($pipeline_snps,$nucmer_ref_set,$nucmer_ref_set_core_pos,$nucmer_snp_set,$nucmer_results,$core_positions);
+	$self->_insert_nucmer_reference($pipeline_snps,$nucmer_ref_set,$nucmer_ref_set_core_pos,$nucmer_snp_set,$nucmer_snp_set_core_pos,$nucmer_results,$core_positions);
 
 
 	$self->{'nucmer_snp_set'} = $nucmer_snp_set;
@@ -100,7 +100,7 @@ sub get_unknown_snps_removed_count
 
 sub _insert_nucmer_reference
 {
-	my ($self,$pipeline_snps,$nucmer_set,$nucmer_set_core_pos,$nucmer_snp_set,$nucmer_results,$core_positions) = @_;
+	my ($self,$pipeline_snps,$nucmer_set,$nucmer_set_core_pos,$nucmer_snp_set,$nucmer_snp_set_core_pos,$nucmer_results,$core_positions) = @_;
 
 	my $unknown_pipeline_positions = Set::Scalar->new;
 	my $unknown_snps_removed_count = 0; # snps removed when removing unknown positions
@@ -135,6 +135,10 @@ sub _insert_nucmer_reference
 					{
 						print STDERR "warning: snp $chrom:$pos:$nucmer_ref:$nucmer_alt found from nucmer align results not present in show-snps results\n";
 						$nucmer_snp_set->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+						if (exists $core_positions->{"${chrom}_$pos"})
+						{
+							$nucmer_snp_set_core_pos->insert("$chrom\t$pos\t$nucmer_ref\t$nucmer_alt");
+						}
 					}
 				}
 				else
