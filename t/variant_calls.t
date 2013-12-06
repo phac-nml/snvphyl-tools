@@ -70,7 +70,7 @@ sub compare_files
 
 sub run_command
 {
-	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$formats, $extra_params) = @_;
+	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$formats, $extra_params,$dirs_vcfs,$pileup_vcfs) = @_;
 
 	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 	close($fh);
@@ -93,7 +93,15 @@ sub run_command
 			die "Invalid format $f for testing";
 		}
 	}
-	my $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params";
+	my $command;
+        if ( $dirs_vcfs && $pileup_vcfs) {
+            my $singles = "--vcfsplit " . join (" --vcfsplit " , map { " $_=" . $dirs_vcfs->{$_} } keys %$dirs_vcfs);
+            $singles .= " --mpileup " . join (" --mpileup " , map { " $_=" . $pileup_vcfs->{$_} } keys %$pileup_vcfs);
+            $command = "$vcf_align_bin $singles --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params";
+        }
+        else {
+            $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params";
+        }
 	
 	if ($verbose)
 	{
@@ -108,6 +116,20 @@ sub run_command
 
 	return ($actual_out_base,@out_files);
 }
+
+sub get_vcfs
+{
+    my ($in_dir) = @_;
+    my %vcf;
+    my $dh;
+    
+    opendir($dh, $in_dir) or die "error opening directory $in_dir: $!";
+    %vcf = map { /^(.*)\.vcf\.gz$/; $1 => "$in_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
+    closedir($dh);
+
+    return \%vcf
+}
+
 
 sub test_header
 {
@@ -165,8 +187,15 @@ for my $dir (@in_files)
 	my $expected = `cat $curr_input/expected.fasta`;
 	my $expected_out_file = "$curr_input/expected.fasta";
 	my $expected_positions_file = "$curr_input/expected.positions.tsv";
+        
 	my $vcf_dir = $curr_input;
+        my %dirs_vcfs = %{get_vcfs($vcf_dir)};
+        
 	my $pileup_dir = "$curr_input/pileup";
+        my %pileup_vcfs = %{get_vcfs($pileup_dir)};
+        
+
+        
 	test_header($curr_input);
 	print "### Description ###\n";
 	print "$description\n";
@@ -193,6 +222,35 @@ for my $dir (@in_files)
 		pass("positions file generated from data in $curr_input is valid");
 	}
 	print "### done ###\n";
+
+
+	test_header($curr_input);
+	print "### Description ###\n";
+	print "$description\n";
+	print "### Expected ###\n";
+	print "$expected\n";
+
+	die "$expected_out_file does not exist" if (not -e $expected_out_file);
+
+
+        ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta'], $extra_params,\%dirs_vcfs,\%pileup_vcfs);
+        $actual_positions_file = "$actual_base-positions.tsv";
+        $got = `cat $actual_out_file`;
+	print "### Got ###\n";
+	print "$got\n";
+        $success = compare_files($expected_out_file,$actual_out_file);
+	if ($success) #pass
+	{
+		pass("pseudoalignment generated from data in $curr_input is valid");
+	}
+	$success = compare_files($expected_positions_file,$actual_positions_file);
+	if ($success)
+	{
+		pass("positions file generated from data in $curr_input is valid");
+	}
+	print "### done ###\n";
+        
+        
 }
 
 my $actual_base;

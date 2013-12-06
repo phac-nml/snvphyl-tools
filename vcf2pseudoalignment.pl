@@ -36,7 +36,9 @@ sub usage
 	"Usage: $0 --vcf-dir [vcf dir] --mpileup-dir [mpileup dir] --output-base [base of output alignment file]\n".
 	"Parameters:\n".
 	"\t--vcf-dir: The directory containing the vcf files.\n".
+        "\t--vcfsplit: Multiple list of key/value pair  'name=path/to/vcf.gz'".          
 	"\t--mpileup-dir: Directory containing the vcf files produced by 'samtools mpileup \$file | bcftools view -cg' (*.vcf).\n".
+        "\t--mpileup: Multiple list of key/value pair  'name=path/to/vcf.gz'".
 	"\t-o|--output-base:  The output base name for the alignment file(s)\n".
 	"Options:\n".
 	"\t-u|--uniquify:  Make the seq names unique and print mapping file to real names (for phylip format limitations)\n".
@@ -574,10 +576,15 @@ my $requested_cpus;
 my $invalid;
 my $keep_ambiguous;
 
+my %vcf_files;
+my %mpileup_files;
+
 my $command_line = join(' ',@ARGV);
 
 if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
+                'vcfsplit=s' => \%vcf_files,
 		'mpileup-dir|b=s' => \$mpileup_dir,
+                'mpileup=s' => \%mpileup_files,
 		'format|f=s' => \@formats,
 		'output-base|o=s' => \$output_base,
 		'reference|r=s' => \$reference,
@@ -596,11 +603,19 @@ if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 print usage and exit(0) if (defined $help);
 $verbose = 0 if (not defined $verbose);
 
-die "vcf-dir undefined\n".usage if (not defined $vcf_dir);
-die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
+if ( $vcf_dir and $mpileup_dir)
+{
+        
 
-die "mpileup-dir undefined\n".usage if (not defined $mpileup_dir);
-die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
+    die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
+
+    die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
+    
+}
+elsif ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0)
+{
+    die "Was not able to find any vcf files from freebayes and/or mpileup.";
+}
 
 die "output-base undefined\n".usage if (not defined $output_base);
 
@@ -651,33 +666,52 @@ elsif ($coverage_cutoff !~ /^\d+$/)
 	die "coverage-cutoff=$coverage_cutoff is invalid\n".usage;
 }
 
-my %vcf_files;
-my %mpileup_files;
 
 my $dh;
-# fill table vcf_files with entries like
+# fill table vcf_files with entries like if only provided the vcf-dir
 #  vcf1 => dir/vcf1.vcf.gz
 #  vcf2 => dir/vcf2.vcf.gz
-opendir($dh, $vcf_dir) or die "error opening directory $vcf_dir: $!";
-%vcf_files = map { /^(.*)\.vcf\.gz$/; $1 => "$vcf_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
-closedir($dh);
+if ( $vcf_dir) {
+    opendir($dh, $vcf_dir) or die "error opening directory $vcf_dir: $!";
+    %vcf_files = map { /^(.*)\.vcf\.gz$/; $1 => "$vcf_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
+    closedir($dh);
+}
 
 die "No *.vcf.gz files found in $vcf_dir.  Perhas you need to compress and index with 'tabix' tools\n".
 "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%vcf_files) <= 0);
 
 my $total_samples = (keys %vcf_files);
 
-# create table of mpileup files corresponding to input freebayes/variant vcf files
-# assumes files are named with the same prefix
-# ex vcf-dir/file1.vcf.gz and mpileup-dir/file1.vcf.gz
-my $mpileup_table = create_mpileup_table(\%vcf_files, $vcf_dir, $mpileup_dir);
-if (not defined $mpileup_table)
+
+if ( $mpileup_dir)
 {
-	die "Error: vcf-dir contains unmatched files in mpileup-dir";
+    # create table of mpileup files corresponding to input freebayes/variant vcf files
+    # assumes files are named with the same prefix
+    # ex vcf-dir/file1.vcf.gz and mpileup-dir/file1.vcf.gz    
+    my $mpileup_table = create_mpileup_table(\%vcf_files, $vcf_dir, $mpileup_dir);
+
+    if (not defined $mpileup_table)
+    {
+        die "Error: vcf-dir contains unmatched files in mpileup-dir";
+    }
+    else
+    {
+        %mpileup_files = %{$mpileup_table};
+    }
+
 }
 else
 {
-	%mpileup_files = %{$mpileup_table};
+    if (scalar keys %mpileup_files != scalar keys %vcf_files )
+    {
+        die "Error: vcfsplit contains uneven number compare to mpileup-files";
+    }
+    my $m_name= join ('',sort {$a cmp $b } keys %mpileup_files);
+    my $v_name= join ('',sort {$a cmp $b } keys %vcf_files);
+    if ( $m_name ne $v_name) {
+        die "Error: vcfsplit contains unmatched files to mpileup-files";
+    }
+    
 }
 
 # fill in variants for each vcf file
