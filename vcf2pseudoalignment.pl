@@ -5,7 +5,9 @@
 
 use warnings;
 use strict;
-
+use FindBin;
+use lib $FindBin::Bin.'/lib';
+use lib '.';
 use Getopt::Long;
 use Storable qw /dclone store retrieve/;
 use File::Basename;
@@ -16,10 +18,6 @@ use Bio::SimpleAlign;
 # VCF module from vcftools: http://vcftools.sourceforge.net/index.html
 use Vcf;
 use File::Temp qw /tempdir/;
-
-use FindBin;
-use lib $FindBin::Bin.'/lib';
-
 use InvalidPositions;
 
 my $verbose;
