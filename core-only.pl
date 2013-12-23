@@ -59,53 +59,61 @@ while ( my $seq = $in->next_seq()){
 
     #take first one so we can simplify the loop below
     #just looking for overlapping regions
-    push @region, {'start' => $cds[0]->{'start'},'end' => $cds[0]->{'end'}};
-    shift @cds;
-    
-    foreach my $cds(@cds) {
-        if ($region[$#region]->{'end'} > $cds->{'start'}  ) {
-            $region[$#region]->{'end'} = $cds->{'end'};
+    if ( scalar @cds !=0) {
+        push @region, {'start' => $cds[0]->{'start'},'end' => $cds[0]->{'end'}};
+        shift @cds;
+        foreach my $cds(@cds) {
+            if ($region[$#region]->{'end'} > $cds->{'start'}  ) {
+                $region[$#region]->{'end'} = $cds->{'end'};
+            }
+            else {
+                push @region,{'start'=>$cds->{'start'},'end'=>$cds->{'end'}};
+            }
         }
-        else {
-            push @region,{'start'=>$cds->{'start'},'end'=>$cds->{'end'}};
-        }
-
         
-    }
+        
+        my ($start,$end);
 
-    
-    my ($start,$end);
-    #check to see if the cds is the first position, if so, no range at the beginning, otherwise process it
-    if ( $region[0]->{'start'}==1) {
-        $start = $region[0]->{'end'} +1;
-    }
-    else {
-        $start = 1;
-        $end = $region[0]->{'start'} -1;
-        $non_coding{$id}= [([($start,$end)])];
-        $start = $region[0]->{'end'} + 1;
-        $end =$start;
-    }
-
-    shift @region;
-    
-    foreach my $cds (@region) {
-        #record positions
-        $end = $cds->{'start'}-1;
-        if ( exists $non_coding{$id}) {
-            push @{$non_coding{$id}},[($start,$end)];
+        if ( $region[0]->{'start'}==1) {
+            $start = $region[0]->{'end'} +1;
         }
         else {
+            $start = 1;
+            $end = $region[0]->{'start'} -1;
             $non_coding{$id}= [([($start,$end)])];
+            $start = $region[0]->{'end'} + 1;
+            $end =$start;
         }
-
-        $start = $cds->{'end'} + 1
+        
+        shift @region;
+    
+        foreach my $cds (@region) {
+            #record positions
+            $end = $cds->{'start'}-1;
+            if ( exists $non_coding{$id}) {
+                push @{$non_coding{$id}},[($start,$end)];
+            }
+            else {
+                $non_coding{$id}= [([($start,$end)])];
+            }
+            
+            $start = $cds->{'end'} + 1
+        }
+        
+        #ensure that we get the last possible region of the genome
+        if ( $start < $length) {
+            push @{$non_coding{$id}},[($start,$length)];
+        }
+    #check to see if the cds is the first position, if so, no range at the beginning, otherwise process it
+    #no regions, the whole region is gone!
     }
-
-    #ensure that we get the last possible region of the genome
-    if ( $start < $length) {
-        push @{$non_coding{$id}},[($start,$length)];
+    
+    else {
+        $non_coding{$id}= [([(1,$length)])];
     }
+        
+
+
 }
 
 #print everything out
