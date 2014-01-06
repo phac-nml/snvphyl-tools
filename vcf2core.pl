@@ -107,7 +107,11 @@ die "pseudoalign-positions does not exist\n".usage if (not -e $positions);
 
 
 
-die "output-base undefined\n".usage if (not defined $output_base);
+if (not defined $output_base){
+    $output_base = ".";
+    print STDERR "--output_base was not defined. Using current directory\n";
+}
+
 if ( defined $gview and not defined $gview_style) {
     die "Was given a gview binary but no style sheet\n". usage;
 }
