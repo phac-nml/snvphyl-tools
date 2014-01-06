@@ -62,12 +62,15 @@ sub create_mpileup_table
 
 
 
-my ($mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$gview,$gview_style,$invalid,$positions);
+my (%mpileup_files,$mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$gview,$gview_style,$invalid,$positions);
 
 my $command_line = join(' ',@ARGV);
 
 if (!GetOptions(
+
+
 		'mpileup-dir|b=s' => \$mpileup_dir,
+                'mpileup=s' => \%mpileup_files,
 		'output-base|o=s' => \$output_base,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
                 'i|fasta=s' => \$fasta,
@@ -85,8 +88,19 @@ if (!GetOptions(
 print usage and exit(0) if (defined $help);
 $verbose = 0 if (not defined $verbose);
 
-die "mpileup-dir undefined\n".usage if (not defined $mpileup_dir);
-die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
+
+if (  $mpileup_dir)
+{
+        
+    die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
+    
+}
+elsif ( scalar keys %mpileup_files ==0)
+{
+    die "Was not able to find any vcf files from freebayes and/or mpileup.";
+}
+
+
 
 die "pseudoalign-positions undefined\n".usage if (not defined $positions);
 die "pseudoalign-positions does not exist\n".usage if (not -e $positions);
@@ -98,7 +112,7 @@ if ( defined $gview and not defined $gview_style) {
     die "Was given a gview binary but no style sheet\n". usage;
 }
 elsif (not defined $gview) {
-    print "No gview given, Not creating images\n";
+    print STDERR "No gview given, Not creating images\n";
     
 }
 
@@ -122,18 +136,21 @@ elsif ($coverage_cutoff !~ /^\d+$/)
 
 
 
-my %mpileup_files;
-
 my $dh;
 # fill table mpileup_files with entries like
 #  vcf1 => dir/vcf1.vcf.gz
 #  vcf2 => dir/vcf2.vcf.gz
-opendir($dh, $mpileup_dir) or die "error opening directory $mpileup_dir: $!";
-%mpileup_files = map { /^(.*)\.vcf\.gz$/; $1 => "$mpileup_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
-closedir($dh);
+if ( $mpileup_dir) {
+    opendir($dh, $mpileup_dir) or die "error opening directory $mpileup_dir: $!";
+    %mpileup_files = map { /^(.*)\.vcf\.gz$/; $1 => "$mpileup_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
+    closedir($dh);
 
-die "No *.vcf.gz files found in $mpileup_dir.  Perhas you need to compress and index with 'tabix' tools\n".
-"Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0);
+    die "No *.vcf.gz files found in $mpileup_dir.  Perhas you need to compress and index with 'tabix' tools\n".
+        "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0);
+
+    
+}
+
 
 
 my $snps = read_snps($positions,$output_base);

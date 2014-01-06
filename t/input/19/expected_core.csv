@@ -1,0 +1,4 @@
+#Reference,total length,total invalid pos, total core,Percentage in core
+ref1,8,N/A,6,75.00
+ref2,8,2,6,100.00
+all,16,2,12,85.71
