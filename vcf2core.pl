@@ -94,10 +94,13 @@ die "pseudoalign-positions does not exist\n".usage if (not -e $positions);
 
 
 die "output-base undefined\n".usage if (not defined $output_base);
-
-die "gview undefined\n".usage if (not defined $gview);
-die "gview_style undefined\n".usage if (not defined $gview_style);
-
+if ( defined $gview and not defined $gview_style) {
+    die "Was given a gview binary but no style sheet\n". usage;
+}
+elsif (not defined $gview) {
+    print "No gview given, Not creating images\n";
+    
+}
 
 $requested_cpus = 1 if (not defined $requested_cpus);
 
@@ -138,8 +141,11 @@ my $snps = read_snps($positions,$output_base);
 my $info = determine_core($snps,$output_base,\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff,$invalid);
 
 print_results($info);
-    
-create_figures($gview,$gview_style,$info,$requested_cpus);
+
+if ( $gview) {
+    create_figures($gview,$gview_style,$info,$requested_cpus);
+}
+
 
 exit;
 
