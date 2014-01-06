@@ -81,7 +81,7 @@ sub run_command
 	my $command;
         if ($pileup_vcfs) {
             my $singles .= " --mpileup " . join (" --mpileup " , map { " $_=" . $pileup_vcfs->{$_} } keys %$pileup_vcfs);
-            $command = "$vcf_align_bin $singles --fasta $reference  --coverage-cutoff $coverage_cutoff --output-base $actual_out_base  --positions $positions $coverage_cutoff $extra_params > $out_files[0] 2> /dev/null";
+            $command = "$vcf_align_bin $singles --fasta $reference  --coverage-cutoff $coverage_cutoff --output-base $actual_out_base  --positions $positions  $extra_params > $out_files[0] 2> /dev/null";
         }
         else {
             $command = "$vcf_align_bin --mpileup-dir $pileup_dir --fasta $reference --output-base $actual_out_base --positions $positions --coverage-cutoff $coverage_cutoff $extra_params > $out_files[0] 2> /dev/null";
