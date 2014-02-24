@@ -190,9 +190,14 @@ Version 1.0
 
 =head1 SYNOPSIS
 
-filter_unique_basepairs.pl -t tsv_file
+filter_unique_basepairs.pl -t tsv_file I<strain 1> I<strain 2> ...
 
 -t
-	The tsv file containing the pseudoalignment
+
+        The tsv file containing the pseudoalignment
+
+strains
+
+        The strains you wish to find unique basepairs in
 
 =cut
