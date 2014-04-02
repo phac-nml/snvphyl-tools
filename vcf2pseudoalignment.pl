@@ -7,7 +7,6 @@ use warnings;
 use strict;
 use FindBin;
 use lib $FindBin::Bin.'/lib';
-use lib '.';
 use Getopt::Long;
 use Storable qw /dclone store retrieve/;
 use File::Basename;

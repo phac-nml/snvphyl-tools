@@ -10,6 +10,7 @@ use File::Basename;
 use Parallel::ForkManager;
 use FindBin qw($Bin);
 use lib "$Bin";
+use lib "$Bin/lib";
 # VCF module from vcftools: http://vcftools.sourceforge.net/index.html
 use Vcf;
 use File::Temp qw /tempdir tempfile/;
