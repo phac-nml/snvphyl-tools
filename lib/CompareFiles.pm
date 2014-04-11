@@ -29,7 +29,6 @@ sub _read_phylip_file
 	my ($file) = @_;
 
 	my $io = new Bio::AlignIO(-file=>"<$file", -format=>"phylip", -longid=>1);
-	$io->interleaved(0);
 	return $io->next_aln;
 }
 
