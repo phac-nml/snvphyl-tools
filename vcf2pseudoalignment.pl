@@ -799,7 +799,7 @@ for my $format (@formats)
 {
 	my $output_file = "$output_base.".$valid_formats{$format};
 	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format,-longid=>1);
-	$io->interleaved(0);
+	$io->interleaved(0) if (ref $io eq 'Bio::Align::phylip');
 	$io->write_aln($aln);
 	print STDERR "Alignment written to $output_file\n";
 }
