@@ -4,6 +4,7 @@ package CompareFiles;
 use File::Copy;
 use File::Basename;
 use Test::Deep;
+use Bio::AlignIO;
 
 use strict;
 use warnings;
@@ -27,24 +28,9 @@ sub _read_phylip_file
 {
 	my ($file) = @_;
 
-	my %data;
-	open(my $fh, "<$file") or die "Could not open $file";
-	my $header_line = readline($fh);
-	chomp $header_line;
-	$data{'header'} = $header_line;
-
-	while(my $line = readline($fh))
-	{
-		chomp $line;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if ($line eq "");
-		push(@{$data{'lines'}}, $line);
-	}
-
-	close($fh);
-
-	return \%data;
+	my $io = new Bio::AlignIO(-file=>"<$file", -format=>"phylip", -longid=>1);
+	$io->interleaved(0);
+	return $io->next_aln;
 }
 
 1;
