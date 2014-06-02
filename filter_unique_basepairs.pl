@@ -4,180 +4,367 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Pod::Usage;
+use Bio::TreeIO;
+use Scalar::Util qw(looks_like_number);
 
-scan_file(check_inputs());
+main( check_inputs() );
 
-sub scan_file
+sub main
+{
+    my $tsv             = $_[0];
+    my $flag			= $_[1]; #if true, include only valid matches
+	my $tree_file		= $_[2];
+    my $output			= ">".$_[3];
+    my @desired_strains = @ARGV;
+    my @strains;
+
+    @strains = map_strains($tsv, $tree_file);
+    open (my $outfile, $output);
+    if(scalar @desired_strains == 0)
+    {
+    	my %clades = make_tree_file_get_clades($tree_file);
+    	my $index = 1;
+    	foreach my $key ( keys %clades )
+		{
+			my @desired;
+    		foreach my $strain (@{$clades{"Clade_".$index}})
+    		{
+  				push(@desired, $strain);
+			}
+			print $outfile sprintf("Clade_".$index.":,\n");
+    		process_strains($tsv, $outfile, \@desired, $flag, \@strains);
+    		print $outfile sprintf("Strains:, ("."@desired".")\n\n");
+    		print $outfile "--------------------------------------------------------------------------------------------\n\n";
+    		$index++;
+		}	
+    }
+    else
+    {
+    	print $outfile sprintf("Strains: ("."@desired_strains".")\n");
+		process_strains($tsv, $outfile, \@desired_strains, $flag, \@strains);
+		printf $outfile "\n\n";
+		print $outfile "--------------------------------------------------------------------------------------------\n\n";
+    }
+	close $outfile;
+
+}
+
+sub map_strains
 {
 	my $tsv = $_[0];
-	my @desired_strains = @ARGV;
-	my @all_strains;
-	my %strain_cols;
+	my $tree_in = $_[1];
+	my @tree_strains;
+	my @strains;
+	open( my $pseudo_align, '<', $tsv );
 
-	open (my $pseudo_align, '<', $tsv);
+    #grab the strain names from the top of the tsv file
+    my $line = <$pseudo_align>;
+    chomp $line;
 
-	#grab the strain names from the top of the tsv file
-	my $line = <$pseudo_align>;
-	chomp $line;
-	@all_strains = split(/\s/, $line);
+    @strains = split( /\s/, $line );
+    my $tree = Bio::TreeIO->new(-format => 'newick', -file => $tree_in)->next_tree;
 
-	#find the column positions of the strain names given as arguments
-	%strain_cols = find_strain_cols(\@all_strains, \@desired_strains);
+    for my $node ( $tree->get_nodes ) 
+    {
+        if($node->id)
+        {
+            my $id = $node->id;
+            $id =~ s/^'//;
+            $id =~ s/'$//;
+    	   #it's a strain and not in strains, then we need to replace Reference with it
+    	   if( ($id !~ /^-?\d+\.?\d*$/) and (index_of($id, \@strains) == -1 ) )
+    	   {
+               $strains[3] = $id;
+    	   }
+        }
+	}
 
-	#go through each line of the file, looking for positions where
-	#the given strains differ from ervery other strain
-	while ($line = <$pseudo_align>)
-	{
-		chomp $line;
 
-		my $got_a_match = "true";
-		my $valid_position;
-		my @bps = split(/\s/, $line);
-		my $bp_match;
+    return @strains;
+}
+
+sub make_tree_file_get_clades
+{
+	my $tree_in = $_[0];
+	my $index = 1;
+
+	my $tree = Bio::TreeIO->new(-format => 'newick', -file => $tree_in)->next_tree;
+	my $out = new Bio::TreeIO(-file => '>clades.tre', -format => 'newick');    
+
+
+    for my $node ( $tree->get_nodes ) 
+    {
 	
-		#make sure the strain is valid
-		if ($bps[2] eq "valid")
-		{
-			#see if the given strains match at this position
-			$bp_match = match_strains(\@bps, \%strain_cols);
-					
-			if ($bp_match)
+    	if($node->id)
+    	{
+			if($node->id =~ /^-?\d+\.?\d*$/ )
 			{
-				#see what's going on with the other strains
-				check_other_strains($bp_match, \%strain_cols, @bps);
+				$node->id("Clade_".$index);
+				$index++;
+			}
+			else
+			{
+                my $id = $node->id;
+                $id =~ s/^'//;
+                $id =~ s/'$//;
+				#clean 's off the id
+				$node->id( $id );
 			}
 		}
-	}
+    }
+
+    $out->write_tree($tree);
+    my %clades = get_clades_from_tree($tree);
+    
+    return %clades;
+}
+
+sub get_clades_from_tree
+{
+	my $tree = $_[0];
+	my %clades;
+
+    for my $node ( $tree->get_nodes ) 
+    {
+    	#clade node, strain nodes or leaves, do not have descendants
+		if ( $node->id and scalar $node->get_all_Descendents > 0 )
+		{
+			my @strains;
+
+			#for each node get descendants
+			for my $kid ( $node->get_all_Descendents ) 
+			{
+				if($kid->is_Leaf)
+				{
+					push(@strains, $kid->id);
+				}	
+			}	
+			push(@{$clades{$node->id}}, @strains);
+		}
+    }
+	return %clades;
+}
+
+sub process_strains
+{
+	my $tsv = $_[0];
+	my $outfile = $_[1];
+	my $desired_strains = $_[2];
+	my $flag = $_[3];
+	my $all_strains = $_[4];
+    my %strain_cols;
+
+	open( my $pseudo_align, '<', $tsv );
+
+    #grab the strain names from the top of the tsv file, can ignore it since i read it in previously
+    my $line = <$pseudo_align>;
+    die "Error: something is wrong with the tsv file" if !$line;
+
+    #find the column positions of the strain names given as arguments
+    %strain_cols = find_strain_cols( \@$all_strains, \@$desired_strains );
+
+    print $outfile "Chromosome Name, Position, Base Pair,\n";
+    #go through each line of the file, looking for positions where
+    #the given strains differ from ervery other strain
+    while ( $line = <$pseudo_align> ) {
+        chomp $line;
+
+        my $valid_position;
+        my @bps = split( /\s/, $line );
+        my $bp_match;
+
+        #make sure the strain is valid
+        if ( $flag eq "false" or $bps[2] eq "valid" ) {
+
+            #see if the given strains match at this position
+            $bp_match = match_strains( \@bps, \%strain_cols, $flag );
+            if ($bp_match) {
+
+                #see what's going on with the other strains
+                my $position = check_other_strains( $bp_match, \%strain_cols, @bps);
+                if($position ne "")
+                {
+                	print $outfile $bps[0].",".$position.",''".$bp_match."',\n";
+                }
+            }
+         }
+    }
+
+    
+    close $pseudo_align;
 }
 
 #given an array that represents the first line of the tsv file, and an array containing
 #the strains given as arguments, this sub returns a hash containg the given strain names as
 #keys, and their column in the file as values
-sub find_strain_cols
-{
-	my $all_strains = $_[0];	
-	my $desired_strains = $_[1];
-	my %strain_cols;	
+sub find_strain_cols {
+    my $all_strains     = $_[0];
+    my $desired_strains = $_[1];
+    my %strain_cols;
 
-	foreach my $desired_strain (@$desired_strains)
-	{
-		for (my $i = 0; $i < scalar @$all_strains; $i++)
-		{
-			my $strain = @$all_strains[$i];
-			
-			if ($desired_strain eq $strain)
-			{
-				#get the column position of the desired strain in the tsv file
-                                $strain_cols{$desired_strain} = $i;
-			}
-		}
+    foreach my $desired_strain (@$desired_strains) {
+        for ( my $i = 0 ; $i < scalar @$all_strains ; $i++ ) {
+            my $strain = @$all_strains[$i];
 
-		#There was no matching strain in the tsv file
-		if (!$strain_cols{$desired_strain})
-		{
-			die "Error: $desired_strain is not a valid strain"
-		}
-	}
+            if ( $desired_strain eq $strain ) {
 
-	return %strain_cols;
-}
-
-sub match_strains
-{
-	my $bps = $_[0];
-	my $strain_cols = $_[1];
-	my $bp_match = "";
-
-	foreach my $col (values %$strain_cols)
-        {
-	        if ($bp_match eq "")
-                {
-	                $bp_match = @$bps[$col];
-                }
-                elsif ($bp_match ne @$bps[$col])
-                {
-			#think something buggy is going on here
-	                $bp_match = "";
-			last;
-                }
+                #get the column position of the desired strain in the tsv file
+                $strain_cols{$desired_strain} = $i;
+            }
         }
 
-	return $bp_match;
-}
-
-sub check_other_strains
-{
-	my $found_bp = $_[0];
-	shift @_;
-	my $strain_cols = $_[0];
-	shift @_;
-	my @bps = @_;
-	my $bps_ref;
-	my $no_match = "true";
-
-	$bps_ref = filter_cols($strain_cols, \@bps);
-
-	foreach my $other_bp(@$bps_ref)
-	{
-		if ($found_bp eq $other_bp)
-		{
-			$no_match = "";
-		}
-	}
-
-	if ($no_match)
-	{
-		my $valid_position = @$bps_ref[1];
-                print $valid_position."\n";
+        #There was no matching strain in the tsv file
+        if ( !$strain_cols{$desired_strain} ) {
+        	#$strain_cols{$desired_strain} = 4;	#column number from .tsv file
+            die "Error: $desired_strain is not a valid strain";
         }
+    }
+
+    return %strain_cols;
+}
+
+#given an array containing the contents of a line of the tsv file, and a hash containg
+#strain name/column position pairs, this sub checks the base pairs at the columns
+#specified, to see if they match or not. If they do, the matching base pair letter is returned.
+#If not, an empty string is returned.
+sub match_strains {
+    my $bps         = $_[0];
+    my $strain_cols = $_[1];
+    my $flag 		= $_[2];
+    my $bp_match    = "";
+
+    foreach my $col ( values %$strain_cols ) {
+    	#since we now allow for invalid rows to be included we have to make sure that we don't
+    	#accidently match 2 -'s or N's so if either var eq either of those, it can't be a match
+    	if(@$bps[$col] ne "-" and @$bps[$col] ne "N" and $bp_match ne "-" and $bp_match ne "N")
+    	{
+	        if ( $bp_match eq "") 
+	        {
+	            $bp_match = @$bps[$col];
+	        }
+	        elsif ( $bp_match ne @$bps[$col] ) {
+	            $bp_match = "";
+	            last;
+	        }
+    	}
+    	else
+    	{
+    		$bp_match = "";
+    		last;
+    	}
+    }
+
+    return $bp_match;
+}
+
+#checks the other stains besides the given matching strains,
+#to see if any of the other strains contain the same base pair
+#as the matching ones
+sub check_other_strains {
+    my $found_bp = $_[0];
+    shift @_;
+    my $strain_cols = $_[0];
+    shift @_;
+    my @bps = @_;
+    my @bps_ref;
+    my $no_match = "true";
+    my $valid_position = "";
+#remove the given strains from the bps array, so we can check the remaining strains
+    @bps_ref = filter_cols( $strain_cols, \@bps );
+
+    foreach my $other_bp (@bps_ref) {
+        if ( $found_bp eq $other_bp ) {
+            $no_match = "";
+        }
+    }
+
+    if ($no_match) {
+        $valid_position = $bps_ref[1];
+    }
+
+    return $valid_position;
+
 
 }
 
-sub filter_cols
+sub filter_cols {
+    my $strain_cols = $_[0];
+    my $bps         = $_[1];
+    my @col_positions;
+    my $index = 0;
+
+    #sort the column positions by reverse order,
+    #so when the @bps array is spliced, the column positions
+    #don't get all messed up
+    foreach my $col ( values %$strain_cols ) {
+        $col_positions[$index] = $col;
+        $index++;
+    }
+
+    @col_positions = sort { $b <=> $a } @col_positions;
+
+    foreach my $col (@col_positions) {
+        splice( @$bps, $col, 1 );
+    }
+
+    #splice( @$bps, 3, 1 );    #splice the reference column out
+    return @$bps;
+}
+
+sub index_of
 {
-	my $strain_cols = $_[0];
-	my $bps = $_[1];
-	my @col_positions;
+	my $target = $_[0];
+	my $list = $_[1];
+	my $found = -1;
 	my $index = 0;
-
-	#sort the column positions by reverse order,
-	#so when the @bps array is spliced, the column positions
-	#don't get all messed up
-	foreach my $col (values %$strain_cols)
+	foreach my $item (@$list)
 	{
-		$col_positions[$index] = $col;
+		if($target eq $item)
+		{
+			$found = $index;
+		}
 		$index++;
 	}
-
-	@col_positions = sort {$b <=> $a} @col_positions;
-
-	foreach my $col (@col_positions)
-	{
-		splice (@$bps, $col, 1);
-	}
-
-	splice (@$bps, 3, 1); #splice the reference column out
-
-	return $bps;
+	return $found;
 }
 
-sub check_inputs
-{
-	my $tsv;
+sub check_inputs {
+    my $tsv;
+    my $tree;
+    my $output;
+    my $flag;
+    my $help;
 
-	GetOptions ("tsv|t=s" => \$tsv);
+    GetOptions(
+        "tsv|t=s" => \$tsv,
+        "tree|p=s" => \$tree,
+        "valid|v=s" => \$flag,
+        "output|o=s" => \$output,
+        "help|h"  => \$help
+    );
 
-	if (!$tsv)
-	{
-		pod2usage(-verbose => 0);
-	}
+    if ($help) {
+        pod2usage(
+            -verbose  => 99,
+            -sections => "SYNOPSIS|OPTIONS|DESCRIPTION"
+        );
+    }
 
-	if (scalar @ARGV < 1)
-	{
-		die "Error: At least one strain must be provided as an argument";
-	}		
+    if ( !$tsv || !$tree ) {
+        pod2usage( -verbose => 1 );
+    }
 
-	return $tsv;
+    if( !$output )
+    {
+    	$output = "output";
+    }
+
+    if ( !$flag )
+    {
+    	$flag = "true";
+    }
+
+    return $tsv, $flag, $tree, $output;
 }
 
 =head1 NAME
@@ -190,14 +377,41 @@ Version 1.0
 
 =head1 SYNOPSIS
 
-filter_unique_basepairs.pl -t tsv_file I<strain 1> I<strain 2> ...
+filter_unique_basepairs.pl -t tsv_file -p phylotree.tre -v <optional> -o uniquepairs I<strain 1> I<strain 2> ... <optional>
 
--t
+=head1 OPTIONS
 
-        The tsv file containing the pseudoalignment
+=over
 
-strains
+=item B<-t>, B<--tsv>
 
-        The strains you wish to find unique basepairs in
+The tsv file containing the pseudoalignment
+
+=item B<-p>, B<--tree>
+
+The .tre file that contains the data for making the tree
+
+=item B<-v>, B<--valid>
+
+Boolean flag regarding the validity of a row. Default is true for high confidence (do not include flag). For all matches in including non-valid (low confidence) set flag to false.
+
+=item B<-o>, B<--output>
+
+The file the matching positions will be written to
+
+=item B<strains>
+
+The strains you wish to find unique basepairs in
+
+=back
+
+=head1 DESCRIPTION
+
+ filter_unique_basepairs determines at what positions in a pseudoalignment file for given number of strains have unique basepairs compared to the other strains in the file. 
+ If you wish to compare manually selected strains be sure to enter in each strain you wish to compare
+
+ The program will generate 2 files:
+ 1) a .tre files with clades labelled on the branches
+ 2) an output file which lists the unique base pairs found by the listed strains, if applicable, otherwise by clade.
 
 =cut
