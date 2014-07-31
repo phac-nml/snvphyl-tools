@@ -191,11 +191,11 @@ sub process_strains {
     my $strain = $desired_strains[0];
     
 
-    print $outfile "Chromosome_Name, Position, Change_BP";
+    print $outfile "Chromosome_Name, Position, Reference_BP, Alternate_BP";
     if ($snpeff_input_ref)
     {
          %snpeff_info = %{get_snpeff_info($snpeff_input_ref, \@desired_strains)};
-         print $outfile ",Ref_BP,Effect,Gene_Name,Old_AA/New_AA,Codon_Change,Coding,Impact,Funclass";
+         print $outfile ",Effect,Gene_Name,Old_AA/New_AA,Codon_Change,Coding,Impact,Funclass,Strand";
     }
     print $outfile "\n";
 
@@ -218,7 +218,7 @@ sub process_strains {
                 my $position = check_other_strains( $bp_match, \%strain_cols, @bps);
                 if($position ne "")
                 {
-                    print $outfile $bps[0].",".$position.",".$bp_match;
+                    print $outfile $bps[0].",".$position.",".$bps[3].",".$bp_match;
 
                      #User provided snpeff output, so let us print the extra info
                     if ($snpeff_input_ref)
@@ -226,13 +226,31 @@ sub process_strains {
                         #Is this bp same as the reference??
                         if ($bp_match eq $bps[3])
                         {
-                              print $outfile ",".$bps[3].",NO_CHANGE";
+                              print $outfile ",NO_CHANGE";
                         }
                         else
                         {
+                           my $strand = "";
+                           #Let us figure out the strand
+                           if ($snpeff_info{$strain}{$bps[0]}{$position}{'aa'})
+                           {
+                              my ($old_aa, $new_aa) = split /\//, $snpeff_info{$strain}{$bps[0]}{$position}{'aa'};
+                              $old_aa =~ s/[a-z]//g;
+                              $new_aa =~ s/[a-z]//g;
+                              
+                              if (($bps[3] eq $old_aa and $bp_match eq $new_aa))
+                              {
+                                 $strand = "+1";
+                              }
+                              elsif (is_complement($bps[3], $old_aa) and is_complement($bp_match, $new_aa))
+                              {
+                                 $strand = "-1";
+                              }
+                           }
+
                            if (exists($snpeff_info{$strain}{$bps[0]}{$position}) and $snpeff_info{$strain}{$bps[0]}{$position}{'alt'} eq $bp_match)
                            {
-                              print $outfile ",".$snpeff_info{$strain}{$bps[0]}{$position}{'ref'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'effect'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'gene'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'aa'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'codon'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'coding'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'impact'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'funclass'};
+                              print $outfile ",".$snpeff_info{$strain}{$bps[0]}{$position}{'effect'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'gene'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'aa'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'codon'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'coding'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'impact'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'funclass'}.",".$strand;
                            }
                            elsif ($snpeff_info{$strain}{$bps[0]}{$position}{'alt'} ne $bp_match)
                            {
@@ -250,6 +268,41 @@ sub process_strains {
             }
          } 
     }
+}
+
+sub is_complement
+{
+   my ($old, $new) = @_;
+   if (complement($old) eq $new)
+   {
+      return 1;
+   }
+   else
+   {
+      return 0;
+   }
+}
+
+sub complement
+{
+   my $aa = shift;
+   if ($aa eq "T")
+   {
+      return "A";
+   }
+   elsif ($aa eq "A")
+   {
+      return "T";
+   }
+   elsif ($aa eq "C")
+   {
+      return "G";
+   }
+   elsif ($aa eq "G")
+   {
+      return "C";
+   }
+
 }
 
 sub get_snpeff_info
