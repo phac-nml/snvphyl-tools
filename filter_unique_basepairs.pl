@@ -541,7 +541,8 @@ sub check_inputs {
          next if($file =~ /^\./);
          my $base = basename($file);
          (my $noext = $base) =~ s/\.[^.]+$//;
-         $vcf_formatted_input{$noext} = $file;
+         my $fullpath = $vcf_dir."/".$file;
+         $vcf_formatted_input{$noext} = $fullpath;
       }
     }
     else
