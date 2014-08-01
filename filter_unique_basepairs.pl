@@ -556,7 +556,7 @@ sub check_inputs {
 
     if ( !$clade_output)
     {
-      print "No output file name wad given. The clades tree will be written to 'clades.tre'.\n";
+      print "No output file name was given. The clades tree will be written to 'clades.tre'.\n";
       $clade_output = "clades.tre";
     }
 
