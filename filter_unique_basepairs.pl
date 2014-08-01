@@ -12,7 +12,7 @@ main( check_inputs() );
 
 sub main
 {
-    my ($tsv,$flag,$tree_file,$output, $clade_output, $snpeff_input_ref, @desired_strains) = @_;
+    my ($tsv,$flag,$tree_file,$output, $clade_output, $snpeff_input_ref, $quiet,  @desired_strains) = @_;
 
     my @strains= map_strains($tsv, $tree_file);
     my @tsv_array = get_all_positions($tsv);
@@ -34,7 +34,7 @@ sub main
   		  push(@desired, $strain);
 	    }
 	    print $outfile sprintf("Clade_".$index.":,\n");
-    	    process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref);
+    	    process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref, $quiet);
     	    print $outfile sprintf("Strains:, ("."@desired".")\n\n");
     	    print $outfile "--------------------------------------------------------------------------------------------\n\n";
     	    $index++;
@@ -47,7 +47,7 @@ sub main
             my @desired;
             push(@desired, $strains[$i]);
             print $outfile sprintf("Strains: ("."$strains[$i]".")\n");
-            process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref, $snpeff_input_ref);
+            process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref, $quiet);
             printf $outfile "\n\n";
             print $outfile "--------------------------------------------------------------------------------------------\n\n";
         }
@@ -55,7 +55,7 @@ sub main
     else
     {
          print $outfile sprintf("Strains: ("."@desired_strains".")\n");
-         process_strains(\@tsv_array, $outfile, \@desired_strains, $flag, \@strains, $snpeff_input_ref, $snpeff_input_ref);
+         process_strains(\@tsv_array, $outfile, \@desired_strains, $flag, \@strains, $snpeff_input_ref, $quiet);
 	 printf $outfile "\n\n";
 	 print $outfile "--------------------------------------------------------------------------------------------\n\n";
     }
@@ -180,7 +180,7 @@ sub get_clades_from_tree
 }
 
 sub process_strains {
-    my ($tsv_array, $outfile, $desired_strains_ref, $flag, $all_strains_ref, $snpeff_input_ref) = @_;
+    my ($tsv_array, $outfile, $desired_strains_ref, $flag, $all_strains_ref, $snpeff_input_ref, $quiet) = @_;
     my %strain_cols;
     my %snpeff_info;
     my @desired_strains = @{$desired_strains_ref};
@@ -194,7 +194,7 @@ sub process_strains {
     print $outfile "Chromosome_Name, Position, Reference_BP, Alternate_BP";
     if ($snpeff_input_ref)
     {
-         %snpeff_info = %{get_snpeff_info($snpeff_input_ref, \@desired_strains)};
+         %snpeff_info = %{get_snpeff_info($snpeff_input_ref, \@desired_strains, $quiet)};
          print $outfile ",Effect,Gene_Name,Old_AA/New_AA,Codon_Change,Coding,Impact,Funclass,Strand";
     }
     print $outfile "\n";
@@ -206,7 +206,7 @@ sub process_strains {
         my $bp_match;
 
         #make sure the strain is valid
-        if ( $flag eq "false" or $bps[2] eq "valid" ) 
+        if ( $flag  or $bps[2] eq "valid" ) 
         {
 
             #see if the given strains match at this position, Make sure that all strains in this clade all have the same bp at this location.
@@ -242,7 +242,7 @@ sub process_strains {
                               {
                                  $strand = "+1";
                               }
-                              elsif (is_complement($bps[3], $old_aa) and is_complement($bp_match, $new_aa))
+                              elsif ($bps[3] eq complement($old_aa) and $bp_match eq complement($new_aa))
                               {
                                  $strand = "-1";
                               }
@@ -270,44 +270,21 @@ sub process_strains {
     }
 }
 
-sub is_complement
-{
-   my ($old, $new) = @_;
-   if (complement($old) eq $new)
-   {
-      return 1;
-   }
-   else
-   {
-      return 0;
-   }
-}
 
 sub complement
 {
    my $aa = shift;
-   if ($aa eq "T")
-   {
-      return "A";
-   }
-   elsif ($aa eq "A")
-   {
-      return "T";
-   }
-   elsif ($aa eq "C")
-   {
-      return "G";
-   }
-   elsif ($aa eq "G")
-   {
-      return "C";
-   }
+   my %complement = ('T' => 'A',
+                     'A' => 'T',
+                     'G' => 'C',
+                     'C' => 'G' );
+   return $complement{$aa};
 
 }
 
 sub get_snpeff_info
 {
-      my ($snpeff_input_ref, $desired_strains_ref) = @_;
+      my ($snpeff_input_ref, $desired_strains_ref, $quiet) = @_;
       my %snpeff_input = %{$snpeff_input_ref};
       my @desired_strains = @{$desired_strains_ref};
       my %snpeff_info;
@@ -381,7 +358,7 @@ sub get_snpeff_info
                   }
                   if ($eff_index == -1)
                   {
-                        print "Error: No acceptable effect was found in the following entry in the file: $file. The first entry was arbitarily chosen for the output.\n$line\n";
+                        print "Error: No acceptable effect was found in the following entry in the file: $file. The first entry was arbitarily chosen for the output.\n$line\n" if !$quiet;
                         $eff_index = 0;
                   }
 
@@ -545,16 +522,18 @@ sub check_inputs {
     my %vcf_formatted_input;
     my @strains;
     my $clade_output;
+    my $quiet;
 
     GetOptions(
-        "tsv|t=s" => \$tsv,
-        "tree|p=s" => \$tree,
-        "valid|v=s" => \$flag,
-        "output|o=s" => \$output,
-        "clade|c=s"  => \$clade_output,
-        "vcf|f=s",   => \%vcf_input,
-        "strains|s=s" => \@strains,
+        "tsv|t=s"       => \$tsv,
+        "tree|p=s"      => \$tree,
+        "valid|v"       => \$flag,
+        "output|o=s"    => \$output,
+        "clade|c=s"     => \$clade_output,
+        "vcf|f=s",      => \%vcf_input,
+        "strains|s=s"   => \@strains,
         "directory|d=s" => \$vcf_dir,
+        "quiet|q"       => \$quiet,
         "help|h"  => \$help
     );
 
@@ -571,17 +550,14 @@ sub check_inputs {
 
     if( !$output )
     {
-    	$output = "output";
+        print "No output file name was given. The output will be written to 'output.csv'.\n";
+    	$output = "output.csv";
     }
 
     if ( !$clade_output)
     {
+      print "No output file name wad given. The clades tree will be written to 'clades.tre'.\n";
       $clade_output = "clades.tre";
-    }
-
-    if ( !$flag )
-    {
-    	$flag = "true";
     }
 
     if ($vcf_dir)
@@ -608,7 +584,7 @@ sub check_inputs {
       }
    }
 
-    return $tsv, $flag, $tree, $output, $clade_output, \%vcf_formatted_input,  @strains;
+    return $tsv, $flag, $tree, $output, $clade_output, \%vcf_formatted_input, $quiet,  @strains;
 }
 
 =head1 NAME
@@ -637,7 +613,7 @@ The .tre file that contains the data for making the tree
 
 =item B<-v>, B<--valid>
 
-Boolean flag regarding the validity of a row. Default is true for high confidence (do not include flag). For all matches in including non-valid (low confidence) set flag to false.
+Include all matches, including non-valid entries
 
 =item B<-o>, B<--output>
 
@@ -658,6 +634,10 @@ The strains you wish to find unique basepairs in
 =item B<-c>, B<--clade>
 
 The output name for the clades tree file produced
+
+=item B<-q>, B<--quiet>
+
+Suppress all warnings
 
 =back
 
