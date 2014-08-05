@@ -5,57 +5,61 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use Bio::TreeIO;
+use List::MoreUtils 'any';
+use File::Basename;
 
 main( check_inputs() );
 
 sub main
 {
-    my ($tsv,$flag,$tree_file,$output, @desired_strains) = @_;
-    $output = ">".$output;
+    my ($tsv,$flag,$tree_file,$output, $clade_output, $snpeff_input_ref, $quiet,  @desired_strains) = @_;
 
     my @strains= map_strains($tsv, $tree_file);
     my @tsv_array = get_all_positions($tsv);
 
-    open (my $outfile, $output);
+
+   my %snpeff_info;
+
+    open my $outfile, '>', $output or die "Could not open file for writing: $?";
 
     if(scalar @desired_strains == 0)
     {
-    	my %clades = make_tree_file_get_clades($tree_file);
+    	my %clades = make_tree_file_get_clades($tree_file, $clade_output);
     	my $index = 1;
     	foreach my $key ( keys %clades )
-		{
-			my @desired;
-    		for my $strain (@{$clades{"Clade_".$index}})
-    		{
-  				push(@desired, $strain);
-			}
-			print $outfile sprintf("Clade_".$index.":,\n");
-    		process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains);
-    		print $outfile sprintf("Strains:, ("."@desired".")\n\n");
-    		print $outfile "--------------------------------------------------------------------------------------------\n\n";
-    		$index++;
-		}	
+         {
+	    my @desired;
+    	    for my $strain (@{$clades{"Clade_".$index}})
+    	    {
+  		  push(@desired, $strain);
+	    }
+	    print $outfile sprintf("Clade_".$index.":,\n");
+    	    process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref, $quiet);
+    	    print $outfile sprintf("Strains:, ("."@desired".")\n\n");
+    	    print $outfile "--------------------------------------------------------------------------------------------\n\n";
+    	    $index++;
+	 }	
 
 
         print $outfile "\n\nIndividual Genome Comparisons:,\n";
         for my $i (3.. ( scalar @strains -1 ) )
-    {
+         {
             my @desired;
             push(@desired, $strains[$i]);
             print $outfile sprintf("Strains: ("."$strains[$i]".")\n");
-            process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains);
+            process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref, $quiet);
             printf $outfile "\n\n";
             print $outfile "--------------------------------------------------------------------------------------------\n\n";
         }
     }
     else
     {
-    	print $outfile sprintf("Strains: ("."@desired_strains".")\n");
-		process_strains(\@tsv_array, $outfile, \@desired_strains, $flag, \@strains);
-		printf $outfile "\n\n";
-		print $outfile "--------------------------------------------------------------------------------------------\n\n";
+         print $outfile sprintf("Strains: ("."@desired_strains".")\n");
+         process_strains(\@tsv_array, $outfile, \@desired_strains, $flag, \@strains, $snpeff_input_ref, $quiet);
+	 printf $outfile "\n\n";
+	 print $outfile "--------------------------------------------------------------------------------------------\n\n";
     }
-	close $outfile;
+   close $outfile;
 
 }
 
@@ -115,11 +119,11 @@ sub get_all_positions
 
 sub make_tree_file_get_clades
 {
-    my ($tree_in) = @_;
+    my ($tree_in, $clade_output) = @_;
 	my $index = 1;
 
 	my $tree = Bio::TreeIO->new(-format => 'newick', -file => $tree_in)->next_tree;
-	my $out = new Bio::TreeIO(-file => '>clades.tre', -format => 'newick');    
+	my $out = new Bio::TreeIO(-file => ">$clade_output", -format => 'newick');    
 
 
     for my $node ( $tree->get_nodes ) 
@@ -127,21 +131,21 @@ sub make_tree_file_get_clades
 	
     	if($node->id)
     	{
-			if($node->id =~ /^-?\d+\.?\d*$/ )
-			{
-				$node->id("Clade_".$index);
-				$index++;
-			}
-			else
-			{
-                my $id = $node->id;
-                $id =~ s/^'//;
-                $id =~ s/'$//;
-				#clean 's off the id
-				$node->id( $id );
-			}
-		}
-    }
+	       if($node->id =~ /^-?\d+\.?\d*$/ )
+	       {
+			$node->id("Clade_".$index);
+			$index++;
+	       }
+	       else
+	       {
+                        my $id = $node->id;
+                        $id =~ s/^'//;
+                        $id =~ s/'$//;
+			#clean 's off the id
+			$node->id( $id );
+	       }
+      }
+   }
 
     $out->write_tree($tree);
     my %clades = get_clades_from_tree($tree);
@@ -176,12 +180,25 @@ sub get_clades_from_tree
 }
 
 sub process_strains {
-    my ($tsv_array, $outfile, $desired_strains, $flag, $all_strains) = @_;
+    my ($tsv_array, $outfile, $desired_strains_ref, $flag, $all_strains_ref, $snpeff_input_ref, $quiet) = @_;
     my %strain_cols;
+    my %snpeff_info;
+    my @desired_strains = @{$desired_strains_ref};
+    my @all_strains = @{$all_strains_ref};
 
-    %strain_cols = find_strain_cols( \@$all_strains, \@$desired_strains );
+    %strain_cols = find_strain_cols( \@all_strains, \@desired_strains );
+    #Get any strain from this clade to be a representative
+    my $strain = $desired_strains[0];
+    
 
-    print $outfile "Chromosome Name, Position, Base Pair,\n";
+    print $outfile "Chromosome_Name, Position, Reference_BP, Alternate_BP";
+    if ($snpeff_input_ref)
+    {
+         %snpeff_info = %{get_snpeff_info($snpeff_input_ref, \@desired_strains, $quiet)};
+         print $outfile ",Effect,Gene_Name,Old_AA/New_AA,Codon_Change,Coding,Impact,Funclass,Strand";
+    }
+    print $outfile "\n";
+
     for my $i (0.. ( scalar @$tsv_array -1 ) )
     {
         my @bps = @{@$tsv_array[$i]};
@@ -189,23 +206,183 @@ sub process_strains {
         my $bp_match;
 
         #make sure the strain is valid
-        if ( $flag eq "false" or $bps[2] eq "valid" ) 
+        if ( $flag  or $bps[2] eq "valid" ) 
         {
 
-            #see if the given strains match at this position
+            #see if the given strains match at this position, Make sure that all strains in this clade all have the same bp at this location.
             $bp_match = match_strains( \@bps, \%strain_cols, $flag );
             if ($bp_match) 
             {
 
-                #see what's going on with the other strains
+                #see what's going on with the other strains. Make sure no one else outside this clade has the same bp
                 my $position = check_other_strains( $bp_match, \%strain_cols, @bps);
                 if($position ne "")
                 {
-                    print $outfile $bps[0].",".$position.",''".$bp_match."',\n";
+                    print $outfile $bps[0].",".$position.",".$bps[3].",".$bp_match;
+
+                     #User provided snpeff output, so let us print the extra info
+                    if ($snpeff_input_ref)
+                    {
+                        #Is this bp same as the reference??
+                        if ($bp_match eq $bps[3])
+                        {
+                              print $outfile ",NO_CHANGE";
+                        }
+                        else
+                        {
+                           my $strand = "";
+                           #Let us figure out the strand
+                           if ($snpeff_info{$strain}{$bps[0]}{$position}{'aa'})
+                           {
+                              my ($old_aa, $new_aa) = split /\//, $snpeff_info{$strain}{$bps[0]}{$position}{'aa'};
+                              $old_aa =~ s/[a-z]//g;
+                              $new_aa =~ s/[a-z]//g;
+                              
+                              if (($bps[3] eq $old_aa and $bp_match eq $new_aa))
+                              {
+                                 $strand = "+1";
+                              }
+                              elsif ($bps[3] eq complement($old_aa) and $bp_match eq complement($new_aa))
+                              {
+                                 $strand = "-1";
+                              }
+                           }
+
+                           if (exists($snpeff_info{$strain}{$bps[0]}{$position}) and $snpeff_info{$strain}{$bps[0]}{$position}{'alt'} eq $bp_match)
+                           {
+                              print $outfile ",".$snpeff_info{$strain}{$bps[0]}{$position}{'effect'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'gene'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'aa'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'codon'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'coding'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'impact'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'funclass'}.",".$strand;
+                           }
+                           elsif ($snpeff_info{$strain}{$bps[0]}{$position}{'alt'} ne $bp_match)
+                           {
+                              print $outfile ",ERROR_BP_DOES_NOT_MATCH_SNPEFF_OUTPUT Ref: $snpeff_info{$strain}{$bps[0]}{$position}{'alt'} and $bp_match";
+                           }
+                           else
+                           {
+                              print $outfile ",ERROR_SNP_NOT_FOUND_IN_SNPEFF_OUTPUT";
+                           }
+                        }
+                    }
+                    print $outfile "\n";
+
                 }
             }
          } 
     }
+}
+
+
+sub complement
+{
+   my $aa = shift;
+   my %complement = ('T' => 'A',
+                     'A' => 'T',
+                     'G' => 'C',
+                     'C' => 'G' );
+   return $complement{$aa};
+
+}
+
+sub get_snpeff_info
+{
+      my ($snpeff_input_ref, $desired_strains_ref, $quiet) = @_;
+      my %snpeff_input = %{$snpeff_input_ref};
+      my @desired_strains = @{$desired_strains_ref};
+      my %snpeff_info;
+
+      my @list_of_acceptable_effects = (  "INTERGENIC", "INTERGENIC_CONSERVED", "START_GAINED", 
+                                          "START_LOST", "SYNONYMOUS_START", "NON_SYNONYMOUS_START", 
+                                          "NON_SYNONYMOUS_CODING", "SYNONYMOUS_CODING", "STOP_GAINED", 
+                                          "SYNONYMOUS_STOP", "STOP_LOST");
+      my %hash_of_acceptable_effects = map {$_ => 1} @list_of_acceptable_effects;
+
+
+      foreach my $strain (@desired_strains)
+      {
+            next if (!(exists($snpeff_input{$strain})));
+            my $file = $snpeff_input{$strain};
+            
+            open my $in, "<", $file or die "Could not open VCF file: ($strain: $file) $?";
+
+            while (my $line = <$in>)
+            {
+                  #Skip the comments
+                  next if ($line =~ /^#/);
+                  chomp $line;
+                  
+                  #split the columns
+                  my @cols = split /\t/, $line;
+                  my $chromosome = $cols[0];
+                  my $position = $cols[1];
+                  my $reference = $cols[3];
+                  my $change = $cols[4];
+
+
+                  #Grab the EFF entry from the Info column in the VCF
+                  my $eff_index = -1;
+                  for my $i (0 .. scalar(@cols -1))
+                  {
+                        if ($cols[$i] =~ /EFF/)
+                        {
+                              $eff_index = $i;
+                              last;
+                        }
+                  }
+                  if ($eff_index == -1)
+                  {
+                        die "The VCF files are not properly annotated. Cannot find the EFF information. Make sure you give me the SnpEFF VCF output files\n $file: $line";
+                  }
+
+                  #Get the EFF entry
+                  my @eff = split /;/, $cols[$eff_index];
+
+                  #Split the EFF information
+                  my @all_effects = split /,/, $eff[35];
+
+                  #For now, this will only take the "acceptable effects" and there should not be multiple entries per strain.
+                  #In the future, we may want to show all effects, so the information is already here. 
+                  #If we have multiple entries, we'll get an "acceptable" effect to use
+
+                  $eff_index = -1;
+                  for my $x (0 .. scalar(@all_effects-1))
+                  {
+                        if ($all_effects[$x] =~ /EFF=/)
+                        {
+                              $all_effects[$x] =~ s/EFF=//;
+                        }
+                        my ($temp) = $all_effects[$x] =~ /(.+?)\(/;
+                        if (exists($hash_of_acceptable_effects{$temp}))
+                        {
+                           $eff_index = $x;
+                           last;
+                        }
+                  }
+                  if ($eff_index == -1)
+                  {
+                        print "Error: No acceptable effect was found in the following entry in the file: $file. The first entry was arbitarily chosen for the output.\n$line\n" if !$quiet;
+                        $eff_index = 0;
+                  }
+
+                  #extract info:
+                  my ($effect, $fields) = $all_effects[$eff_index] =~ /(.+?)\((.+?)\)/;
+                  my @sub_fields = split /\|/, $fields;
+         
+                  
+                  #Let's store the information we want
+                  $snpeff_info{$strain}{$chromosome}{$position}{'ref'} = $reference;
+                  $snpeff_info{$strain}{$chromosome}{$position}{'alt'} = $change;
+                  $snpeff_info{$strain}{$chromosome}{$position}{'gene'} = $sub_fields[5];
+                  $snpeff_info{$strain}{$chromosome}{$position}{'effect'} = $effect;
+                  $snpeff_info{$strain}{$chromosome}{$position}{'aa'} = $sub_fields[2];
+                  $snpeff_info{$strain}{$chromosome}{$position}{'codon'} = $sub_fields[3];
+                  $snpeff_info{$strain}{$chromosome}{$position}{'coding'} = $sub_fields[7];
+                  $snpeff_info{$strain}{$chromosome}{$position}{'impact'} = $sub_fields[0];
+                  $snpeff_info{$strain}{$chromosome}{$position}{'funclass'} = $sub_fields[1];
+            }
+
+            close $file;
+      }
+      
+      return \%snpeff_info;
 }
 
 #given an array that represents the first line of the tsv file, and an array containing
@@ -340,14 +517,23 @@ sub check_inputs {
     my $output;
     my $flag;
     my $help;
+    my $vcf_dir;
+    my %vcf_input;
+    my %vcf_formatted_input;
     my @strains;
+    my $clade_output;
+    my $quiet;
 
     GetOptions(
-        "tsv|t=s" => \$tsv,
-        "tree|p=s" => \$tree,
-        "valid|v=s" => \$flag,
-        "output|o=s" => \$output,
-        "strains|s=s" => \@strains,
+        "tsv|t=s"       => \$tsv,
+        "tree|p=s"      => \$tree,
+        "valid|v"       => \$flag,
+        "output|o=s"    => \$output,
+        "clade|c=s"     => \$clade_output,
+        "vcf|f=s",      => \%vcf_input,
+        "strains|s=s"   => \@strains,
+        "directory|d=s" => \$vcf_dir,
+        "quiet|q"       => \$quiet,
         "help|h"  => \$help
     );
 
@@ -364,15 +550,41 @@ sub check_inputs {
 
     if( !$output )
     {
-    	$output = "output";
+        print "No output file name was given. The output will be written to 'output.csv'.\n";
+    	$output = "output.csv";
     }
 
-    if ( !$flag )
+    if ( !$clade_output)
     {
-    	$flag = "true";
+      print "No output file name was given. The clades tree will be written to 'clades.tre'.\n";
+      $clade_output = "clades.tre";
     }
 
-    return $tsv, $flag, $tree, $output, @strains;
+    if ($vcf_dir)
+    {
+      opendir(DIR, $vcf_dir) or die "Could not open VCF directory: $?";
+      my @files = readdir(DIR);
+      closedir(DIR);
+      foreach my $file (@files)
+      {
+         next if($file =~ /^\./);
+         my $base = basename($file);
+         (my $noext = $base) =~ s/\.[^.]+$//;
+         my $fullpath = $vcf_dir."/".$file;
+         $vcf_formatted_input{$noext} = $fullpath;
+      }
+    }
+    else
+    {
+      foreach my $key (keys %vcf_input)
+      {
+         my $base = basename($key);
+         (my $noext = $base) =~ s/\.[^.]+$//;
+         $vcf_formatted_input{$noext} = $vcf_input{$key};
+      }
+   }
+
+    return $tsv, $flag, $tree, $output, $clade_output, \%vcf_formatted_input, $quiet,  @strains;
 }
 
 =head1 NAME
@@ -401,15 +613,31 @@ The .tre file that contains the data for making the tree
 
 =item B<-v>, B<--valid>
 
-Boolean flag regarding the validity of a row. Default is true for high confidence (do not include flag). For all matches in including non-valid (low confidence) set flag to false.
+Include all matches, including non-valid entries
 
 =item B<-o>, B<--output>
 
 The file the matching positions will be written to
 
-=item B<-s>, B<strains>
+=item B<-f>, B<--vcf>
+
+A VCF input file in the following format: strain_name=file_path
+
+=item B<-d>, B<--directory>
+
+A folder containing all of the tabular Snpeff outputs
+
+=item B<-s>, B<--strains>
 
 The strains you wish to find unique basepairs in
+
+=item B<-c>, B<--clade>
+
+The output name for the clades tree file produced
+
+=item B<-q>, B<--quiet>
+
+Suppress all warnings
 
 =back
 
