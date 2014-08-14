@@ -269,12 +269,13 @@ if ($invalid)
 my $tmp_dir = tempdir (CLEANUP => 1);
     
 #combine the mpileup and freebayes vcf files together
-my $files = combine_vcfs(\%vcf_files,\%mpileup_files, $coverage_cutoff,$invalid_pos,$bcftools,$tmp_dir,$requested_cpus);
+my $files = combine_vcfs(\%vcf_files,\%mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus);
 
 
 
 my $valid_positions = "$output_base/pseudoalign-positions.tsv";
-my $ya = filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
+
+filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
 
 
 
@@ -434,7 +435,7 @@ exit;
 
 
 sub combine_vcfs{
-    my ($vcf_files,$mpileup_files, $coverage_cutoff,$invalid_pos,$bcftools,$tmp_dir,$cpus) = @_;
+    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus) = @_;
 
     my %files;
 
@@ -469,7 +470,6 @@ sub combine_vcfs{
 
         my ($cmd,$status);
         
-        
         my $file_name = "$tmp_dir/$sample" . "_combined.vcf.gz";
 
         my ($dir) = "$tmp_dir/$sample" . '_answer';
@@ -481,7 +481,6 @@ sub combine_vcfs{
         #so if mpileup had NC_007530.2|668709 . T     G,A
         #it will map to a freebayes with
         #                  NC_007530.2|668709 . T     G
-        #$cmd = "$bcftools  isec $f_file $ready_mpileup -p $dir -c some -O z";
         $cmd = "$bcftools  isec $f_file $m_file -p $dir -c some -O b";
         $status = system($cmd);
 
@@ -509,9 +508,17 @@ sub combine_vcfs{
 
         #get the fake merge vcf header
         my $header = $FindBin::Bin . '/fake_vcf_header/header';
+        my $bottom_header = $FindBin::Bin . '/fake_vcf_header/bottom_header';
+
+        #need to add header specific reference in the vcf files
+        #need a better solution!
+        $cmd = "zgrep '##contig' $m_file > $dir/contigs";
+        $status = system($cmd);
+        $cmd = "cat $header $dir/contigs $bottom_header > $dir/header";
+        $status = system($cmd);
+        ######
         
-        
-        $cmd = "$bcftools  merge -O z  --use-header $header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name 2>/dev/null";
+        $cmd = "$bcftools  merge -O z  --use-header $dir/header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name 2>/dev/null";
 
         $status = system($cmd);
         

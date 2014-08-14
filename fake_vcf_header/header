@@ -45,7 +45,6 @@
 ##FORMAT=<ID=QR,Number=1,Type=Integer,Description="Sum of quality of the reference observations">
 ##FORMAT=<ID=AO,Number=A,Type=Integer,Description="Alternate allele observation count">
 ##FORMAT=<ID=QA,Number=A,Type=Integer,Description="Sum of quality of the alternate observations">
-##contig=<ID=08-5578v3,length=2147483647>
 ##bcftools_isecVersion=0.2.0-rc10-22-g5d5f886+htslib-0.2.0-rc10-9-gc95dbc5
 ##bcftools_isecCommand=isec -p 02-5993_answer -c some -O z /BADD/public/temporary/test_core_rerun_pipeline/vcf-split/02-5993.vcf.gz /BADD/public/temporary/test_core_rerun_pipeline/mpileup/02-5993.vcf.gz
 ##FILTER=<ID=filtered-coverage,Description="Minimum coverage of 15 reads">
@@ -58,8 +57,6 @@
 ##FILTER=<ID=PASS,Description="All filters passed">
 ##samtoolsVersion=0.1.19-44428cd
 ##reference=file:///BADD/public/temporary/test_core_rerun_pipeline/reference/02-5993.08-5578v3_w_plasmid.fasta
-##contig=<ID=08-5578v3,length=3032624>
-##contig=<ID=plm08-5578edit,length=77105>
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Raw read depth">
 ##INFO=<ID=DP4,Number=4,Type=Integer,Description="# high-quality ref-forward bases, ref-reverse, alt-forward and alt-reverse bases">
 ##INFO=<ID=MQ,Number=1,Type=Integer,Description="Root-mean-square mapping quality of covering reads">
@@ -100,4 +97,3 @@
 ##bcftools_filterCommand=filter -i DP>=15 -s filtered-coverage -m + -O z 02-5993_answer/beer.vcf.gz
 ##bcftools_annotateVersion=0.2.0-rc10-22-g5d5f886+htslib-0.2.0-rc10-9-gc95dbc5
 ##bcftools_annotateCommand=annotate -x FORMAT -O z 02-5993_answer/filtered_mpileup.vcf.gz
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	/BADD/public/temporary/test_core_rerun_pipeline/bam/02-5993.bam
