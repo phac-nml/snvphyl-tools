@@ -470,7 +470,7 @@ sub combine_vcfs{
         my ($cmd,$status);
         
         
-        my $file_name = "$tmp_dir/$sample" . "_combined.vcf";
+        my $file_name = "$tmp_dir/$sample" . "_combined.vcf.gz";
 
         my ($dir) = "$tmp_dir/$sample" . '_answer';
 
@@ -482,12 +482,12 @@ sub combine_vcfs{
         #it will map to a freebayes with
         #                  NC_007530.2|668709 . T     G
         #$cmd = "$bcftools  isec $f_file $ready_mpileup -p $dir -c some -O z";
-        $cmd = "$bcftools  isec $f_file $m_file -p $dir -c some -O z";
+        $cmd = "$bcftools  isec $f_file $m_file -p $dir -c some -O b";
         $status = system($cmd);
 
 
         #filter with C complied nml specific filtering, also removing all information in FORMAT column, otherwise we cannot merge farther down
-        $cmd = "$bcftools  annotate -x FORMAT -p filter_mpileup:dp=$coverage_cutoff $dir/0001.vcf.gz -O z  > $dir/filtered_mpileup.vcf.gz";
+        $cmd = "$bcftools  annotate -x FORMAT -p filter_mpileup:dp=$coverage_cutoff $dir/0001.bcf -O b  > $dir/filtered_mpileup.bcf";
         $status = system($cmd);
 
         
@@ -495,45 +495,32 @@ sub combine_vcfs{
         #also filter by MQM flag = minumum mean mapping quality with > 30
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  annotate -x FORMAT -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.vcf.gz -O z  > $dir/filtered_freebayes.vcf.gz";
+        $cmd = "$bcftools  annotate -x FORMAT -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.bcf -O b  > $dir/filtered_freebayes.bcf";
         $status = system($cmd);
         
         
-        
-        #combine header but ignore GL tag for freebayes
-        # $cmd = "zgrep '#' $dir/finish_freebayes.vcf.gz | grep -e '=GL' -e 'CHROM' -v | tail -n+5 > $dir/header_1";
-        # $status = system($cmd);
 
-        # $cmd = "zgrep '#' $dir/finish_mpileup.vcf.gz> $dir/header_2";
-        # $status = system($cmd);
-
-        # $cmd = "cat $dir/header_1 $dir/header_2 > $dir/header";
-        # $status = system($cmd);
-
-
-        $cmd = "$bcftools index -f $dir/filtered_freebayes.vcf.gz";
+        $cmd = "$bcftools index  $dir/filtered_freebayes.bcf";
         $status = system($cmd);
 
 
-        $cmd = "$bcftools index -f $dir/filtered_mpileup.vcf.gz";
+        $cmd = "$bcftools index  $dir/filtered_mpileup.bcf";
         $status = system($cmd);
 
         #get the fake merge vcf header
         my $header = $FindBin::Bin . '/fake_vcf_header/header';
         
         
-        $cmd = "$bcftools  merge --use-header $header $dir/filtered_freebayes.vcf.gz $dir/filtered_mpileup.vcf.gz > $file_name 2>/dev/null";
+        $cmd = "$bcftools  merge -O z  --use-header $header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name 2>/dev/null";
 
         $status = system($cmd);
         
-        #bgzip up and then index
-        `bgzip $file_name`;
-        my $bgzip = $file_name . ".gz";
+        $cmd = "$bcftools index -t -f $file_name";
+        $status = system($cmd);
         
-        `$bcftools index -t -f $bgzip`;
-
+        
         rmtree $dir;
-        $pm->finish(0,{"$sample" =>$bgzip});        
+        $pm->finish(0,{"$sample" =>$file_name});        
 
     
     
