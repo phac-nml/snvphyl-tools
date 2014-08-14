@@ -118,7 +118,7 @@ for (my $i = 0; $i < @strains; $i++)
 $align->sort_alphabetically;
 
 # build alignment
-my $io = Bio::AlignIO->new(-file => ">$output", -format => $format);
+my $io = Bio::AlignIO->new(-file => ">$output", -format => $format,-idlength=>30);
 die "Error: could not create Align::IO object" if (not defined $io);
 
 die "Error: alignment not flush" if (not $align->is_flush);

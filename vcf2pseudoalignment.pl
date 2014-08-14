@@ -275,18 +275,28 @@ my $files = combine_vcfs(\%vcf_files,\%mpileup_files, $coverage_cutoff,$bcftools
 
 my $valid_positions = "$output_base/pseudoalign-positions.tsv";
 
+
+#create pseudo-positions.tsv file
 filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
 
+#create alignment files
+for my $format (@formats)
+{
+    my $output_file = "$output_base/pseudoalign.".$valid_formats{$format};
+    print STDERR "Alignment written to $output_file\n";
+    my $cmd = "$FindBin::Bin/positions2pseudoalignment.pl -i $valid_positions -f $format --reference-name $reference -o $output_file";
+    print "$cmd\n";
+    my $status = system($cmd);
+}
 
 
 
-
-my @samples_list = sort {$a cmp $b } keys %vcf_files;
+#my @samples_list = sort {$a cmp $b } keys %vcf_files;
 # my %chromosome_align;
 # my $unique_count = 1;
 # my %name_map; # used to map sample name to other information
 # my %sample_map; # keeps track of which samples have which unique ids (so we can properly increment unique_count)
-my %total_positions_map; # keep track of total positions, and if valid/not
+#my %total_positions_map; # keep track of total positions, and if valid/not
 # for my $chromosome (keys %$vcf_data)
 # {
 # 	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous);
@@ -388,43 +398,6 @@ my %total_positions_map; # keep track of total positions, and if valid/not
 # 	print "$name\t",$name_map{$name},"\n";
 # }
 
-
-    
-
-# open(my $vfh, ">$valid_positions") or die "Could not open $valid_positions: $!";
-# print $vfh "#Chromosome\tPosition\tStatus\tReference\t";
-# my @samples_sorted_list = sort {$a cmp $b} @samples_list;
-# print $vfh join("\t",@samples_sorted_list);
-# print $vfh "\n";
-# for my $chr (keys %total_positions_map)
-# {
-# 	my $positions = $total_positions_map{$chr};
-# 	for my $pos (sort {$a <=> $b} keys %$positions)
-# 	{
-# 		my $samples = $positions->{$pos}->{'samples'};
-# 		my $ref = $positions->{$pos}->{'ref'};
-# 		print $vfh "$chr\t$pos\t".$positions->{$pos}->{'status'}."\t$ref\t";
-# 		my $first = 1;
-# 		die "error in total_positions_map, for $chr:$pos, not enough sample entries" if (@samples_sorted_list != scalar(keys %$samples));
-# 		my $id = 0;
-# 		for my $sample (sort {$a cmp $b } keys %$samples)
-# 		{
-# 			die "error: sample name $sample different from ".$samples_sorted_list[$id] if ($samples_sorted_list[$id] ne $sample);
-# 			if ($first)
-# 			{
-# 				$first = 0;
-# 				print $vfh $samples->{$sample};
-# 			}
-# 			else
-# 			{
-# 				print $vfh "\t".$samples->{$sample};
-# 			}
-# 			$id++;
-# 		}
-# 		print $vfh "\n";
-# 	}
-# }
-# close($vfh);
 
 
 
