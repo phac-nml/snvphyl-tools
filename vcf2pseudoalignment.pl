@@ -438,11 +438,6 @@ sub combine_vcfs{
 
     my %files;
 
-    
-    
-    if (1) {
-        
-
     my $pm;
     my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
     chomp $num_cpus;
@@ -491,7 +486,7 @@ sub combine_vcfs{
         $status = system($cmd);
 
 
-        #filter with C complied nml specific filtering
+        #filter with C complied nml specific filtering, also removing all information in FORMAT column, otherwise we cannot merge farther down
         $cmd = "$bcftools  annotate -x FORMAT -p filter_mpileup:dp=$coverage_cutoff $dir/0001.vcf.gz -O z  > $dir/filtered_mpileup.vcf.gz";
         $status = system($cmd);
 
@@ -503,14 +498,6 @@ sub combine_vcfs{
         $cmd = "$bcftools  annotate -x FORMAT -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.vcf.gz -O z  > $dir/filtered_freebayes.vcf.gz";
         $status = system($cmd);
         
-        
-        
-        #get rid of extra columns which causes issues when merging the vcf together
-        # $cmd = "$bcftools  annotate -x FORMAT $dir/filtered_freebayes.vcf.gz -O z > $dir/finish_freebayes.vcf.gz";
-        # $status = system($cmd);
-
-        # $cmd = "$bcftools  annotate -x FORMAT $dir/filtered_mpileup.vcf.gz -O z > $dir/finish_mpileup.vcf.gz";
-        # $status = system($cmd);
         
         
         #combine header but ignore GL tag for freebayes
@@ -531,7 +518,11 @@ sub combine_vcfs{
         $cmd = "$bcftools index -f $dir/filtered_mpileup.vcf.gz";
         $status = system($cmd);
 
-        $cmd = "$bcftools  merge --use-header /BADD/public/temporary/header_working $dir/filtered_freebayes.vcf.gz $dir/filtered_mpileup.vcf.gz > $file_name";
+        #get the fake merge vcf header
+        my $header = $FindBin::Bin . '/fake_vcf_header/header';
+        
+        
+        $cmd = "$bcftools  merge --use-header $header $dir/filtered_freebayes.vcf.gz $dir/filtered_mpileup.vcf.gz > $file_name 2>/dev/null";
 
         $status = system($cmd);
         
@@ -549,8 +540,6 @@ sub combine_vcfs{
     }
     
     $pm->wait_all_children;
-
-} # skip stage
 
     return \%files;
 }
