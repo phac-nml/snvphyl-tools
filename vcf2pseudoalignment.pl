@@ -7,17 +7,22 @@ use warnings;
 use strict;
 use FindBin;
 use lib $FindBin::Bin.'/lib';
+use lib $FindBin::Bin;
 use Getopt::Long;
-use Storable qw /dclone store retrieve/;
 use File::Basename;
 use Parallel::ForkManager;
-
+use Streaming;
 use Bio::AlignIO;
+use Bio::SeqIO;
 use Bio::SimpleAlign;
 # VCF module from vcftools: http://vcftools.sourceforge.net/index.html
 use Vcf;
 use File::Temp qw /tempdir/;
 use InvalidPositions;
+use List::MoreUtils qw/all any firstidx/;
+use File::Path qw /rmtree /;
+
+
 
 my $verbose;
 my $unknown_base = 'N';
@@ -96,463 +101,7 @@ sub variant_info_to_hash
 	return \%info_hash;
 }
 
-# Parses position data structure (for a single chromosome) and builds alignment.
-# Input:  positions_hash  The hash of all positions of variants
-#	  samples_list  A list of all sample names to proccess
-# Output:  An alignment of all valid variant positions (in FASTA format)
-sub variants_alignment
-{
-	my ($positions_hash, $chromosome, $reference, $samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous) = @_;
-	my $alignment_string = undef;
 
-	# stores pseudoalignment in form of
-	# {sample => {alignment => 'string', positions => [pos array]}}
-	my %alignment;
-
-	# for printing out list of valid/excluded positions
-	# form of {pos => {status => valid/invalid, ref => 'base', 'samples' => {sample => 'base'}}}
-	my $total_positions = {};
-	for my $sample (@$samples_list)
-	{
-		$alignment{$sample} = {'alignment' => '', 'positions' => []};
-	}
-
-	# add alignment string for reference
-	$alignment{$reference} = {'alignment' => '', 'positions' => []};
-
-	for my $pos (sort {$a <=> $b} keys %$positions_hash)
-	{
-		my $sample_hash = $positions_hash->{$pos};
-		my @sample_hash_list = keys %$sample_hash;
-		my $first_sample = $sample_hash->{$sample_hash_list[0]};
-		my $ref_base = $first_sample->{'ref'}; # get reference base
-		$total_positions->{$pos} = {'ref' => $ref_base} if (not defined $total_positions->{$pos});
-
-		# check for which samples have no variant called in this position
-		my $alignment_local = {};
-		for my $sample (@$samples_list)
-		{
-			# get data for aligment we are building
-			if (not exists $sample_hash->{$sample})
-			{
-				# check for samtools mpileup of this position
-				my $pileup_vcf = $mpileup_data->{$sample}->{$chromosome}->{$pos};
-				if (not defined $pileup_vcf)
-				{
-					print STDERR "fail for $sample:$chromosome:$pos, mpileup(coverage) not defined\n" if ($verbose);
-					$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
-					$snp_info->{'snps'}->{'filtered-coverage'}++;
-
-					$total_positions->{$pos}->{'samples'}->{$sample} = '-';
-					my $is_valid = $total_positions->{$pos}->{'status'};
-					if (not defined $is_valid or $is_valid eq 'valid')
-					{
-						$total_positions->{$pos}->{'status'} = 'filtered-coverage';
-					}
-				}
-				else
-				{
-					my $ref = $pileup_vcf->{'ref'};
-					my $alt = $pileup_vcf->{'alt'};
-					my $coverage = $pileup_vcf->{'cov'};
-
-					if (not defined $coverage)
-					{
-						die "Error: mpileup coverage not defined for sample $sample:$chromosome:$pos\n";
-					}
-					elsif (not defined $alt)
-					{
-						die "Error: mpileup for $sample:$chromosome:$pos, alt not defined\n" if ($verbose);
-					}
-					elsif (not defined $ref)
-					{
-						die "Error: mpileup for $sample:$chromosome:$pos, ref not defined\n" if ($verbose);
-					}
-					elsif ($coverage < $coverage_cutoff)
-					{
-						print STDERR "fail for $sample:$chromosome:$pos, coverage=$coverage < cutoff=$coverage_cutoff\n" if ($verbose);
-						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
-						$snp_info->{'snps'}->{'filtered-coverage'}++;
-
-						$total_positions->{$pos}->{'samples'}->{$sample} = '-';
-						my $is_valid = $total_positions->{$pos}->{'status'};
-						if (not defined $is_valid or $is_valid eq 'valid')
-						{
-							$total_positions->{$pos}->{'status'} = 'filtered-coverage';
-						}
-					}
-					elsif ($alt ne '.')
-					{
-						print STDERR "fail for $sample:$chromosome:$pos, mpileup data gives alt=$alt (ref=$ref), but no variant called from vcf data\n" if ($verbose);
-						$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
-						$snp_info->{'snps'}->{'filtered-mpileup'}++;
-
-						$total_positions->{$pos}->{'samples'}->{$sample} = $unknown_base;
-						my $is_valid = $total_positions->{$pos}->{'status'};
-						if (not defined $is_valid or $is_valid eq 'valid')
-						{
-							$total_positions->{$pos}->{'status'} = 'filtered-mpileup';
-						}
-					}
-					elsif ($invalid_pos && exists $invalid_pos->{"${chromosome}_${pos}"} ) 
-					{
-					    print STDERR "fail for $sample:$chromosome:$pos, position is invalid due to invalid position file provided by operator\n" if ($verbose);
-					    $snp_info->{'snps'}->{'filtered-invalid'}++;
-
-					    $total_positions->{$pos}->{'samples'}->{$sample} = $ref_base;
-					    $total_positions->{$pos}->{'status'} = 'filtered-invalid';
-					}
-					else
-					{
-						print STDERR "pass for $sample:$chromosome:$pos, coverage=$coverage > cutoff=$coverage_cutoff and no variant called from mpileup data (alt=$alt, ref=$ref)\n" if ($verbose);
-						$alignment_local->{$sample} = {'base' => $ref_base, 'position' => $pos};
-
-						$snp_info->{'snps'}->{'kept'}++;
-						$total_positions->{$pos}->{'samples'}->{$sample} = $ref_base;
-						my $is_valid = $total_positions->{$pos}->{'status'};
-						if (not defined $is_valid)
-						{
-							$total_positions->{$pos}->{'status'} = 'valid';
-						}
-					}
-				}
-			}
-			else
-			{
-				my $pileup_vcf = $mpileup_data->{$sample}->{$chromosome}->{$pos};
-				die "Error: mpileup for $sample:$chromosome:$pos not defined, but position called in other alignment software" if (not defined $pileup_vcf);
-				my $coverage = $pileup_vcf->{'cov'};
-				die "Error: position defined, but coverage in mpileup for $sample:$chromosome:$pos not defined\n" if (not defined $coverage or $coverage !~ /^\d+$/);
-				if ($coverage < $coverage_cutoff)
-				{
-					print STDERR "fail for $sample:$chromosome:$pos, coverage=$coverage < cutoff=$coverage_cutoff\n" if ($verbose);
-					$alignment_local->{$sample} = {'base' => $unknown_base, 'position' => $pos};
-					$snp_info->{'snps'}->{'filtered-coverage'}++;
-
-					$total_positions->{$pos}->{'samples'}->{$sample} = '-';
-					my $is_valid = $total_positions->{$pos}->{'status'};
-					if (not defined $is_valid or $is_valid eq 'valid')
-					{
-						$total_positions->{$pos}->{'status'} = 'filtered-coverage';
-					}
-				}
-				elsif ($invalid_pos && exists $invalid_pos->{"${chromosome}_${pos}"} ) 
-				{
-				    print STDERR "fail for $sample:$chromosome:$pos, position is invalid due to invalid position file provided by operator\n" if ($verbose);
-				    $snp_info->{'snps'}->{'filtered-invalid'}++;
-				    
-				    $total_positions->{$pos}->{'samples'}->{$sample} = $sample_hash->{$sample}->{'alt'};
-				    $total_positions->{$pos}->{'status'} = 'filtered-invalid';
-				}
-				else
-				{
-					$alignment_local->{$sample} = {'base' => $sample_hash->{$sample}->{'alt'}, 'position' => $pos};
-					$snp_info->{'snps'}->{'kept'}++;
-					$total_positions->{$pos}->{'samples'}->{$sample} = $sample_hash->{$sample}->{'alt'};
-					my $is_valid = $total_positions->{$pos}->{'status'};
-					if (not defined $is_valid)
-					{
-						$total_positions->{$pos}->{'status'} = 'valid';
-					}
-				}
-			}
-		}
-
-		# fill in overall data structure
-		if (($keep_ambiguous or $total_positions->{$pos}->{'status'} eq 'valid')
-			 and $total_positions->{$pos}->{'status'} ne 'filtered-invalid')
-		{
-			for my $sample (keys %$alignment_local)
-			{
-				my $base = $alignment_local->{$sample}->{'base'};
-				my $pos = $alignment_local->{$sample}->{'position'};
-
-				my $alignment_sample = $alignment{$sample};
-
-				$alignment_sample->{'alignment'} .= $base;
-				push(@{$alignment_sample->{'positions'}}, $pos);
-			}
-
-			# fill in data for reference
-			$alignment{$reference}->{'alignment'} .= $ref_base;
-			push(@{$alignment{$reference}->{'positions'}}, $pos);
-		}
-		else
-		{
-			print STDERR "skipping over position $chromosome:$pos with status ".$total_positions->{$pos}->{'status'}."\n" if ($verbose);
-		}
-	}
-
-
-	return (\%alignment,$total_positions);
-}
-
-# parse_variants
-# Purpose: parses variant files and fills in data stucture.
-# data structure stores data in format given below
-# 'chrom' => { position => { sample_name => 
-#			{ ref => ref_base, alt => alt_base}
-#		   }
-#	     }
-#
-# Input: vcf_files  A hash giving the vcf files to parse
-# Output:  A reference to the vcf_data structure
-sub parse_variants
-{
-	my ($vcf_files,$requested_cpus) = @_;
-        
-         my $pm;
-         my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
-         chomp $num_cpus;
-         #ensure that you user cannot request more threads then CPU on the machine
-         if ( $requested_cpus > $num_cpus) {
-             $requested_cpus = $num_cpus;
-         }
-         my %list;
-        
-         $pm=Parallel::ForkManager->new($requested_cpus);
-         # data structure retrieval and handling
-          $pm -> run_on_finish ( # called BEFORE the first call to start()
-              sub {
-                  my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
-                  # retrieve data structure from child
-                  if (defined($child_data)) {  # children are forced to send anything
-                      my ($single_key) = keys %{$child_data};
-                      $list{$single_key} = $child_data->{$single_key};
-                  } else {
-                      die "One or more mpileup file did not produce any data!\n";
-                  }
-              }
-          );
-
-        #creating temporary directory on local machine to store results from each child.
-        my $tmpdir = tempdir( CLEANUP => 1 );
-
-	my %vcf_data;
-	for my $vcf_key (keys %$vcf_files)
-	{
-                $pm->start and next;
-                my %vcf_data;
-		my $vcf_file = $vcf_files->{$vcf_key};
-
-		print STDERR "Working on $vcf_file\n" if ($verbose);
-		my $vcf = Vcf->new(file => $vcf_file);
-		$vcf->parse_header();
-		while (my $data = $vcf->next_data_array)
-		{
-			if (@$data <= 4)
-			{
-				die "Not enough information for vcf file $vcf_file, line ".join(' ',@$data);
-			}
-			else
-			{
-				my $chrom = $data->[0];
-				my $position = $data->[1];
-				my $ref = $data->[3];
-				my $alt = $data->[4];
-	
-				$snp_info->{'total'}++;
-				# check for indel/multi-snp
-				# case: multi-snp
-				if ((length($ref) > 1) and length($ref) eq length($alt))
-				{
-                                        #print STDERR "multi variant region found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
-					$snp_info->{'removed'}->{'multi'}++;
-				}
-				elsif (length($ref) > 1 and length($ref) < length($alt))
-				{
-					#print STDERR "length($ref) > 1 and length($ref) < length($alt) in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
-					$snp_info->{'removed'}->{'other'}++;
-				}
-				elsif (length($ref) > 1) # deletion in query strain
-				{
-					$snp_info->{'removed'}->{'deletions'}++;
-					#print STDERR "deletion found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
-				}
-				elsif (length($alt) > 1) # insertion in query strain
-				{
-					$snp_info->{'removed'}->{'insertions'}++;
-					#print STDERR "insertion found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
-				}
-				elsif((length($alt) == 1) and length($ref) == 1) # SNP
-				{
-					#print STDERR "for file $vcf_file, keeping variant \"".join(' ',@$data),"\"\n" if ($verbose);
-					my $chrom_hash;
-					if (not exists $vcf_data{$chrom})
-					{
-						$chrom_hash = {};
-						$vcf_data{$chrom} = $chrom_hash;
-					}
-					else
-					{
-						$chrom_hash = $vcf_data{$chrom};
-					}
-		
-					my $position_hash;
-					if (not exists $chrom_hash->{$position})
-					{
-						$position_hash = {};
-						$chrom_hash->{$position} = $position_hash;
-						$snp_info->{'positions'}++;
-					}
-					else
-					{
-						$position_hash = $chrom_hash->{$position};
-					}
-		
-					die "Error: duplicate position $position for vcf file $vcf_file" if (exists $position_hash->{$vcf_key});
-					$position_hash->{$vcf_key} = {'ref' => $ref, 'alt' => $alt};
-				}
-				else # any other case?
-				{
-					#print STDERR "invalid lengths for ref and query found in $vcf_file, skipping: \"".join(' ',@$data),"\"\n" if ($verbose);
-					$snp_info->{'removed'}->{'other'}++;
-				}
-
-			}
-                    }
-                
-
-                #storing
-                #should be a single key only since we having one iteration per thread
-                store \%vcf_data, "$tmpdir/$vcf_key";
-                $pm->finish(0,{$vcf_key=>"$tmpdir/$vcf_key"});
-            }
-        
-        $pm->wait_all_children;
-        
-        #read all the files from dir storable into %vcf_data and go on!
-        foreach my $vcf_key( keys %list) {
-            my $data = retrieve($list{$vcf_key});
-            #go thru each chromsome and add the sample
-            foreach my $chrom (keys %$data ) {
-                foreach my $position(keys %{$data->{$chrom}} ) {
-                    $vcf_data{$chrom}{$position}{$vcf_key} = $data->{$chrom}{$position}{$vcf_key};
-                }
-
-            }
-
-        }
-        
-
-	return \%vcf_data;
-}
-
-sub parse_mpileup
-{
-	my ($mpileup_files, $vcf_data,$requested_cpus) = @_;
-	# vcf_data is hash constructed from parse_variants
-	# converts to a positions_hash mapping 'chrom' => {'pos' => undef} for all positions
-	my $positions_hash = {};
-	for my $chr (keys %$vcf_data)
-	{
-		my $chr_hash = $vcf_data->{$chr};
-		my $new_chr_hash = {};
-		for my $pos (keys %$chr_hash)
-		{
-			$new_chr_hash->{$pos} = undef;
-		}
-		$positions_hash->{$chr} = $new_chr_hash;
-	}
-	# positions_hash gets cloned and filled in for every sample
-	# fills in to 'chrom' => {'pos' => vcf-info/undef}
-
-	my %sample_pileup_hash;
-        my %list;
-        
-        my $pm;
-        my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
-        chomp $num_cpus;
-        #ensure that you user cannot request more threads then CPU on the machine
-        if ( $requested_cpus > $num_cpus) {
-            $requested_cpus = $num_cpus;
-            
-        }
-        $pm=Parallel::ForkManager->new($requested_cpus);
-        # data structure retrieval and handling
-         $pm -> run_on_finish ( # called BEFORE the first call to start()
-             sub {
-                 my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
-                 # retrieve data structure from child
-                 if (defined($child_data)) {  # children are forced to send anything
-                     my ($single_key) = keys %{$child_data};
-                     $list{$single_key} = $child_data->{$single_key};
-                 } else {
-                     die "One or more mpileup file did not produce any data!\n";
-                 }
-             }
-         );
-
-        #creating temporary directory on local machine to store results from each child.
-        my $tmpdir = tempdir( CLEANUP => 1 );
-        
-	# read through each vcf file
-	# place into mpileup_hash, keeping only vcf lines necessary (in sorted_positions)
-
-	for my $sample (keys %$mpileup_files)
-	{
-                $pm->start and next;
-		my $working_mpileup = dclone($positions_hash);
-		my $vcf_file = $mpileup_files->{$sample};
-
-		print STDERR "reading mpileup information from $vcf_file\n" if ($verbose);
-		my $vcf = Vcf->new(file => $vcf_file) or die "Could not parse vcf file $vcf_file";
-		$vcf->parse_header();
-		while (my $data = $vcf->next_data_array)
-		{
-			if (@$data <= 4)
-			{
-				die "Not enough information for vcf file $vcf_file, line ".join(' ',@$data);
-			}
-			else
-			{
-				my $chrom = $data->[0];
-				my $position = $data->[1];
-				
-				# found a position to keep
-				if (exists $working_mpileup->{$chrom}->{$position})
-				{
-					my %info_hash = %{variant_info_to_hash($data->[7])};
-					my $ref = $data->[3];
-					my $alt = $data->[4];
-					my $coverage = $info_hash{'DP'};
-
-					if (exists $info_hash{'INDEL'})
-					{
-						#print STDERR "skipping INDEL vcf-line found for $sample: '".join(" ",@$data)."\n";
-					}
-					elsif (defined $working_mpileup->{$chrom}->{$position})
-					{
-						die "Duplicate position found in $sample.\nvcf-line: ".join(" ",@$data);
-					}
-					else
-					{
-                                                #print STDERR "mpileup info found for $sample:$chrom:$position\n" if ($verbose);
-						$working_mpileup->{$chrom}->{$position} = {'ref' => $ref, 'alt' => $alt, 'cov' => $coverage};
-					}
-				}
-			}
-                    }
-            
-                $vcf->close();
-
-                #storing
-                my $name = basename($sample);
-                store $working_mpileup, "$tmpdir/$name";
-                
-                $pm->finish(0,{$sample=>"$tmpdir/$name"})
-
-            
-	}
-        
-        $pm->wait_all_children;
-
-         #read all the files from dir storable into sample_pileup_hash and go on!
-         foreach my $sample( keys %list) {
-             $sample_pileup_hash{$sample} = retrieve($list{$sample});
-         }
-	return \%sample_pileup_hash;
-}
 
 ############
 ### MAIN ###
@@ -561,20 +110,9 @@ sub parse_mpileup
 # maps format name to format file extension
 my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
-my $vcf_dir;
-my $mpileup_dir;
-my $output_base;
-my @formats;
-my $reference;
-my $coverage_cutoff;
-my $uniquify;
-my $help;
-my $requested_cpus;
-my $invalid;
-my $keep_ambiguous;
-
-my %vcf_files;
-my %mpileup_files;
+my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff);
+my ($uniquify, $help, $requested_cpus, $invalid, $keep_ambiguous,$fasta,$bcftools);
+my (%vcf_files, %mpileup_files);
 
 my $command_line = join(' ',@ARGV);
 
@@ -585,13 +123,14 @@ if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
 		'format|f=s' => \@formats,
 		'output-base|o=s' => \$output_base,
 		'reference|r=s' => \$reference,
+                'fasta=s' => \$fasta,
 		'coverage-cutoff|c=i' => \$coverage_cutoff,
 		'uniquify|u' => \$uniquify,
 		'invalid-pos=s' => \$invalid,
 		'help|h' => \$help,
 		'keep-ambiguous' => \$keep_ambiguous,
                 'numcpus=i' => \$requested_cpus,
-                
+                'b|bcftools-path=s' => \$bcftools,     
 		'verbose|v' => \$verbose))
 {
 	die "Invalid option\n".usage;
@@ -602,12 +141,9 @@ $verbose = 0 if (not defined $verbose);
 
 if ( $vcf_dir and $mpileup_dir)
 {
-        
-
     die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
 
     die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
-    
 }
 elsif ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0)
 {
@@ -615,6 +151,8 @@ elsif ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0)
 }
 
 die "output-base undefined\n".usage if (not defined $output_base);
+
+die "bcftools-path not defined\n".usage if (not defined $bcftools or not -e $bcftools);
 
 if (not defined $reference)
 {
@@ -640,8 +178,7 @@ else
 $requested_cpus = 1 if (not defined $requested_cpus);
 $uniquify = 0 if (not defined $uniquify);
 
-if (@formats <= 0)
-{
+if (@formats <= 0){
 	print STDERR "warning: format not defined, assuming fasta\n";
 	@formats = ("fasta");
 }
@@ -680,6 +217,9 @@ die "No *.vcf.gz files found in $vcf_dir.  Perhas you need to compress and index
 my $total_samples = (keys %vcf_files);
 
 
+
+
+
 if ( $mpileup_dir)
 {
     # create table of mpileup files corresponding to input freebayes/variant vcf files
@@ -691,6 +231,7 @@ if ( $mpileup_dir)
     {
         die "Error: vcf-dir contains unmatched files in mpileup-dir";
     }
+    
     else
     {
         %mpileup_files = %{$mpileup_table};
@@ -711,9 +252,8 @@ else
     
 }
 
-# fill in variants for each vcf file
-my $vcf_data = parse_variants(\%vcf_files,$requested_cpus);
-my $mpileup_data = parse_mpileup(\%mpileup_files, $vcf_data,$requested_cpus);
+my $refs_info = refs_info($fasta);
+
 
 my $invalid_pos;
 
@@ -723,144 +263,518 @@ if ($invalid)
 	$invalid_pos = $invalid_positions_parser->read_invalid_positions($invalid);
 }
 
+
+#create temp working directory for all combines vcf files
+#in future make them stay around...
+my $tmp_dir = tempdir (CLEANUP => 1);
+    
+#combine the mpileup and freebayes vcf files together
+my $files = combine_vcfs(\%vcf_files,\%mpileup_files, $coverage_cutoff,$invalid_pos,$bcftools,$tmp_dir,$requested_cpus);
+
+
+
+my $valid_positions = "$output_base/pseudoalign-positions.tsv";
+my $ya = filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
+
+
+
+
+
 my @samples_list = sort {$a cmp $b } keys %vcf_files;
-my %chromosome_align;
-my $unique_count = 1;
-my %name_map; # used to map sample name to other information
-my %sample_map; # keeps track of which samples have which unique ids (so we can properly increment unique_count)
+# my %chromosome_align;
+# my $unique_count = 1;
+# my %name_map; # used to map sample name to other information
+# my %sample_map; # keeps track of which samples have which unique ids (so we can properly increment unique_count)
 my %total_positions_map; # keep track of total positions, and if valid/not
-for my $chromosome (keys %$vcf_data)
-{
-	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous);
-	$total_positions_map{$chromosome} = $total_positions;
-	for my $sample (sort {$a cmp $b} keys %$alignment)
-	{
-		next if (@{$alignment->{$sample}->{'positions'}} <= 0); # no alignments
+# for my $chromosome (keys %$vcf_data)
+# {
+# 	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous);
+# 	$total_positions_map{$chromosome} = $total_positions;
+# 	for my $sample (sort {$a cmp $b} keys %$alignment)
+# 	{
+# 		next if (@{$alignment->{$sample}->{'positions'}} <= 0); # no alignments
 
-		if (not exists $sample_map{$sample})
-		{
-			$sample_map{$sample} = "sample$unique_count";
-			$unique_count++;
-		}
+# 		if (not exists $sample_map{$sample})
+# 		{
+# 			$sample_map{$sample} = "sample$unique_count";
+# 			$unique_count++;
+# 		}
 
-		my $sample_id = $sample_map{$sample};
-		my $sample_name = ($uniquify) ? $sample_id : $sample;
+# 		my $sample_id = $sample_map{$sample};
+# 		my $sample_name = ($uniquify) ? $sample_id : $sample;
 
-		if (not defined $chromosome_align{$sample})
-		{
-			$name_map{$sample_name} = "$sample\t$chromosome:".join('|',@{$alignment->{$sample}->{'positions'}});
+# 		if (not defined $chromosome_align{$sample})
+# 		{
+# 			$name_map{$sample_name} = "$sample\t$chromosome:".join('|',@{$alignment->{$sample}->{'positions'}});
 			
-			$chromosome_align{$sample} = {'header' => $sample_name};
-			$chromosome_align{$sample}->{'data'} = $alignment->{$sample}->{'alignment'};
-		}
-		else
-		{
-			$name_map{$sample_name} .= " $chromosome:".join('|',@{$alignment->{$sample}->{'positions'}});
+# 			$chromosome_align{$sample} = {'header' => $sample_name};
+# 			$chromosome_align{$sample}->{'data'} = $alignment->{$sample}->{'alignment'};
+# 		}
+# 		else
+# 		{
+# 			$name_map{$sample_name} .= " $chromosome:".join('|',@{$alignment->{$sample}->{'positions'}});
 
-			$chromosome_align{$sample}->{'data'} .= $alignment->{$sample}->{'alignment'};
-		}
-	}
-}
-# print alignment
-my $aln = Bio::SimpleAlign->new();
-for my $sample (sort {$a cmp $b} keys %chromosome_align)
-{
-	my $id = $chromosome_align{$sample}->{'header'};
-	my $data = $chromosome_align{$sample}->{'data'};
+# 			$chromosome_align{$sample}->{'data'} .= $alignment->{$sample}->{'alignment'};
+# 		}
+# 	}
+# }
+# # print alignment
+# my $aln = Bio::SimpleAlign->new();
+# for my $sample (sort {$a cmp $b} keys %chromosome_align)
+# {
+# 	my $id = $chromosome_align{$sample}->{'header'};
+# 	my $data = $chromosome_align{$sample}->{'data'};
 
-	if ($keep_ambiguous)
-	{
-		die "error: SNP alignment for $sample contains an invalid character"
-			if ($data =~ /[^ATCGN]/);
-	}
-	else
-	{
-		die "error: SNP alignment for $sample contains an invalid character"
-			if ($data =~ /[^ATCG]/);
-	}
+# 	if ($keep_ambiguous)
+# 	{
+# 		die "error: SNP alignment for $sample contains an invalid character"
+# 			if ($data =~ /[^ATCGN]/);
+# 	}
+# 	else
+# 	{
+# 		die "error: SNP alignment for $sample contains an invalid character"
+# 			if ($data =~ /[^ATCG]/);
+# 	}
 
-	my $seq = Bio::LocatableSeq->new(-seq => $data, -id => $id);
-	$aln->add_seq($seq);
-}
+# 	my $seq = Bio::LocatableSeq->new(-seq => $data, -id => $id);
+# 	$aln->add_seq($seq);
+# }
 
-# sets displayname for each sequence
-for my $seq_id ($aln->each_seq)
-{
-	my $start = $seq_id->start;
-	my $end = $seq_id->end;
-	my $id = $seq_id->id."/$start-$end";
-	$aln->displayname($id, $seq_id->id);
-}
+# # sets displayname for each sequence
+# for my $seq_id ($aln->each_seq)
+# {
+# 	my $start = $seq_id->start;
+# 	my $end = $seq_id->end;
+# 	my $id = $seq_id->id."/$start-$end";
+# 	$aln->displayname($id, $seq_id->id);
+# }
 
-# check if alignment is flush
-die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
+# # check if alignment is flush
+# die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
 
-for my $format (@formats)
-{
-	my $output_file = "$output_base.".$valid_formats{$format};
-	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format,-idlength=>30);
-	$io->write_aln($aln);
-	print STDERR "Alignment written to $output_file\n";
-}
+# for my $format (@formats)
+# {
+# 	my $output_file = "$output_base.".$valid_formats{$format};
+# 	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format,-idlength=>30);
+# 	$io->write_aln($aln);
+# 	print STDERR "Alignment written to $output_file\n";
+# }
 
-my $valid_positions = "$output_base-positions.tsv";
+
 # print snp stats
-print "# Command Line\n";
-print "# $command_line\n";
-print "# SNP statistics\n";
-print "# Processed $total_samples samples\n";
-print "# Total variant called SNPs processed: ".$snp_info->{'total'},"\n";
-print "#\tRemoved ".$snp_info->{'removed'}->{'insertions'}," insertions\n";
-print "#\tRemoved ".$snp_info->{'removed'}->{'deletions'}," deletions\n";
-print "#\tRemoved ".$snp_info->{'removed'}->{'multi'}," multi\n";
-print "#\tRemoved ".$snp_info->{'removed'}->{'other'}," other\n";
-print "# Total Valid Positions: ".$snp_info->{'positions'},"\n";
-print "# Total SNPs to process: ".($snp_info->{'positions'}*$total_samples)."\n";
-print "#\tSNPs called as N's:\n";
-print "#\t\tLow Coverage: ".$snp_info->{'snps'}->{'filtered-coverage'}."\n";
-print "#\t\tVariant/mpileup differences: ".$snp_info->{'snps'}->{'filtered-mpileup'},"\n";
-print "#\t\tInvalid Position based on user provided file: ".$snp_info->{'snps'}->{'filtered-invalid'},"\n" if $invalid_pos;
-print "#\tValid SNPs for analysis: ".$snp_info->{'snps'}->{'kept'},"\n";
-print "# Positions file in $valid_positions\n";
+# print "# Command Line\n";
+# print "# $command_line\n";
+# print "# SNP statistics\n";
+# print "# Processed $total_samples samples\n";
+# print "# Total variant called SNPs processed: ".$snp_info->{'total'},"\n";
+# print "#\tRemoved ".$snp_info->{'removed'}->{'insertions'}," insertions\n";
+# print "#\tRemoved ".$snp_info->{'removed'}->{'deletions'}," deletions\n";
+# print "#\tRemoved ".$snp_info->{'removed'}->{'multi'}," multi\n";
+# print "#\tRemoved ".$snp_info->{'removed'}->{'other'}," other\n";
+# print "# Total Valid Positions: ".$snp_info->{'positions'},"\n";
+# print "# Total SNPs to process: ".($snp_info->{'positions'}*$total_samples)."\n";
+# print "#\tSNPs called as N's:\n";
+# print "#\t\tLow Coverage: ".$snp_info->{'snps'}->{'filtered-coverage'}."\n";
+# print "#\t\tVariant/mpileup differences: ".$snp_info->{'snps'}->{'filtered-mpileup'},"\n";
+# print "#\t\tInvalid Position based on user provided file: ".$snp_info->{'snps'}->{'filtered-invalid'},"\n" if $invalid_pos;
+# print "#\tValid SNPs for analysis: ".$snp_info->{'snps'}->{'kept'},"\n";
+# print "# Positions file in $valid_positions\n";
 
-# print other information
-print "#\n#AlnName\tSampleName\tPositions\n";
-for my $name (sort keys %name_map)
-{
-	print "$name\t",$name_map{$name},"\n";
+# # print other information
+# print "#\n#AlnName\tSampleName\tPositions\n";
+# for my $name (sort keys %name_map)
+# {
+# 	print "$name\t",$name_map{$name},"\n";
+# }
+
+
+    
+
+# open(my $vfh, ">$valid_positions") or die "Could not open $valid_positions: $!";
+# print $vfh "#Chromosome\tPosition\tStatus\tReference\t";
+# my @samples_sorted_list = sort {$a cmp $b} @samples_list;
+# print $vfh join("\t",@samples_sorted_list);
+# print $vfh "\n";
+# for my $chr (keys %total_positions_map)
+# {
+# 	my $positions = $total_positions_map{$chr};
+# 	for my $pos (sort {$a <=> $b} keys %$positions)
+# 	{
+# 		my $samples = $positions->{$pos}->{'samples'};
+# 		my $ref = $positions->{$pos}->{'ref'};
+# 		print $vfh "$chr\t$pos\t".$positions->{$pos}->{'status'}."\t$ref\t";
+# 		my $first = 1;
+# 		die "error in total_positions_map, for $chr:$pos, not enough sample entries" if (@samples_sorted_list != scalar(keys %$samples));
+# 		my $id = 0;
+# 		for my $sample (sort {$a cmp $b } keys %$samples)
+# 		{
+# 			die "error: sample name $sample different from ".$samples_sorted_list[$id] if ($samples_sorted_list[$id] ne $sample);
+# 			if ($first)
+# 			{
+# 				$first = 0;
+# 				print $vfh $samples->{$sample};
+# 			}
+# 			else
+# 			{
+# 				print $vfh "\t".$samples->{$sample};
+# 			}
+# 			$id++;
+# 		}
+# 		print $vfh "\n";
+# 	}
+# }
+# close($vfh);
+
+
+
+exit;
+
+
+
+
+
+sub combine_vcfs{
+    my ($vcf_files,$mpileup_files, $coverage_cutoff,$invalid_pos,$bcftools,$tmp_dir,$cpus) = @_;
+
+    my %files;
+
+    
+    
+    if (1) {
+        
+
+    my $pm;
+    my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+    chomp $num_cpus;
+    #ensure that you user cannot request more threads then CPU on the machine
+    if ( $cpus > $num_cpus) {
+        $cpus = $num_cpus;
+    }
+
+    $pm=Parallel::ForkManager->new($cpus);
+    
+    $pm -> run_on_finish ( # called BEFORE the first call to start()
+        sub {
+            my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
+            # retrieve data structure from child
+            if (defined($child_data)) {  # children are forced to send anything
+                my ($name) = keys %$child_data;
+                $files{$name} = $child_data->{$name};
+            } else {
+                die "One or more vcf file did not produce any data!\n";
+            }
+        }
+    );
+
+    foreach my $sample( keys %$mpileup_files) {
+        
+        my $pid = $pm->start and next;
+        my $f_file = $vcf_files->{$sample};
+        my $m_file = $mpileup_files->{$sample};
+
+        my ($cmd,$status);
+        
+        
+        my $file_name = "$tmp_dir/$sample" . "_combined.vcf";
+
+        my ($dir) = "$tmp_dir/$sample" . '_answer';
+
+        #confirm SNPS in freebayes by comparing them to mpileup REF and ALT columns
+        #mark all SNPS found in mpileup but NOT in freebayes as filtered-mpileup with 'some' option. 'some' options allows
+        #only records where some subset of ALT alleles match are compatible
+        #                  #chrom      #pos     #ref  #alt 
+        #so if mpileup had NC_007530.2|668709 . T     G,A
+        #it will map to a freebayes with
+        #                  NC_007530.2|668709 . T     G
+        #$cmd = "$bcftools  isec $f_file $ready_mpileup -p $dir -c some -O z";
+        $cmd = "$bcftools  isec $f_file $m_file -p $dir -c some -O z";
+        $status = system($cmd);
+
+
+        #filter with C complied nml specific filtering
+        $cmd = "$bcftools  annotate -x FORMAT -p filter_mpileup:dp=$coverage_cutoff $dir/0001.vcf.gz -O z  > $dir/filtered_mpileup.vcf.gz";
+        $status = system($cmd);
+
+        
+        #filter by coverage and ratio of 75% with alternative allele
+        #also filter by MQM flag = minumum mean mapping quality with > 30
+        #NB that not sure how it handles when have multiple different alternative alleles
+        #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
+        $cmd = "$bcftools  annotate -x FORMAT -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.vcf.gz -O z  > $dir/filtered_freebayes.vcf.gz";
+        $status = system($cmd);
+        
+        
+        
+        #get rid of extra columns which causes issues when merging the vcf together
+        # $cmd = "$bcftools  annotate -x FORMAT $dir/filtered_freebayes.vcf.gz -O z > $dir/finish_freebayes.vcf.gz";
+        # $status = system($cmd);
+
+        # $cmd = "$bcftools  annotate -x FORMAT $dir/filtered_mpileup.vcf.gz -O z > $dir/finish_mpileup.vcf.gz";
+        # $status = system($cmd);
+        
+        
+        #combine header but ignore GL tag for freebayes
+        # $cmd = "zgrep '#' $dir/finish_freebayes.vcf.gz | grep -e '=GL' -e 'CHROM' -v | tail -n+5 > $dir/header_1";
+        # $status = system($cmd);
+
+        # $cmd = "zgrep '#' $dir/finish_mpileup.vcf.gz> $dir/header_2";
+        # $status = system($cmd);
+
+        # $cmd = "cat $dir/header_1 $dir/header_2 > $dir/header";
+        # $status = system($cmd);
+
+
+        $cmd = "$bcftools index -f $dir/filtered_freebayes.vcf.gz";
+        $status = system($cmd);
+
+
+        $cmd = "$bcftools index -f $dir/filtered_mpileup.vcf.gz";
+        $status = system($cmd);
+
+        $cmd = "$bcftools  merge --use-header /BADD/public/temporary/header_working $dir/filtered_freebayes.vcf.gz $dir/filtered_mpileup.vcf.gz > $file_name";
+
+        $status = system($cmd);
+        
+        #bgzip up and then index
+        `bgzip $file_name`;
+        my $bgzip = $file_name . ".gz";
+        
+        `$bcftools index -t -f $bgzip`;
+
+        rmtree $dir;
+        $pm->finish(0,{"$sample" =>$bgzip});        
+
+    
+    
+    }
+    
+    $pm->wait_all_children;
+
+} # skip stage
+
+    return \%files;
 }
 
-open(my $vfh, ">$valid_positions") or die "Could not open $valid_positions: $!";
-print $vfh "#Chromosome\tPosition\tStatus\tReference\t";
-my @samples_sorted_list = sort {$a cmp $b} @samples_list;
-print $vfh join("\t",@samples_sorted_list);
-print $vfh "\n";
-for my $chr (keys %total_positions_map)
-{
-	my $positions = $total_positions_map{$chr};
-	for my $pos (sort {$a <=> $b} keys %$positions)
-	{
-		my $samples = $positions->{$pos}->{'samples'};
-		my $ref = $positions->{$pos}->{'ref'};
-		print $vfh "$chr\t$pos\t".$positions->{$pos}->{'status'}."\t$ref\t";
-		my $first = 1;
-		die "error in total_positions_map, for $chr:$pos, not enough sample entries" if (@samples_sorted_list != scalar(keys %$samples));
-		my $id = 0;
-		for my $sample (sort {$a cmp $b } keys %$samples)
-		{
-			die "error: sample name $sample different from ".$samples_sorted_list[$id] if ($samples_sorted_list[$id] ne $sample);
-			if ($first)
-			{
-				$first = 0;
-				print $vfh $samples->{$sample};
-			}
-			else
-			{
-				print $vfh "\t".$samples->{$sample};
-			}
-			$id++;
-		}
-		print $vfh "\n";
-	}
+
+sub filter_positions {
+    my ($files,$refs,$invalid_pos,$valid_positions,$cpus) = @_;
+
+    my %results;
+    my $pm;
+    my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
+    chomp $num_cpus;
+    #ensure that you user cannot request more threads then CPU on the machine
+    if ( $cpus > $num_cpus) {
+        $cpus = $num_cpus;
+    }
+    
+
+    $pm=Parallel::ForkManager->new($cpus);
+    
+    $pm->run_on_finish ( # called BEFORE the first call to start()
+        sub {
+            my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
+            # retrieve data structure from child
+            if (defined($child_data)) {  # children are forced to send anything
+                my ($name) = keys %$child_data;
+                $results{$name} = $child_data->{$name};
+            } else {
+                die "One or more vcf file did not produce any data!\n";
+            }
+        }
+    );
+    my $parallel=1;
+    
+    my $bit_size = 100000;
+    my $job_id=0;
+
+
+    #print header file
+    open my $out, '>', $job_id;
+    print $out "#Chromosome\tPosition\tStatus\tReference\t";
+    my @samples_list = sort {$a cmp $b } keys %$files;
+    print $out join("\t",@samples_list);
+    print $out "\n";
+    close $out;
+    
+    
+    foreach my $chrom( keys %$refs) {
+        
+        my ($start,$stop)=(0,0);
+        my ($range);
+        my $length = $refs->{$chrom}{'length'};
+        
+        if ( !$length) {
+            die "Could not determine length of '$chrom' from provided reference fasta file\n";
+        }
+        
+        
+        while ($stop < $length ) {
+            #inclusive range, we do not care if we go over b/c vcf query will only return what it can.
+            $start = $stop +1;
+            $stop = $stop+$bit_size;
+            $range="$chrom:" . join('-',($start,$stop));
+
+            $range = quotemeta $range;
+
+            $job_id++;
+
+            my $pid = $pm->start and next if $parallel;
+            
+            my $f_name = $job_id;
+            open my $out, '>',$f_name;
+            
+            my $streamers = Streaming::create_streamers($files,$range,$job_id);
+            my $cur_pos = $start;
+            
+            my @data = $streamers->($chrom,$cur_pos);
+
+
+            #search for all entries to have "EOF" as their data.
+            while (any { $_->{'status'} ne 'EOF' } @data) {
+
+                #get current bp for current positions
+                my $ref_bp = $refs->{$chrom}{'bps'}[$cur_pos];
+                
+                #if we do not have any SNP, we do not print at all!
+                if ( any {  exists $_->{'alt'} && $_->{'alt'} ne '.' } @data ) {
+                    my @line = ($chrom,$cur_pos);
+
+                    #all columns are passed all cut off parameters
+                    if ( all { $_->{'status'} eq 'PASS' }  @data) {
+
+                        if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
+                            push @line, 'filtered-invalid';
+                        }
+                        else {
+                            push @line, 'valid';
+                        }
+                        
+                        push @line,$ref_bp;
+                        foreach ( @data) {
+                            if ( $_->{'alt'} eq '.') {
+                                push @line,$ref_bp;
+                            }
+                            else {
+                                push @line,$_->{'alt'};
+                                }
+                        }
+                        print $out join("\t",@line) . "\n";
+
+                    }
+                    #now we are working with position where there is at least one SNP and at least one filtered-*
+                    elsif ( any { ( $_->{'status'} eq 'PASS' || $_->{'status'} eq 'filtered-invalid' )  && $_->{'alt'} ne '.'} @data ) {
+
+
+                        if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
+                            push @line, 'filtered-invalid';
+                        }
+                        else {
+                            #always take filtered-invalid before anything else if it there.
+                            my $index = firstidx {$_->{'status'} eq 'filtered-invalid'  } @data;
+
+                            #if we did not find a filtered-invalid, find another none valid status
+                            if ( $index == -1) {
+                                $index = firstidx {$_->{'status'} ne 'PASS' } @data;
+                            }
+                            
+                            if ( $data[$index]->{'status'} eq '' || $data[$index]->{'status'} eq 'EOF') {
+                                push @line,'filtered-coverage';
+                            }
+                            else {
+                                push @line,$data[$index]->{'status'};
+                            }
+                        }
+
+                        
+                        push @line,$ref_bp;
+                        
+                        foreach my $col ( @data) {
+                            my $status = $col->{'status'};
+                            
+                            #if '', implies there is no reads covering that $cur_pos
+                            if ( $status eq '' || $status eq 'EOF') {
+                                push @line,'-';
+                            }
+                            else {
+                                #if we have filtered-mpileup, we have inconsistent calles between variant callers
+                                if ($status eq 'filtered-mpileup' ) {
+                                    push @line,'N';
+                                }
+                                #have a position that passes the cut-off parameter. Either show the SNP or the reference
+                                elsif ( $status eq 'PASS' || $status eq 'filtered-invalid') {
+                                    if ( $col->{'alt'} eq '.') {
+                                        push @line,$ref_bp;
+                                    }
+                                    else {
+                                        push @line,$col->{'alt'};
+                                    }
+                                }
+                                else {
+                                    push @line,'-';
+                                }
+                                
+                            }
+                        }
+                        
+                        print $out join("\t",@line) . "\n";
+                        
+                        
+                    }#end else
+                    
+                    
+                }#end if
+                
+                
+                
+                $cur_pos++;
+                @data = $streamers->($chrom,$cur_pos);
+            }
+            
+            close $out;
+            
+            $pm->finish(0,{$job_id =>$f_name}) if $parallel;
+            $results{$job_id}=$f_name if not $parallel;
+        }
+        
+    
+    }
+    $pm->wait_all_children if $parallel;   
+
+    #combine all results files in order
+    my @cmd = "cat 0";
+    foreach ( sort {$a <=> $b } keys %results) {
+         push @cmd, $results{$_};
+    }
+    my $cmd = join(' ' , @cmd) . " > $valid_positions";
+    
+    `$cmd`;
+    unlink "0";
+    
+    map { unlink $_ } values %results;
+    
+    
+
+    return;
 }
-close($vfh);
+
+sub refs_info {
+    my ($file) = @_;
+
+
+    my %refs;
+    my $in = Bio::SeqIO->new(-format=>'fasta',-file=>$file);
+    while ( my $seq = $in->next_seq()) {
+        $refs{$seq->display_id()}{'length'} = $seq->length;
+        my @bps = ('X');
+        
+        map { push @bps, uc $_ } split //, $seq->seq;
+        $refs{$seq->display_id()}{'bps'} = \@bps;
+    }
+
+
+    return \%refs;
+    
+}
+
+
