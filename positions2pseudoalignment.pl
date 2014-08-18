@@ -120,6 +120,7 @@ $align->sort_alphabetically;
 # build alignment
 my $io = Bio::AlignIO->new(-file => ">$output", -format => $format,-idlength=>30);
 die "Error: could not create Align::IO object" if (not defined $io);
+$align->set_displayname_flat(1); #force to output only the display name and not length
 
 die "Error: alignment not flush" if (not $align->is_flush);
 $io->write_aln($align);

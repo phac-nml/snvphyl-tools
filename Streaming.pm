@@ -61,7 +61,7 @@ sub create_streamers {
                         my @status = split /;/ , $data->[6]; #grabbing status
                         
                         
-                        push @result,{'ref' => $ref, 'alt' => $alt, 'status' => @status[-1]};
+                        push @result,{'ref' => $ref, 'alt' => $alt, 'status' => @status[0]};
                         last;
                     }
                     elsif ( $chrom eq $chrom_cur && $pos < $position_cur) {

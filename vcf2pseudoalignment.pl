@@ -25,13 +25,6 @@ use File::Path qw /rmtree /;
 
 
 my $verbose;
-my $unknown_base = 'N';
-
-my $snp_info = {'removed' => {'insertions' => 0, 'deletions' => 0, 'multi' => 0, 'other' => 0},
-		'total' => 0,
-		'positions' => 0,
-		'snps' => {'filtered-coverage' => 0, 'filtered-mpileup' => 0, 'kept' => 0}
-		};
 
 sub usage
 {
@@ -251,7 +244,10 @@ else
     }
     
 }
-
+if ( not -e $fasta) {
+    die "Error: Was not given reference fasta file\n";
+    
+}
 my $refs_info = refs_info($fasta);
 
 
@@ -266,14 +262,14 @@ if ($invalid)
 
 #create temp working directory for all combines vcf files
 #in future make them stay around...
-my $tmp_dir = tempdir (CLEANUP => 1);
+my $tmp_dir = tempdir (CLEANUP => 0);
     
 #combine the mpileup and freebayes vcf files together
 my $files = combine_vcfs(\%vcf_files,\%mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus);
 
 
 
-my $valid_positions = "$output_base/pseudoalign-positions.tsv";
+my $valid_positions = $output_base . "-positions.tsv";
 
 
 #create pseudo-positions.tsv file
@@ -282,7 +278,7 @@ filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus
 #create alignment files
 for my $format (@formats)
 {
-    my $output_file = "$output_base/pseudoalign.".$valid_formats{$format};
+    my $output_file = $output_base . ".".$valid_formats{$format};
     print STDERR "Alignment written to $output_file\n";
     my $cmd = "$FindBin::Bin/positions2pseudoalignment.pl -i $valid_positions -f $format --reference-name $reference -o $output_file";
     print "$cmd\n";
@@ -291,120 +287,7 @@ for my $format (@formats)
 
 
 
-#my @samples_list = sort {$a cmp $b } keys %vcf_files;
-# my %chromosome_align;
-# my $unique_count = 1;
-# my %name_map; # used to map sample name to other information
-# my %sample_map; # keeps track of which samples have which unique ids (so we can properly increment unique_count)
-#my %total_positions_map; # keep track of total positions, and if valid/not
-# for my $chromosome (keys %$vcf_data)
-# {
-# 	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous);
-# 	$total_positions_map{$chromosome} = $total_positions;
-# 	for my $sample (sort {$a cmp $b} keys %$alignment)
-# 	{
-# 		next if (@{$alignment->{$sample}->{'positions'}} <= 0); # no alignments
-
-# 		if (not exists $sample_map{$sample})
-# 		{
-# 			$sample_map{$sample} = "sample$unique_count";
-# 			$unique_count++;
-# 		}
-
-# 		my $sample_id = $sample_map{$sample};
-# 		my $sample_name = ($uniquify) ? $sample_id : $sample;
-
-# 		if (not defined $chromosome_align{$sample})
-# 		{
-# 			$name_map{$sample_name} = "$sample\t$chromosome:".join('|',@{$alignment->{$sample}->{'positions'}});
-			
-# 			$chromosome_align{$sample} = {'header' => $sample_name};
-# 			$chromosome_align{$sample}->{'data'} = $alignment->{$sample}->{'alignment'};
-# 		}
-# 		else
-# 		{
-# 			$name_map{$sample_name} .= " $chromosome:".join('|',@{$alignment->{$sample}->{'positions'}});
-
-# 			$chromosome_align{$sample}->{'data'} .= $alignment->{$sample}->{'alignment'};
-# 		}
-# 	}
-# }
-# # print alignment
-# my $aln = Bio::SimpleAlign->new();
-# for my $sample (sort {$a cmp $b} keys %chromosome_align)
-# {
-# 	my $id = $chromosome_align{$sample}->{'header'};
-# 	my $data = $chromosome_align{$sample}->{'data'};
-
-# 	if ($keep_ambiguous)
-# 	{
-# 		die "error: SNP alignment for $sample contains an invalid character"
-# 			if ($data =~ /[^ATCGN]/);
-# 	}
-# 	else
-# 	{
-# 		die "error: SNP alignment for $sample contains an invalid character"
-# 			if ($data =~ /[^ATCG]/);
-# 	}
-
-# 	my $seq = Bio::LocatableSeq->new(-seq => $data, -id => $id);
-# 	$aln->add_seq($seq);
-# }
-
-# # sets displayname for each sequence
-# for my $seq_id ($aln->each_seq)
-# {
-# 	my $start = $seq_id->start;
-# 	my $end = $seq_id->end;
-# 	my $id = $seq_id->id."/$start-$end";
-# 	$aln->displayname($id, $seq_id->id);
-# }
-
-# # check if alignment is flush
-# die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
-
-# for my $format (@formats)
-# {
-# 	my $output_file = "$output_base.".$valid_formats{$format};
-# 	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format,-idlength=>30);
-# 	$io->write_aln($aln);
-# 	print STDERR "Alignment written to $output_file\n";
-# }
-
-
-# print snp stats
-# print "# Command Line\n";
-# print "# $command_line\n";
-# print "# SNP statistics\n";
-# print "# Processed $total_samples samples\n";
-# print "# Total variant called SNPs processed: ".$snp_info->{'total'},"\n";
-# print "#\tRemoved ".$snp_info->{'removed'}->{'insertions'}," insertions\n";
-# print "#\tRemoved ".$snp_info->{'removed'}->{'deletions'}," deletions\n";
-# print "#\tRemoved ".$snp_info->{'removed'}->{'multi'}," multi\n";
-# print "#\tRemoved ".$snp_info->{'removed'}->{'other'}," other\n";
-# print "# Total Valid Positions: ".$snp_info->{'positions'},"\n";
-# print "# Total SNPs to process: ".($snp_info->{'positions'}*$total_samples)."\n";
-# print "#\tSNPs called as N's:\n";
-# print "#\t\tLow Coverage: ".$snp_info->{'snps'}->{'filtered-coverage'}."\n";
-# print "#\t\tVariant/mpileup differences: ".$snp_info->{'snps'}->{'filtered-mpileup'},"\n";
-# print "#\t\tInvalid Position based on user provided file: ".$snp_info->{'snps'}->{'filtered-invalid'},"\n" if $invalid_pos;
-# print "#\tValid SNPs for analysis: ".$snp_info->{'snps'}->{'kept'},"\n";
-# print "# Positions file in $valid_positions\n";
-
-# # print other information
-# print "#\n#AlnName\tSampleName\tPositions\n";
-# for my $name (sort keys %name_map)
-# {
-# 	print "$name\t",$name_map{$name},"\n";
-# }
-
-
-
-
 exit;
-
-
-
 
 
 sub combine_vcfs{
@@ -498,8 +381,9 @@ sub combine_vcfs{
         $cmd = "$bcftools index -t -f $file_name";
         $status = system($cmd);
         
+        $files{$sample} = $file_name;
         
-        rmtree $dir;
+        #rmtree $dir;
         $pm->finish(0,{"$sample" =>$file_name});        
 
     
@@ -619,9 +503,7 @@ sub filter_positions {
 
                     }
                     #now we are working with position where there is at least one SNP and at least one filtered-*
-                    elsif ( any { ( $_->{'status'} eq 'PASS' || $_->{'status'} eq 'filtered-invalid' )  && $_->{'alt'} ne '.'} @data ) {
-
-
+                    else {
                         if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
                             push @line, 'filtered-invalid';
                         }
