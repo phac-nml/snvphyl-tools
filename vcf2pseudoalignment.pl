@@ -147,6 +147,8 @@ die "output-base undefined\n".usage if (not defined $output_base);
 
 die "bcftools-path not defined\n".usage if (not defined $bcftools or not -e $bcftools);
 
+#need check to see if bcftools was complied with htslib and also has the correct plugin installed
+
 if (not defined $reference)
 {
 	print STDERR "reference name not defined, calling it 'reference'\n";
@@ -273,7 +275,13 @@ my $valid_positions = $output_base . "-positions.tsv";
 
 
 #create pseudo-positions.tsv file
-filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
+my $stats = filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
+
+
+print_stats($stats,$output_base . '-stats.csv');
+
+
+    
 
 #create alignment files
 for my $format (@formats)
@@ -407,6 +415,8 @@ sub filter_positions {
     if ( $cpus > $num_cpus) {
         $cpus = $num_cpus;
     }
+
+    my %vcfcore;
     
 
     $pm=Parallel::ForkManager->new($cpus);
@@ -416,8 +426,14 @@ sub filter_positions {
             my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
             # retrieve data structure from child
             if (defined($child_data)) {  # children are forced to send anything
-                my ($name) = keys %$child_data;
-                $results{$name} = $child_data->{$name};
+                
+                $results{$child_data->{'job_file'}} = $child_data->{'job_file'}; # get file_name
+
+                #get stats information
+                foreach my $chrom ( keys %{$child_data->{'stats'}} ) {
+                    $vcfcore{$chrom}{'invalid'} += $child_data->{'stats'}{$chrom}{'invalid'};
+                    $vcfcore{$chrom}{'core'}    += $child_data->{'stats'}{$chrom}{'core'};
+                }
             } else {
                 die "One or more vcf file did not produce any data!\n";
             }
@@ -443,6 +459,10 @@ sub filter_positions {
         my ($start,$stop)=(0,0);
         my ($range);
         my $length = $refs->{$chrom}{'length'};
+        $vcfcore{$chrom}= {'invalid' => 0,
+                           'core' => 0,
+                           'total'=>$length
+                       };
         
         if ( !$length) {
             die "Could not determine length of '$chrom' from provided reference fasta file\n";
@@ -461,6 +481,10 @@ sub filter_positions {
 
             my $pid = $pm->start and next if $parallel;
             
+            my %stats = ($chrom => { 'invalid' => 0,
+                                    'core' => 0,
+                                });
+            
             my $f_name = $job_id;
             open my $out, '>',$f_name;
             
@@ -476,6 +500,7 @@ sub filter_positions {
                 #get current bp for current positions
                 my $ref_bp = $refs->{$chrom}{'bps'}[$cur_pos];
                 
+
                 #if we do not have any SNP, we do not print at all!
                 if ( any {  exists $_->{'alt'} && $_->{'alt'} ne '.' } @data ) {
                     my @line = ($chrom,$cur_pos);
@@ -485,9 +510,11 @@ sub filter_positions {
 
                         if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
                             push @line, 'filtered-invalid';
+                            $stats{$chrom}{'invalid'}++;
                         }
                         else {
                             push @line, 'valid';
+                            $stats{$chrom}{'core'}++;
                         }
                         
                         push @line,$ref_bp;
@@ -506,6 +533,7 @@ sub filter_positions {
                     else {
                         if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
                             push @line, 'filtered-invalid';
+                            $stats{$chrom}{'invalid'}++;
                         }
                         else {
                             #always take filtered-invalid before anything else if it there.
@@ -562,7 +590,10 @@ sub filter_positions {
                     
                     
                 }#end if
-                
+                #see if everyone has a PASS status and there is no SNP
+                elsif ( all { $_->{'status'} eq 'PASS' }  @data ) {
+                    $stats{$chrom}{'core'}++;
+                }
                 
                 
                 $cur_pos++;
@@ -571,8 +602,8 @@ sub filter_positions {
             
             close $out;
             
-            $pm->finish(0,{$job_id =>$f_name}) if $parallel;
-            $results{$job_id}=$f_name if not $parallel;
+            $pm->finish(0,{'job_file' =>$f_name, 'stats' => \%stats}) if $parallel;
+            $results{$f_name}=$f_name if not $parallel;
         }
         
     
@@ -590,10 +621,10 @@ sub filter_positions {
     unlink "0";
     
     map { unlink $_ } values %results;
-    
-    
 
-    return;
+
+    
+    return \%vcfcore;
 }
 
 sub refs_info {
@@ -616,3 +647,59 @@ sub refs_info {
 }
 
 
+sub print_stats {
+    my ($stats,$out) = @_;
+
+    my %vcfcore = %{$stats};
+    
+    open my $out_fh,'>',$out;
+    
+    print $out_fh "#Reference,total length,total invalid pos, total core,Percentage in core\n";
+    my ($final_core,$final_total,$final_invalid)= (0,0,0);
+
+    foreach my $chrom( keys %vcfcore) {
+        my ($core,$total) = ($vcfcore{$chrom}{'core'},$vcfcore{$chrom}{'total'});
+        my $invalid = 'N/A';
+        my $perc;
+
+        if ( $vcfcore{$chrom}{'invalid'}) {
+            $invalid = $vcfcore{$chrom}{'invalid'};
+            
+            if ($total == $invalid ) {
+                $perc =0;
+            }
+            else {
+                $perc = sprintf("%.2f",($core/( $invalid)*100));
+            }
+            
+        }
+        else {
+            $perc = sprintf("%.2f",($core/$total*100));
+        }
+        $final_core +=$core;
+        $final_total +=$total;
+        $final_invalid +=$invalid if $invalid ne 'N/A';
+        
+            
+        print $out_fh join (',', ($chrom,$total,$invalid,$core,$perc)) . "\n";
+        
+    }
+
+
+    #getting the total for all references
+    my ($perc,$invalid_total)= (0);
+    if ($final_invalid) {
+        if ($final_total == $final_invalid ) {
+            $perc =0;
+         }
+        else {
+            $perc = sprintf("%.2f",$final_core/($final_total - $final_invalid)*100);        
+        }
+    }
+    else {
+        $perc = sprintf("%.2f",$final_core/$final_total*100);
+    }
+    print $out_fh join (',','all',$final_total,$final_invalid,,$final_core,$perc) . "\n";
+
+    return;
+}
