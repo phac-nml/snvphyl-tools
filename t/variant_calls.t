@@ -171,11 +171,7 @@ for my $dir (@in_files)
 	next if (not -d $curr_input);
 	my $invalid_positions = "$curr_input/invalid-positions.tsv";
 
-	my $extra_params = '';
-	if ($dir !~ /^noN/)
-	{
-		$extra_params .= '--keep-ambiguous ';
-	}
+	my $extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta ";
 
 	if (-e "$invalid_positions")
 	{
@@ -263,6 +259,10 @@ my $expected_positions_file;
 my $actual_positions_file;
 my ($actual_file_1,$actual_file_2);
 my ($expected_file_phy,$expected_file_fasta);
+my $extra_params;
+
+
+
 
 $curr_input = "$input_dir/1";
 test_header("phylip output format in $curr_input");
@@ -272,7 +272,8 @@ $expected_positions_file = "$curr_input/expected.positions.tsv";
 print "### Expected ###\n";
 print "$expected\n";
 die("could not find input dir $curr_input") if (not -e $curr_input);
-($actual_base,$actual_file) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip']);
+$extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta "; 
+($actual_base,$actual_file) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip'],$extra_params);
 $actual_positions_file = "$actual_base-positions.tsv";
 $got = `cat $actual_file`;
 print "### Got ###\n";
@@ -285,7 +286,8 @@ test_header("phylip/fasta output format in $curr_input");
 $expected_file_phy = "$curr_input/expected.phy";
 $expected_file_fasta = "$curr_input/expected.fasta";
 die("could not find input dir $curr_input") if (not -e $curr_input);
-($actual_base,$actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta']);
+$extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta "; 
+($actual_base,$actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta'],$extra_params);
 $actual_positions_file = "$actual_base-positions.tsv";
 pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
 if ($actual_file_1 =~ /phy$/)
