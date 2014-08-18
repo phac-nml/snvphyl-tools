@@ -108,6 +108,13 @@ while($line = readline($fh))
 }
 close($fh);
 
+
+#no valid positions were found so no point making empty file
+if ( not $valid_count) {
+    print "No valid positions were found. Not creating empty alignment file\n";
+    exit;
+}
+
 # generate seq objects
 my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNP Pipeline",-idlength=>30);
 for (my $i = 0; $i < @strains; $i++)

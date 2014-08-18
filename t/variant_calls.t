@@ -32,6 +32,11 @@ sub compare_files
 
 	my $success = 1;
 
+        #check to see if both files are empty, if so, they are the same.
+        if ( (not -e $actual_out_file && -s $expected_out_file ==0) and (not -e $actual_out_file && -s $actual_out_file ==0 ) ) {
+            return $success;
+        }
+
 	open(my $out_h, $expected_out_file) or die "Could not open $expected_out_file: $!";
 	open(my $a_out_h, $actual_out_file) or die "Could not open $actual_out_file: $!";
 	while($success and (defined (my $expected_line = readline($out_h))))
@@ -204,7 +209,7 @@ for my $dir (@in_files)
 
 	my ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta'], $extra_params);
 	my $actual_positions_file = "$actual_base-positions.tsv";
-	my $got = `cat $actual_out_file`;
+	my $got = -e $actual_out_file ? `cat $actual_out_file` : 'empty file';
 	print "### Got ###\n";
 	print "$got\n";
 	my $success = compare_files($expected_out_file,$actual_out_file);
@@ -231,7 +236,7 @@ for my $dir (@in_files)
 
         ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta'], $extra_params,\%dirs_vcfs,\%pileup_vcfs);
         $actual_positions_file = "$actual_base-positions.tsv";
-        $got = `cat $actual_out_file`;
+        $got = -e $actual_out_file ? `cat $actual_out_file` : 'empty file';
 	print "### Got ###\n";
 	print "$got\n";
         $success = compare_files($expected_out_file,$actual_out_file);
