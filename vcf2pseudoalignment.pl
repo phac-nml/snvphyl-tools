@@ -42,7 +42,6 @@ sub usage
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
 	"\t--invalid-pos: A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\\tEND_POS\\n".
 	"\t--verbose:  More information printed\n".
-	"\t--keep-ambiguous:  Keep ambiguous characters in alignment output file\n".
 	"\t-h|--help:  Help\n";
 }
 
@@ -145,9 +144,31 @@ elsif ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0)
 
 die "output-base undefined\n".usage if (not defined $output_base);
 
-die "bcftools-path not defined\n".usage if (not defined $bcftools or not -e $bcftools);
+if (not defined $bcftools or not -e $bcftools){
+
+    #check to see if bcftools is on the path
+    #normally we always want to be passed the path to the tool but this is for Galaxy implementation
+    my $alive=`bcftools 2>&1 1>/dev/null`;
+    if ( $alive && $alive =~ /Program: bcftools/) {
+        $bcftools="bcftools";
+    }
+    else {
+        die "bcftools-path not defined and not found on the path.\n".usage         
+    }
+
+}
+
 
 #need check to see if bcftools was complied with htslib and also has the correct plugin installed
+my $usage_state = `$bcftools 2>&1 1>/dev/null`;
+if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
+    die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+}
+my $plugins_state = `$bcftools annotate -l`;
+if ( not ( $plugins_state =~ /-- filter_mpileup --/ && $plugins_state =~ /-- filter_freebayes --/ ) ) {
+    die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+}
+
 
 if (not defined $reference)
 {
