@@ -103,7 +103,7 @@ for my $format (@{$formats})
     print STDERR "Alignment written to $output_file\n";
     my $cmd = "$FindBin::Bin/positions2pseudoalignment.pl -i $valid_positions -f $format --reference-name $reference -o $output_file";
     print "$cmd\n";
-    my $status = system($cmd);
+    system($cmd) == 0 or die "Could not run $cmd";
 }
 
 
@@ -145,7 +145,7 @@ sub combine_vcfs{
         my $f_file = $vcf_files->{$sample};
         my $m_file = $mpileup_files->{$sample};
 
-        my ($cmd,$status);
+        my $cmd;
         
         my $file_name = "$tmp_dir/$sample" . "_combined.vcf.gz";
 
@@ -159,12 +159,11 @@ sub combine_vcfs{
         #it will map to a freebayes with
         #                  NC_007530.2|668709 . T     G
         $cmd = "$bcftools  isec $f_file $m_file -p $dir -c some -O b";
-        $status = system($cmd);
-
+        system($cmd) == 0 or die "Could not run $cmd";
 
         #filter with C complied nml specific filtering, also removing all information in FORMAT column, otherwise we cannot merge farther down
         $cmd = "$bcftools  annotate -x FORMAT -p filter_mpileup:dp=$coverage_cutoff $dir/0001.bcf -O b  > $dir/filtered_mpileup.bcf";
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
 
         
         #filter by coverage and ratio of 75% with alternative allele
@@ -172,16 +171,16 @@ sub combine_vcfs{
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
         $cmd = "$bcftools  annotate -x FORMAT -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.bcf -O b  > $dir/filtered_freebayes.bcf";
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
         
         
 
         $cmd = "$bcftools index  $dir/filtered_freebayes.bcf";
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
 
 
         $cmd = "$bcftools index  $dir/filtered_mpileup.bcf";
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
 
         #get the fake merge vcf header
         my $header = $FindBin::Bin . '/fake_vcf_header/header';
@@ -190,17 +189,16 @@ sub combine_vcfs{
         #need to add header specific reference in the vcf files
         #need a better solution!
         $cmd = "zgrep '##contig' $m_file > $dir/contigs";
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
         $cmd = "cat $header $dir/contigs $bottom_header > $dir/header";
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
         ######
         
         $cmd = "$bcftools  merge -O z  --use-header $dir/header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name 2>/dev/null";
-
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
         
         $cmd = "$bcftools index -t -f $file_name";
-        $status = system($cmd);
+        system($cmd) == 0 or die "Could not run $cmd";
         
         $files{$sample} = $file_name;
         
@@ -431,7 +429,7 @@ sub filter_positions {
     }
     my $cmd = join(' ' , @cmd) . " > $valid_positions";
     
-    `$cmd`;
+    system($cmd) == 0 or die "Could not run $cmd";
     unlink "0";
     
     map { unlink $_ } values %results;
