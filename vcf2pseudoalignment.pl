@@ -64,35 +64,6 @@ sub create_mpileup_table
 	return \%mpileup_table;
 }
 
-sub variant_info_to_hash
-{
-	my ($info_string) = @_;
-
-	my @info = split(/;/,$info_string);
-	my %info_hash = ();
-	foreach my $info_entry (@info)
-	{
-		if (defined $info_entry and $info_entry ne '')
-		{
-			my @parts = split(/=/, $info_entry);
-			if (defined $parts[0] and $parts[0] ne '')
-			{
-				if (@parts > 1)
-				{
-					$info_hash{$parts[0]} = $parts[1];
-				}
-				else
-				{
-					$info_hash{$parts[0]} = undef;
-				}
-			}
-		}
-	}
-
-	return \%info_hash;
-}
-
-
 
 ############
 ### MAIN ###
