@@ -449,7 +449,7 @@ sub refs_info {
     my $in = Bio::SeqIO->new(-format=>'fasta',-file=>$file);
     while ( my $seq = $in->next_seq()) {
         $refs{$seq->display_id()}{'length'} = $seq->length;
-        my @bps = ('X');
+        my @bps = ('X'); #seqs start at index 1 and not zero. So putting a value.
         
         map { push @bps, uc $_ } split //, $seq->seq;
         $refs{$seq->display_id()}{'bps'} = \@bps;
