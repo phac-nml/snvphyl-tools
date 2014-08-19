@@ -36,7 +36,6 @@ sub usage
         "\t--mpileup: Multiple list of key/value pair  'name=path/to/vcf.gz'".
 	"\t-o|--output-base:  The output base name for the alignment file(s)\n".
 	"Options:\n".
-	"\t-u|--uniquify:  Make the seq names unique and print mapping file to real names (for phylip format limitations)\n".
 	"\t-r|--reference:  The name of the reference to use in the alignment (default: reference)\n".
 	"\t-f|--format:  The format to output the alignment to, one of the Bio::AlignIO supported formats (default: fasta)\n".
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
@@ -102,194 +101,18 @@ sub variant_info_to_hash
 # maps format name to format file extension
 my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
-my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff);
-my ($uniquify, $help, $requested_cpus, $invalid, $keep_ambiguous,$fasta,$bcftools);
-my (%vcf_files, %mpileup_files);
 
-my $command_line = join(' ',@ARGV);
-
-if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
-                'vcfsplit=s' => \%vcf_files,
-		'mpileup-dir|b=s' => \$mpileup_dir,
-                'mpileup=s' => \%mpileup_files,
-		'format|f=s' => \@formats,
-		'output-base|o=s' => \$output_base,
-		'reference|r=s' => \$reference,
-                'fasta=s' => \$fasta,
-		'coverage-cutoff|c=i' => \$coverage_cutoff,
-		'uniquify|u' => \$uniquify,
-		'invalid-pos=s' => \$invalid,
-		'help|h' => \$help,
-		'keep-ambiguous' => \$keep_ambiguous,
-                'numcpus=i' => \$requested_cpus,
-                'b|bcftools-path=s' => \$bcftools,     
-		'verbose|v' => \$verbose))
-{
-	die "Invalid option\n".usage;
-}
-
-print usage and exit(0) if (defined $help);
-$verbose = 0 if (not defined $verbose);
-
-if ( $vcf_dir and $mpileup_dir)
-{
-    die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
-
-    die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
-}
-elsif ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0)
-{
-    die "Was not able to find any vcf files from freebayes and/or mpileup.";
-}
-
-die "output-base undefined\n".usage if (not defined $output_base);
-
-if (not defined $bcftools or not -e $bcftools){
-
-    #check to see if bcftools is on the path
-    #normally we always want to be passed the path to the tool but this is for Galaxy implementation
-    my $alive=`bcftools 2>&1 1>/dev/null`;
-    if ( $alive && $alive =~ /Program: bcftools/) {
-        $bcftools="bcftools";
-    }
-    else {
-        die "bcftools-path not defined and not found on the path.\n".usage         
-    }
-
-}
-
-
-#need check to see if bcftools was complied with htslib and also has the correct plugin installed
-my $usage_state = `$bcftools 2>&1 1>/dev/null`;
-if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
-    die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
-}
-my $plugins_state = `$bcftools annotate -l`;
-if ( not ( $plugins_state =~ /-- filter_mpileup --/ && $plugins_state =~ /-- filter_freebayes --/ ) ) {
-    die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
-}
-
-
-if (not defined $reference)
-{
-	print STDERR "reference name not defined, calling it 'reference'\n";
-	$reference = 'reference';
-}
-
-
-
-if (defined $invalid)
-{
-    if ( ! -e $invalid)
-    {
-	die "Was given an invalid position file but could not locate it '$invalid'\n";
-    }
-}
-else
-{
-    print STDERR "invalid position file not defined, Will ignore step\n";
-}
-
-
-$requested_cpus = 1 if (not defined $requested_cpus);
-$uniquify = 0 if (not defined $uniquify);
-
-if (@formats <= 0){
-	print STDERR "warning: format not defined, assuming fasta\n";
-	@formats = ("fasta");
-}
-else
-{
-	for my $format (@formats)
-	{
-		die "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n" if (not defined $valid_formats{$format});
-	}
-}
-
-if (not defined $coverage_cutoff)
-{
-	print STDERR "warning: coverage-cutoff not set, assuming it is 1\n";
-	$coverage_cutoff = 1;
-}
-elsif ($coverage_cutoff !~ /^\d+$/)
-{
-	die "coverage-cutoff=$coverage_cutoff is invalid\n".usage;
-}
-
-
-my $dh;
-# fill table vcf_files with entries like if only provided the vcf-dir
-#  vcf1 => dir/vcf1.vcf.gz
-#  vcf2 => dir/vcf2.vcf.gz
-if ( $vcf_dir) {
-    opendir($dh, $vcf_dir) or die "error opening directory $vcf_dir: $!";
-    %vcf_files = map { /^(.*)\.vcf\.gz$/; $1 => "$vcf_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
-    closedir($dh);
-}
-
-die "No *.vcf.gz files found in $vcf_dir.  Perhas you need to compress and index with 'tabix' tools\n".
-"Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%vcf_files) <= 0);
-
-my $total_samples = (keys %vcf_files);
-
-
-
-
-
-if ( $mpileup_dir)
-{
-    # create table of mpileup files corresponding to input freebayes/variant vcf files
-    # assumes files are named with the same prefix
-    # ex vcf-dir/file1.vcf.gz and mpileup-dir/file1.vcf.gz    
-    my $mpileup_table = create_mpileup_table(\%vcf_files, $vcf_dir, $mpileup_dir);
-
-    if (not defined $mpileup_table)
-    {
-        die "Error: vcf-dir contains unmatched files in mpileup-dir";
-    }
-    
-    else
-    {
-        %mpileup_files = %{$mpileup_table};
-    }
-
-}
-else
-{
-    if (scalar keys %mpileup_files != scalar keys %vcf_files )
-    {
-        die "Error: vcfsplit contains uneven number compare to mpileup-files";
-    }
-    my $m_name= join ('',sort {$a cmp $b } keys %mpileup_files);
-    my $v_name= join ('',sort {$a cmp $b } keys %vcf_files);
-    if ( $m_name ne $v_name) {
-        die "Error: vcfsplit contains unmatched files to mpileup-files";
-    }
-    
-}
-if ( not -e $fasta) {
-    die "Error: Was not given reference fasta file\n";
-    
-}
-my $refs_info = refs_info($fasta);
-
-
-my $invalid_pos;
-
-if ($invalid)
-{
-	my $invalid_positions_parser = InvalidPositions->new;
-	$invalid_pos = $invalid_positions_parser->read_invalid_positions($invalid);
-}
-
+my ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,$formats,
+    $refs_info,$invalid_pos,$reference
+) = prepare_inputs();
 
 #create temp working directory for all combines vcf files
 #in future make them stay around...
 my $tmp_dir = tempdir (CLEANUP => 0);
     
 #combine the mpileup and freebayes vcf files together
-my $files = combine_vcfs(\%vcf_files,\%mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus);
-
+#in the future, might be taken out to it's own script
+my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus);
 
 
 my $valid_positions = $output_base . "-positions.tsv";
@@ -298,14 +121,12 @@ my $valid_positions = $output_base . "-positions.tsv";
 #create pseudo-positions.tsv file
 my $stats = filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
 
-
+#create pseudo-stats.csv file
 print_stats($stats,$output_base . '-stats.csv');
 
 
-    
-
 #create alignment files
-for my $format (@formats)
+for my $format (@{$formats})
 {
     my $output_file = $output_base . ".".$valid_formats{$format};
     print STDERR "Alignment written to $output_file\n";
@@ -724,3 +545,169 @@ sub print_stats {
 
     return;
 }
+
+
+
+sub prepare_inputs {
+
+    my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff);
+    my ($help, $requested_cpus, $invalid,$fasta,$bcftools);
+    my (%vcf_files, %mpileup_files);
+
+
+
+    if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
+                    'vcfsplit=s' => \%vcf_files,
+                    'mpileup-dir|b=s' => \$mpileup_dir,
+                    'mpileup=s' => \%mpileup_files,
+                    'format|f=s' => \@formats,
+                    'output-base|o=s' => \$output_base,
+                    'reference|r=s' => \$reference,
+                    'fasta=s' => \$fasta,
+                    'coverage-cutoff|c=i' => \$coverage_cutoff,
+                    'invalid-pos=s' => \$invalid,
+                    'help|h' => \$help,
+                    'numcpus=i' => \$requested_cpus,
+                    'b|bcftools-path=s' => \$bcftools,     
+                    'verbose|v' => \$verbose)){
+        die "Invalid option\n".usage;
+    }
+    
+    print usage and exit(0) if (defined $help);
+    $verbose = 0 if (not defined $verbose);
+    
+    if ( $vcf_dir and $mpileup_dir){
+        die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
+        die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
+    }
+    elsif ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0){
+        die "Was not able to find any vcf files from freebayes and/or mpileup.";
+    }
+    
+    die "output-base undefined\n".usage if (not defined $output_base);
+    
+    if (not defined $bcftools or not -e $bcftools){
+        
+        #check to see if bcftools is on the path
+        #normally we always want to be passed the path to the tool but this is for Galaxy implementation
+        my $alive=`bcftools 2>&1 1>/dev/null`;
+        if ( $alive && $alive =~ /Program: bcftools/) {
+            $bcftools="bcftools";
+        }
+        else {
+            die "bcftools-path not defined and not found on the path.\n".usage         
+        }
+        
+    }
+    
+    
+    #need check to see if bcftools was complied with htslib and also has the correct plugin installed
+    my $usage_state = `$bcftools 2>&1 1>/dev/null`;
+    if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
+        die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+    }
+    my $plugins_state = `$bcftools annotate -l`;
+    if ( not ( $plugins_state =~ /-- filter_mpileup --/ && $plugins_state =~ /-- filter_freebayes --/ ) ) {
+        die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+    }
+
+    
+    if (not defined $reference){
+        print STDERR "reference name not defined, calling it 'reference'\n";
+        $reference = 'reference';
+    }
+
+    
+    
+    if (defined $invalid){
+        if ( ! -e $invalid){
+            die "Was given an invalid position file but could not locate it '$invalid'\n";
+        }
+    }
+    else{
+        print STDERR "invalid position file not defined, Will ignore step\n";
+    }
+    
+    
+    $requested_cpus = 1 if (not defined $requested_cpus);
+    
+    if (@formats <= 0){
+	print STDERR "warning: format not defined, assuming fasta\n";
+	@formats = ("fasta");
+    }
+    else{
+        for my $format (@formats){
+            die "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n" if (not defined $valid_formats{$format});
+        }
+    }
+    
+    if (not defined $coverage_cutoff){
+        print STDERR "warning: coverage-cutoff not set, assuming it is 1\n";
+        $coverage_cutoff = 1;
+    }
+    elsif ($coverage_cutoff !~ /^\d+$/){
+        die "coverage-cutoff=$coverage_cutoff is invalid\n".usage;
+    }
+    
+    
+    my $dh;
+    # fill table vcf_files with entries like if only provided the vcf-dir
+    #  vcf1 => dir/vcf1.vcf.gz
+    #  vcf2 => dir/vcf2.vcf.gz
+    if ( $vcf_dir) {
+        opendir($dh, $vcf_dir) or die "error opening directory $vcf_dir: $!";
+        %vcf_files = map { /^(.*)\.vcf\.gz$/; $1 => "$vcf_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
+        closedir($dh);
+    }
+    
+    die "No *.vcf.gz files found in $vcf_dir.  Perhas you need to compress and index with 'tabix' tools\n".
+        "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%vcf_files) <= 0);
+    
+    my $total_samples = (keys %vcf_files);
+
+
+
+
+
+    if ( $mpileup_dir){
+        # create table of mpileup files corresponding to input freebayes/variant vcf files
+        # assumes files are named with the same prefix
+        # ex vcf-dir/file1.vcf.gz and mpileup-dir/file1.vcf.gz    
+        my $mpileup_table = create_mpileup_table(\%vcf_files, $vcf_dir, $mpileup_dir);
+        
+        if (not defined $mpileup_table){
+            die "Error: vcf-dir contains unmatched files in mpileup-dir";
+        }
+        else{
+            %mpileup_files = %{$mpileup_table};
+        }
+        
+    }
+    else{
+        if (scalar keys %mpileup_files != scalar keys %vcf_files ){
+            die "Error: vcfsplit contains uneven number compare to mpileup-files";
+        }
+        my $m_name= join ('',sort {$a cmp $b } keys %mpileup_files);
+        my $v_name= join ('',sort {$a cmp $b } keys %vcf_files);
+        if ( $m_name ne $v_name) {
+            die "Error: vcfsplit contains unmatched files to mpileup-files";
+        }
+            
+    }
+    if ( not -e $fasta) {
+        die "Error: Was not given reference fasta file\n";
+    }
+    
+    my $refs_info = refs_info($fasta);
+    
+    my $invalid_pos;
+    
+    if ($invalid){
+        my $invalid_positions_parser = InvalidPositions->new;
+        $invalid_pos = $invalid_positions_parser->read_invalid_positions($invalid);
+    }
+
+
+    return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
+            $refs_info,$invalid_pos,$reference);
+}    
