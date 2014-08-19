@@ -366,13 +366,14 @@ sub filter_positions {
                             }
                             else {
                                 push @line,$_->{'alt'};
-                                }
+                            }
                         }
                         print $out join("\t",@line) . "\n";
-
+                        
                     }
                     #now we are working with position where there is at least one SNP and at least one filtered-*
-                    else {
+                    elsif (any {  ( $_->{'status'} eq 'PASS' || $_->{'status'} eq 'filtered-invalid' )  && $_->{'alt'} ne '.'} @data ){
+                        
                         if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
                             push @line, 'filtered-invalid';
                             $stats{$chrom}{'invalid'}++;
