@@ -4,14 +4,14 @@ use List::MoreUtils qw/all/;
 
 
 sub create_streamers {
-    my ($files,$range,$job_id) = @_;
+    my ($files,$range,$job_id,$bcftools) = @_;
     
     my @fhs;
     
     foreach ( sort {$a cmp $b } keys %$files ) {
         my %info;
         #fetch only the range from the reference that was assigned to this filehandle.
-        my $cmd = "/share/apps/bcftools/bcftools/bcftools query -r $range -f '%CHROM\\t%POS\\t%ID\\t%REF\\t%ALT\\t%QUAL\\t%FILTER\\t%INFO/DP\n' " . $files->{$_} . " 2>/dev/null";
+        my $cmd = "$bcftools query -r $range -f '%CHROM\\t%POS\\t%ID\\t%REF\\t%ALT\\t%QUAL\\t%FILTER\\t%INFO/DP\n' " . $files->{$_} . " 2>/dev/null";
         
         #store results
         my $result = `$cmd`;

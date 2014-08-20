@@ -90,7 +90,7 @@ my $valid_positions = $output_base . "-positions.tsv";
 
 
 #create pseudo-positions.tsv file
-my $stats = filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$requested_cpus);
+my $stats = filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$bcftools,$requested_cpus);
 
 #create pseudo-stats.csv file
 print_stats($stats,$output_base . '-stats.csv');
@@ -216,7 +216,7 @@ sub combine_vcfs{
 
 
 sub filter_positions {
-    my ($files,$refs,$invalid_pos,$valid_positions,$cpus) = @_;
+    my ($files,$refs,$invalid_pos,$valid_positions,$bcftools,$cpus) = @_;
 
     my %results;
     my $pm;
@@ -299,7 +299,7 @@ sub filter_positions {
             my $f_name = $job_id;
             open my $out, '>',$f_name;
             
-            my $streamers = Streaming::create_streamers($files,$range,$job_id);
+            my $streamers = Streaming::create_streamers($files,$range,$job_id,$bcftools);
             my $cur_pos = $start;
             
             my @data = $streamers->($chrom,$cur_pos);
