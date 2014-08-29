@@ -79,7 +79,7 @@ my ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output
 
 #create temp working directory for all combines vcf files
 #in future make them stay around...
-my $tmp_dir = tempdir (CLEANUP => 0);
+my $tmp_dir = tempdir (CLEANUP => 1);
     
 #combine the mpileup and freebayes vcf files together
 #in the future, might be taken out to it's own script
@@ -147,7 +147,7 @@ sub combine_vcfs{
 
         my $cmd;
         
-        my $file_name = "$tmp_dir/$sample" . "_combined.vcf.gz";
+        my $file_name = "$tmp_dir/$sample" . "_combined.bcf.gz";
 
         my ($dir) = "$tmp_dir/$sample" . '_answer';
 
@@ -170,7 +170,7 @@ sub combine_vcfs{
         #also filter by MQM flag = minumum mean mapping quality with > 30
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  annotate -x FORMAT -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.bcf -O b  > $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.bcf -O b  > $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
         
         
@@ -186,23 +186,15 @@ sub combine_vcfs{
         my $header = $FindBin::Bin . '/fake_vcf_header/header';
         my $bottom_header = $FindBin::Bin . '/fake_vcf_header/bottom_header';
 
-        #need to add header specific reference in the vcf files
-        #need a better solution!
-        $cmd = "zgrep '##contig' $m_file > $dir/contigs";
-        system($cmd) == 0 or die "Could not run $cmd";
-        $cmd = "cat $header $dir/contigs $bottom_header > $dir/header";
-        system($cmd) == 0 or die "Could not run $cmd";
-        ######
-        
-        $cmd = "$bcftools  merge -O z  --use-header $dir/header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name 2>/dev/null";
+        $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
         
-        $cmd = "$bcftools index -t -f $file_name";
+        $cmd = "$bcftools index -f $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
         
         $files{$sample} = $file_name;
         
-        #rmtree $dir;
+        rmtree $dir;
         $pm->finish(0,{"$sample" =>$file_name});        
 
     
@@ -254,10 +246,10 @@ sub filter_positions {
     
     my $bit_size = 100000;
     my $job_id=0;
-
+    my $tmp_dir = tempdir (CLEANUP => 1);
 
     #print header file
-    open my $out, '>', $job_id;
+    open my $out, '>', "$job_id";
     print $out "#Chromosome\tPosition\tStatus\tReference\t";
     my @samples_list = sort {$a cmp $b } keys %$files;
     print $out join("\t",@samples_list);
@@ -296,7 +288,7 @@ sub filter_positions {
                                     'core' => 0,
                                 });
             
-            my $f_name = $job_id;
+            my $f_name = "$job_id";
             open my $out, '>',$f_name;
             
             my $streamers = Streaming::create_streamers($files,$range,$job_id,$bcftools);
@@ -622,16 +614,16 @@ sub prepare_inputs {
     
     my $dh;
     # fill table vcf_files with entries like if only provided the vcf-dir
-    #  vcf1 => dir/vcf1.vcf.gz
-    #  vcf2 => dir/vcf2.vcf.gz
+    #  vcf1 => dir/vcf1.bcf.gz
+    #  vcf2 => dir/vcf2.bcf.gz
     if ( $vcf_dir) {
         opendir($dh, $vcf_dir) or die "error opening directory $vcf_dir: $!";
-        %vcf_files = map { /^(.*)\.vcf\.gz$/; $1 => "$vcf_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
+        %vcf_files = map { /^(.*)\.bcf\.gz$/; $1 => "$vcf_dir/$_"} grep { /\.bcf\.gz$/ } readdir($dh);
         closedir($dh);
     }
     
-    die "No *.vcf.gz files found in $vcf_dir.  Perhas you need to compress and index with 'tabix' tools\n".
-        "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%vcf_files) <= 0);
+    die "No *.bcf.gz files found in $vcf_dir.  Perhas you need to compress and index with 'tabix' tools\n".
+        "Example: bgzip file.vcf; tabix -p vcf file.bcf.gz" if (keys(%vcf_files) <= 0);
     
     my $total_samples = (keys %vcf_files);
 
@@ -642,7 +634,7 @@ sub prepare_inputs {
     if ( $mpileup_dir){
         # create table of mpileup files corresponding to input freebayes/variant vcf files
         # assumes files are named with the same prefix
-        # ex vcf-dir/file1.vcf.gz and mpileup-dir/file1.vcf.gz    
+        # ex vcf-dir/file1.bcf.gz and mpileup-dir/file1.bcf.gz    
         my $mpileup_table = create_mpileup_table(\%vcf_files, $vcf_dir, $mpileup_dir);
         
         if (not defined $mpileup_table){

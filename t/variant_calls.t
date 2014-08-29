@@ -122,17 +122,17 @@ sub run_command
 	return ($actual_out_base,@out_files);
 }
 
-sub get_vcfs
+sub get_bcfs
 {
     my ($in_dir) = @_;
-    my %vcf;
+    my %bcf;
     my $dh;
     
     opendir($dh, $in_dir) or die "error opening directory $in_dir: $!";
-    %vcf = map { /^(.*)\.vcf\.gz$/; $1 => "$in_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
+    %bcf = map { /^(.*)\.bcf\.gz$/; $1 => "$in_dir/$_"} grep { /\.bcf\.gz$/ } readdir($dh);
     closedir($dh);
 
-    return \%vcf
+    return \%bcf
 }
 
 
@@ -176,7 +176,7 @@ for my $dir (@in_files)
 	next if (not -d $curr_input);
 	my $invalid_positions = "$curr_input/invalid-positions.tsv";
 
-	my $extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta ";
+	my $extra_params = " --bcftools-path /share/apps/new_samtools/bcftools/bcftools --fasta $curr_input/reference.fasta ";
 
 	if (-e "$invalid_positions")
 	{
@@ -191,10 +191,10 @@ for my $dir (@in_files)
         my $expected_core_file = "$curr_input/expected_core.csv";
         
 	my $vcf_dir = $curr_input;
-        my %dirs_vcfs = %{get_vcfs($vcf_dir)};
+        my %dirs_vcfs = %{get_bcfs($vcf_dir)};
         
 	my $pileup_dir = "$curr_input/pileup";
-        my %pileup_vcfs = %{get_vcfs($pileup_dir)};
+        my %pileup_vcfs = %{get_bcfs($pileup_dir)};
         
 
         
