@@ -172,8 +172,7 @@ sub combine_vcfs{
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
         $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.bcf -O b  > $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
-        
-        
+                
 
         $cmd = "$bcftools index  $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
@@ -182,17 +181,11 @@ sub combine_vcfs{
         $cmd = "$bcftools index  $dir/filtered_mpileup.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        #get the fake merge vcf header
-        my $header = $FindBin::Bin . '/fake_vcf_header/header';
-        my $bottom_header = $FindBin::Bin . '/fake_vcf_header/bottom_header';
-
         $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
         
         $cmd = "$bcftools index -f $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
-        
-        $files{$sample} = $file_name;
         
         rmtree $dir;
         $pm->finish(0,{"$sample" =>$file_name});        
