@@ -16,13 +16,13 @@ const char *about(void)
 
 int dp_type = BCF_HT_INT;
 int mqm_type = BCF_HT_REAL;
+int type_type = BCF_HT_STR;
 int min_dp =-1;
 double min_ao =-1;
 float min_mqm = -1;
 bcf_hdr_t *in_hdr = NULL;
 bcf_hdr_t *out_hdr = NULL;
 int flag_coverage=-1;
-int flag_mpileup=-1;
 
 /* 
     Called once at startup, allows to initialize local variables.
@@ -87,7 +87,6 @@ int process(bcf1_t *rec)
     //if not we are softclipping out of file
     if (DP < min_dp) {
       bcf_add_filter(out_hdr,rec,flag_coverage);
-      return 0;
     }
   }
   else {
@@ -128,10 +127,27 @@ int process(bcf1_t *rec)
     printf ("A record does not contain AO flag in INFO column\n");
     return -1;
   }
-  
-  //if pass all filter above. add the PASS to filter column
+
+
+
+
+  char *buf3 = NULL;
+  int nbuf3 = 0;   // NB: number of elements, not bytes
+  if (bcf_get_info_values(in_hdr,rec,"TYPE",(void**)&buf3,&nbuf3,type_type)) {
+    char *type = buf3;
+
+    //we are throwing out complex or mnp regions
+    if (strcmp(type,"complex") == 0 || strcmp(type,"mnp") == 0) {
+      return 1;
+    }
+  }
+  else {
+    printf ("A record does not contain TYPE flag in INFO column\n");
+    return -1;
+  }
+
+  //add that we passed all filtering!
   bcf_add_filter(out_hdr,rec,0);
-  
   return 0;
 }
 
