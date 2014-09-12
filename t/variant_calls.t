@@ -176,7 +176,7 @@ for my $dir (@in_files)
 	next if (not -d $curr_input);
 	my $invalid_positions = "$curr_input/invalid-positions.tsv";
 
-	my $extra_params = " --bcftools-path /share/apps/new_samtools/bcftools/bcftools --fasta $curr_input/reference.fasta ";
+	my $extra_params = " --fasta $curr_input/reference.fasta ";
 
 	if (-e "$invalid_positions")
 	{
