@@ -29,8 +29,6 @@ sub usage
 	"Options:\n".
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
 	"\t--verbose:  More information printed\n".
-        "\t--gview_path: Full path to gview.jar".
-        "\t--gview_style: Full path to default gview stylesheet".
 	"\t--positions: Full path to pseudoalign-positions.tsv file".
 	"\t-h|--help:  Help\n";
 }
@@ -63,7 +61,7 @@ sub create_mpileup_table
 
 
 
-my (%mpileup_files,$mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$gview,$gview_style,$invalid,$positions);
+my (%mpileup_files,$mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$invalid,$positions);
 
 my $command_line = join(' ',@ARGV);
 
@@ -79,8 +77,6 @@ if (!GetOptions(
 		'positions=s' => \$positions,
 		'help|h' => \$help,
                 'numcpus=i' => \$requested_cpus,
-                'gview_path=s' => \$gview,
-                'gview_style=s' => \$gview_style,
 		'verbose|v' => \$verbose))
 {
 	die "Invalid option\n".usage;
@@ -111,14 +107,6 @@ die "pseudoalign-positions does not exist\n".usage if (not -e $positions);
 if (not defined $output_base){
     $output_base = ".";
     print STDERR "--output_base was not defined. Using current directory\n";
-}
-
-if ( defined $gview and not defined $gview_style) {
-    die "Was given a gview binary but no style sheet\n". usage;
-}
-elsif (not defined $gview) {
-    print STDERR "No gview given, Not creating images\n";
-    
 }
 
 $requested_cpus = 1 if (not defined $requested_cpus);
