@@ -139,9 +139,7 @@ if ( $mpileup_dir) {
     closedir($dh);
 
     die "No *.vcf.gz files found in $mpileup_dir.  Perhas you need to compress and index with 'tabix' tools\n".
-        "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0);
-
-    
+        "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0); 
 }
 
 
