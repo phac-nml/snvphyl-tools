@@ -164,11 +164,6 @@ my $info = determine_core($snps,$output_base,\%mpileup_files,$requested_cpus,$fa
 
 print_results($info);
 
-if ( $gview) {
-    create_figures($gview,$gview_style,$info,$requested_cpus);
-}
-
-
 exit;
 
 
@@ -439,41 +434,7 @@ sub determine_core
     return \%info;
 }
 
-
-
-sub create_figures
-{
-    my ($gview,$style,$info,$requested_cpus) = @_;
-    
-    
-    my $pm;
-    my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
-    chomp $num_cpus;
-    #ensure that you user cannot request more threads then CPU on the machine
-    if ( $requested_cpus > $num_cpus) {
-        $requested_cpus = $num_cpus;
-    }
-
-    $pm=Parallel::ForkManager->new($requested_cpus);
-    #create gview image using all the gffs provided
-    foreach my $chrom ( keys %{$info->{'results'} }) {
-        my $gff = $info->{'results'}{$chrom}{'gff'};
-        my $fasta = $info->{'results'}{$chrom}{'fasta'};
-        
-	$pm->start and next;
-        my $out = $gff;
-        $out =~ s/\.gff$/.png/;
-
-        `java -Xmx4G -jar $gview -i $fasta -s $style -l linear -f png -o $out -g $gff -z 4`;
-	$pm->finish();
-    }
-    $pm->wait_all_children;
-
-    
-    return;
-}
-    
-
+   
 sub write_range {
     my ($x,$y,$task,$gffout) = @_;
     #print "$x-$y\n";
