@@ -29,8 +29,6 @@ sub usage
 	"Options:\n".
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
 	"\t--verbose:  More information printed\n".
-        "\t--gview_path: Full path to gview.jar".
-        "\t--gview_style: Full path to default gview stylesheet".
 	"\t--positions: Full path to pseudoalign-positions.tsv file".
 	"\t-h|--help:  Help\n";
 }
@@ -63,7 +61,7 @@ sub create_mpileup_table
 
 
 
-my (%mpileup_files,$mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$gview,$gview_style,$invalid,$positions);
+my (%mpileup_files,$mpileup_dir,$output_base,$coverage_cutoff,$help,$requested_cpus,$fasta,$invalid,$positions);
 
 my $command_line = join(' ',@ARGV);
 
@@ -79,8 +77,6 @@ if (!GetOptions(
 		'positions=s' => \$positions,
 		'help|h' => \$help,
                 'numcpus=i' => \$requested_cpus,
-                'gview_path=s' => \$gview,
-                'gview_style=s' => \$gview_style,
 		'verbose|v' => \$verbose))
 {
 	die "Invalid option\n".usage;
@@ -113,14 +109,6 @@ if (not defined $output_base){
     print STDERR "--output_base was not defined. Using current directory\n";
 }
 
-if ( defined $gview and not defined $gview_style) {
-    die "Was given a gview binary but no style sheet\n". usage;
-}
-elsif (not defined $gview) {
-    print STDERR "No gview given, Not creating images\n";
-    
-}
-
 $requested_cpus = 1 if (not defined $requested_cpus);
 
 if ( defined $invalid && ! -e $invalid)
@@ -151,9 +139,7 @@ if ( $mpileup_dir) {
     closedir($dh);
 
     die "No *.vcf.gz files found in $mpileup_dir.  Perhas you need to compress and index with 'tabix' tools\n".
-        "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0);
-
-    
+        "Example: bgzip file.vcf; tabix -p vcf file.vcf.gz" if (keys(%mpileup_files) <= 0); 
 }
 
 
@@ -163,11 +149,6 @@ my $snps = read_snps($positions,$output_base);
 my $info = determine_core($snps,$output_base,\%mpileup_files,$requested_cpus,$fasta,$coverage_cutoff,$invalid);
 
 print_results($info);
-
-if ( $gview) {
-    create_figures($gview,$gview_style,$info,$requested_cpus);
-}
-
 
 exit;
 
@@ -439,41 +420,7 @@ sub determine_core
     return \%info;
 }
 
-
-
-sub create_figures
-{
-    my ($gview,$style,$info,$requested_cpus) = @_;
-    
-    
-    my $pm;
-    my $num_cpus=`cat /proc/cpuinfo | grep processor | wc -l`;
-    chomp $num_cpus;
-    #ensure that you user cannot request more threads then CPU on the machine
-    if ( $requested_cpus > $num_cpus) {
-        $requested_cpus = $num_cpus;
-    }
-
-    $pm=Parallel::ForkManager->new($requested_cpus);
-    #create gview image using all the gffs provided
-    foreach my $chrom ( keys %{$info->{'results'} }) {
-        my $gff = $info->{'results'}{$chrom}{'gff'};
-        my $fasta = $info->{'results'}{$chrom}{'fasta'};
-        
-	$pm->start and next;
-        my $out = $gff;
-        $out =~ s/\.gff$/.png/;
-
-        `java -Xmx4G -jar $gview -i $fasta -s $style -l linear -f png -o $out -g $gff -z 4`;
-	$pm->finish();
-    }
-    $pm->wait_all_children;
-
-    
-    return;
-}
-    
-
+   
 sub write_range {
     my ($x,$y,$task,$gffout) = @_;
     #print "$x-$y\n";
