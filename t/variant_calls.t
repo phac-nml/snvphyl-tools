@@ -4,9 +4,12 @@ use warnings;
 use strict;
 
 use FindBin;
+use lib $FindBin::Bin.'/../lib';
 use Test::More;
 use File::Temp 'tempfile';
 use Getopt::Long;
+
+use CompareFiles;
 
 my $script_dir = $FindBin::Bin;
 
@@ -277,7 +280,7 @@ $actual_positions_file = "$actual_base-positions.tsv";
 $got = `cat $actual_file`;
 print "### Got ###\n";
 print "$got\n";
-pass("pass test for phylip output") if (compare_files($expected_file,$actual_file));
+pass("pass test for phylip output") if (CompareFiles::compare_phylip_files($expected_file,$actual_file));
 pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
 
 $curr_input = "$input_dir/1";
@@ -290,12 +293,12 @@ $actual_positions_file = "$actual_base-positions.tsv";
 pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
 if ($actual_file_1 =~ /phy$/)
 {
-        pass("pass test for phylip output") if (compare_files($expected_file_phy,$actual_file_1));
+        pass("pass test for phylip output") if (CompareFiles::compare_phylip_files($expected_file_phy,$actual_file_1));
         pass("pass test for fasta output") if (compare_files($expected_file_fasta,$actual_file_2));
 }
 else
 {
-        pass("pass test for phylip output") if (compare_files($expected_file_phy,$actual_file_2));
+        pass("pass test for phylip output") if (CompareFiles::compare_phylip_files($expected_file_phy,$actual_file_2));
         pass("pass test for fasta output") if (compare_files($expected_file_fasta,$actual_file_1));
 }
 

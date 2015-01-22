@@ -32,31 +32,23 @@ my $t = 2;
 open my $in, "<", $input or die "Could not open $input!";
 
 my $line = <$in>;
+chomp $line;
 #Get the list of genome names from the header. 
 my @header = split (/\t/, $line);
-chomp(@header);
 
 #Go through each line and process it
 while ($line = <$in>)
 {
 	chomp $line;
 	my @entries = split(/\t/, $line);
-	chomp(@entries);
 	#Get the chromosome name which is the first thing in the line
 	my $chrom = $entries[0];
 
 	#Does the user want the filtered-invalid entries included? If not, skip
 	next if ($entries[2] eq "filtered-invalid" and !$invalids);
-	
-	#Increment totals
-	if (exists($totals{$chrom}))
-	{
-		$totals{$chrom}++;
-	}
-	else
-	{
-		$totals{$chrom} = 1;
-	}
+
+        #Increment totals
+        $totals{$chrom}++;
 
 	#Valid? No point in doing all the work. Skip
 	next if ($entries[2] eq "valid");
