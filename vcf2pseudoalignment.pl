@@ -798,7 +798,7 @@ die "Alignment blocks are not all of the same length" if (not $aln->is_flush());
 for my $format (@formats)
 {
 	my $output_file = "$output_base.".$valid_formats{$format};
-	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format,-idlength=>30);
+	my $io = Bio::AlignIO->new(-file => ">$output_file", -format => $format,-longid=>1);
 	$io->write_aln($aln);
 	print STDERR "Alignment written to $output_file\n";
 }
