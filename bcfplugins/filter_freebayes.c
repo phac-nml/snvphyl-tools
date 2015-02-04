@@ -130,7 +130,8 @@ int process(bcf1_t *rec)
 
 
 
-
+/* turn off complex/mnp region filtering completely for now. 
+ * Want to get the same results as Aaron version
   char *buf3 = NULL;
   int nbuf3 = 0;   // NB: number of elements, not bytes
   if (bcf_get_info_values(in_hdr,rec,"TYPE",(void**)&buf3,&nbuf3,type_type)) {
@@ -145,7 +146,7 @@ int process(bcf1_t *rec)
     printf ("A record does not contain TYPE flag in INFO column\n");
     return -1;
   }
-
+*/
   //add that we passed all filtering!
   bcf_add_filter(out_hdr,rec,0);
   return 0;
