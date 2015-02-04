@@ -621,9 +621,6 @@ sub prepare_inputs {
     my $total_samples = (keys %vcf_files);
 
 
-
-
-
     if ( $mpileup_dir){
         # create table of mpileup files corresponding to input freebayes/variant vcf files
         # assumes files are named with the same prefix

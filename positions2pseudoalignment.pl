@@ -116,7 +116,7 @@ if ( not $valid_count) {
 }
 
 # generate seq objects
-my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNP Pipeline",-idlength=>30);
+my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNP Pipeline",-longid=>1);
 for (my $i = 0; $i < @strains; $i++)
 {
 	my $seq = Bio::LocatableSeq->new(-seq => $data[$i], -id => $strains[$i], -start => 1, -end => length($data[$i]));
@@ -125,7 +125,7 @@ for (my $i = 0; $i < @strains; $i++)
 $align->sort_alphabetically;
 
 # build alignment
-my $io = Bio::AlignIO->new(-file => ">$output", -format => $format,-idlength=>30);
+my $io = Bio::AlignIO->new(-file => ">$output", -format => $format, -longid=>1);
 die "Error: could not create Align::IO object" if (not defined $io);
 $align->set_displayname_flat(1); #force to output only the display name and not length
 
