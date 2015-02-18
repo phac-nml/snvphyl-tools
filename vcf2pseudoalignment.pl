@@ -161,8 +161,33 @@ sub combine_vcfs{
         $cmd = "$bcftools  isec $f_file $m_file -p $dir -c some -O b";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        #filter with C complied nml specific filtering, also removing all information in FORMAT column, otherwise we cannot merge farther down
-        $cmd = "$bcftools  annotate -x FORMAT -p filter_mpileup:dp=$coverage_cutoff $dir/0001.bcf -O b  > $dir/filtered_mpileup.bcf";
+	#result from bcftools isec is a directory that contains multiple *.bcf files
+	#ignoring: 0000.bcf is for unique position just for vcf-split aka freebayes (we do not use at all since should be empty because mpileup report ALL positions)
+	#use: 0001.bcf is for unique position only found in mpileup 
+	#use: 0002.bcf is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
+	      #VCF line that is kept is the one from freebayes and NOT mpileup
+	#ignoring: 0003.bcf same as 0002.bcf but where mpileup VCF line is kept and not freebayes
+	
+
+
+	#need to get rid of the stupid format information since they cannot be merge later downstream
+	#plan is to incoproate the removal all the FORMAT in each plugin so do not have to waste another step.
+	$cmd ="$bcftools  view -h $dir/0001.bcf";
+        my $result = `$cmd`;
+	if ($result =~ /##FORMAT=\<ID=GL/){
+	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/0001.bcf -O b > $dir/1-0001.bcf";
+	}
+	else{
+	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/0001.bcf -O b > $dir/1-0001.bcf";
+	}
+        system($cmd) == 0 or die "Could not run $cmd";
+
+	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/0002.bcf -O b > $dir/1-0002.bcf";
+        system($cmd) == 0 or die "Could not run $cmd";
+	######################################################################################################
+
+        #filter with C complied nml specific filtering
+	$cmd = "$bcftools  plugin filter_mpileup  $dir/1-0001.bcf -O b -- --dp $coverage_cutoff   > $dir/filtered_mpileup.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
         
@@ -170,7 +195,7 @@ sub combine_vcfs{
         #also filter by MQM flag = minumum mean mapping quality with > 30
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -p filter_freebayes:dp=$coverage_cutoff:mqm=30:ao=75  $dir/0002.bcf -O b  > $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --dp $coverage_cutoff  --mqm 30 --ao 75    > $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
                 
 
@@ -561,7 +586,7 @@ sub prepare_inputs {
     if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
         die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
     }
-    my $plugins_state = `$bcftools annotate -l`;
+    my $plugins_state = `$bcftools plugin -l`;
     if ( not ( $plugins_state =~ /-- filter_mpileup --/ && $plugins_state =~ /-- filter_freebayes --/ ) ) {
         die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
     }
