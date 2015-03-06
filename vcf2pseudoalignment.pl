@@ -729,7 +729,7 @@ my $unique_count = 1;
 my %name_map; # used to map sample name to other information
 my %sample_map; # keeps track of which samples have which unique ids (so we can properly increment unique_count)
 my %total_positions_map; # keep track of total positions, and if valid/not
-for my $chromosome (keys %$vcf_data)
+for my $chromosome ( sort {$a cmp $b } keys %$vcf_data)
 {
 	my ($alignment,$total_positions) = variants_alignment($vcf_data->{$chromosome}, $chromosome, $reference, \@samples_list, $mpileup_data, $coverage_cutoff,$invalid_pos,$keep_ambiguous);
 	$total_positions_map{$chromosome} = $total_positions;
@@ -835,7 +835,7 @@ print $vfh "#Chromosome\tPosition\tStatus\tReference\t";
 my @samples_sorted_list = sort {$a cmp $b} @samples_list;
 print $vfh join("\t",@samples_sorted_list);
 print $vfh "\n";
-for my $chr (keys %total_positions_map)
+for my $chr (sort { $a cmp $b } keys %total_positions_map)
 {
 	my $positions = $total_positions_map{$chr};
 	for my $pos (sort {$a <=> $b} keys %$positions)
