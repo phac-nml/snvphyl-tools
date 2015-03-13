@@ -285,8 +285,7 @@ sub determine_core
 
 
     my $bit_size = 100000;
-    foreach my $chrom( keys %refs) {
-        
+    foreach my $chrom( keys %refs) {    
         my ($start,$stop)=(0,0);
         my ($range);
         my $length = $refs{$chrom}{'length'};
@@ -311,18 +310,18 @@ sub determine_core
             
             my $core=0;
             my $streamers = create_streamers($mpileup_files,$range);
-            my $cur_pos = $start;
-        
-        
+	    my $cur_pos = $start;
+           
+		        
             my @data = $streamers->($chrom,$cur_pos);
             #search for all entries to have "EOF" as their data.
             #not sure how it will handle multiple chromosome... just yet
             my @ranges;
             my $last_range_start;
+	    
             while (all { $_ ne 'EOF' } @data) {
             
 
-                
                 if (scalar @data >=1 && all { $_ && $_->{'cov'} >= $coverage_cutoff } @data  ) {
 
                     if (exists $invalid_pos{$chrom}{$cur_pos} ) {
@@ -369,7 +368,6 @@ sub determine_core
     
     foreach my $chrom( keys %files) {
         my ($fh,$combine) = tempfile();
-
         #get the reference name and make it at least usable as a filename
         my $name = $chrom;
         $name =~ s/\|$//;
@@ -476,13 +474,13 @@ sub create_streamers {
         
         #store results
         my $result = `$cmd`;
-        
+        	 
         #created filehandle from scalar so we do not have to write to disk
         open (my $OUTPUT,'<',\$result);
         $info{'vcf'} = Vcf->new(fh => $OUTPUT ,_version_set=> '4.0');
         push @fhs,\%info;
     }
-    
+ 
     return sub {
         my ($chrom,$pos) = @_;
         my %line;
@@ -537,7 +535,7 @@ sub parse_invalid
 {
     my ($file) =  @_;
     my %invalid;
-    
+  
     open(my $fh, "<" , "$file") or die "Could not open $file: $!";
 
     while(my $line = readline($fh))
@@ -548,7 +546,7 @@ sub parse_invalid
 	next if (not defined $chrom or $chrom eq '');
 	next if ($start !~ /^\d+$/);
 	next if ($end !~ /^\d+$/);
-
+	
 	# swap in case start/end are reversed
 	my $real_start = ($start < $end) ? $start : $end;
 	my $real_end = ($start < $end) ? $end : $start;
