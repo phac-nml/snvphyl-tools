@@ -35,6 +35,11 @@ sub compare_files
 
 	my $success = 1;
 
+        #check to see if both files are empty, if so, they are the same.
+        if ( (not -e $actual_out_file && -s $expected_out_file ==0) and (not -e $actual_out_file && -s $actual_out_file ==0 ) ) {
+            return $success;
+        }
+
 	open(my $out_h, $expected_out_file) or die "Could not open $expected_out_file: $!";
 	open(my $a_out_h, $actual_out_file) or die "Could not open $actual_out_file: $!";
 	while($success and (defined (my $expected_line = readline($out_h))))
@@ -120,17 +125,17 @@ sub run_command
 	return ($actual_out_base,@out_files);
 }
 
-sub get_vcfs
+sub get_bcfs
 {
     my ($in_dir) = @_;
-    my %vcf;
+    my %bcf;
     my $dh;
     
     opendir($dh, $in_dir) or die "error opening directory $in_dir: $!";
-    %vcf = map { /^(.*)\.vcf\.gz$/; $1 => "$in_dir/$_"} grep { /\.vcf\.gz$/ } readdir($dh);
+    %bcf = map { /^(.*)\.bcf\.gz$/; $1 => "$in_dir/$_"} grep { /\.bcf\.gz$/ } readdir($dh);
     closedir($dh);
 
-    return \%vcf
+    return \%bcf
 }
 
 
@@ -174,11 +179,7 @@ for my $dir (@in_files)
 	next if (not -d $curr_input);
 	my $invalid_positions = "$curr_input/invalid-positions.tsv";
 
-	my $extra_params = '';
-	if ($dir !~ /^noN/)
-	{
-		$extra_params .= '--keep-ambiguous ';
-	}
+	my $extra_params = " --fasta $curr_input/reference.fasta ";
 
 	if (-e "$invalid_positions")
 	{
@@ -190,12 +191,13 @@ for my $dir (@in_files)
 	my $expected = `cat $curr_input/expected.fasta`;
 	my $expected_out_file = "$curr_input/expected.fasta";
 	my $expected_positions_file = "$curr_input/expected.positions.tsv";
+        my $expected_core_file = "$curr_input/expected_core.csv";
         
 	my $vcf_dir = $curr_input;
-        my %dirs_vcfs = %{get_vcfs($vcf_dir)};
+        my %dirs_vcfs = %{get_bcfs($vcf_dir)};
         
 	my $pileup_dir = "$curr_input/pileup";
-        my %pileup_vcfs = %{get_vcfs($pileup_dir)};
+        my %pileup_vcfs = %{get_bcfs($pileup_dir)};
         
 
         
@@ -211,7 +213,8 @@ for my $dir (@in_files)
 
 	my ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta'], $extra_params);
 	my $actual_positions_file = "$actual_base-positions.tsv";
-	my $got = `cat $actual_out_file`;
+        my $actual_core_file = "$actual_base-stats.csv";
+	my $got = -e $actual_out_file ? `cat $actual_out_file` : 'empty file';
 	print "### Got ###\n";
 	print "$got\n";
 	my $success = compare_files($expected_out_file,$actual_out_file);
@@ -224,6 +227,14 @@ for my $dir (@in_files)
 	{
 		pass("positions file generated from data in $curr_input is valid");
 	}
+
+	$success = compare_files($expected_core_file,$actual_core_file);
+	if ($success)
+	{
+		pass("core file generated from data in $curr_input is valid");
+	}
+
+        
 	print "### done ###\n";
 
 
@@ -238,7 +249,8 @@ for my $dir (@in_files)
 
         ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta'], $extra_params,\%dirs_vcfs,\%pileup_vcfs);
         $actual_positions_file = "$actual_base-positions.tsv";
-        $got = `cat $actual_out_file`;
+        $actual_core_file = "$actual_base-stats.csv";
+        $got = -e $actual_out_file ? `cat $actual_out_file` : 'empty file';
 	print "### Got ###\n";
 	print "$got\n";
         $success = compare_files($expected_out_file,$actual_out_file);
@@ -251,6 +263,12 @@ for my $dir (@in_files)
 	{
 		pass("positions file generated from data in $curr_input is valid");
 	}
+	$success = compare_files($expected_core_file,$actual_core_file);
+	if ($success)
+	{
+		pass("core file generated from data in $curr_input is valid");
+	}
+        
 	print "### done ###\n";
         
         
@@ -264,31 +282,42 @@ my $got;
 my $expected;
 my $expected_positions_file;
 my $actual_positions_file;
+my $actual_core_file;
 my ($actual_file_1,$actual_file_2);
 my ($expected_file_phy,$expected_file_fasta);
+my $expected_core_file;
+my $extra_params;
+
+
+
 
 $curr_input = "$input_dir/1";
 test_header("phylip output format in $curr_input");
 $expected_file = "$curr_input/expected.phy";
 $expected = `cat $expected_file`;
 $expected_positions_file = "$curr_input/expected.positions.tsv";
+$expected_core_file = "$curr_input/expected_core.csv";
 print "### Expected ###\n";
 print "$expected\n";
 die("could not find input dir $curr_input") if (not -e $curr_input);
-($actual_base,$actual_file) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip']);
+$extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta "; 
+($actual_base,$actual_file) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip'],$extra_params);
 $actual_positions_file = "$actual_base-positions.tsv";
+$actual_core_file = "$actual_base-stats.csv";
 $got = `cat $actual_file`;
 print "### Got ###\n";
 print "$got\n";
 pass("pass test for phylip output") if (CompareFiles::compare_phylip_files($expected_file,$actual_file));
 pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
+pass ("pass test for core output") if (compare_files($expected_core_file,$actual_core_file));
 
 $curr_input = "$input_dir/1";
 test_header("phylip/fasta output format in $curr_input");
 $expected_file_phy = "$curr_input/expected.phy";
 $expected_file_fasta = "$curr_input/expected.fasta";
 die("could not find input dir $curr_input") if (not -e $curr_input);
-($actual_base,$actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta']);
+$extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta "; 
+($actual_base,$actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta'],$extra_params);
 $actual_positions_file = "$actual_base-positions.tsv";
 pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
 if ($actual_file_1 =~ /phy$/)

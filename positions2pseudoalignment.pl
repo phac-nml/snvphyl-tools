@@ -108,6 +108,13 @@ while($line = readline($fh))
 }
 close($fh);
 
+
+#no valid positions were found so no point making empty file
+if ( not $valid_count) {
+    print "No valid positions were found. Not creating empty alignment file\n";
+    exit;
+}
+
 # generate seq objects
 my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNP Pipeline",-longid=>1);
 for (my $i = 0; $i < @strains; $i++)
@@ -120,6 +127,7 @@ $align->sort_alphabetically;
 # build alignment
 my $io = Bio::AlignIO->new(-file => ">$output", -format => $format, -longid=>1);
 die "Error: could not create Align::IO object" if (not defined $io);
+$align->set_displayname_flat(1); #force to output only the display name and not length
 
 die "Error: alignment not flush" if (not $align->is_flush);
 $io->write_aln($align);

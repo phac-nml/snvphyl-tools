@@ -29,6 +29,14 @@ Or, you can simply link up the appropriate perl modules within the **vcf2pseudoa
 	$ ln -s /path/to/vcftools/lib/perl5/site_perl/*.pm /path/to/vcf2pseudoalign/lib
 	$ ls /path/to/vcf2pseudoalign/lib
 	Align  CorePositions.pm  FaSlice.pm  InvalidPositions.pm  NucmerPositionsChecker.pm  PositionsTable.pm  Vcf.pm  VcfStats.pm
+
+Need to compile custom bcftools plugin and modify a few ENV variables
+	$ cd bcfplugins/bcftools-1.2
+	$ make
+	$ export PATH=`pwd`:$PATH
+	$ export LD_LIBRARY_PATH=`pwd`/htslib-1.2.1:$LD_LIBRARY_PATH
+	$ export BCFTOOLS_PLUGINS=`pwd`/plugins:$BCFTOOLS_PLUGINS
+
 	
 Step 3: Run Tests
 -----------------
