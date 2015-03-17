@@ -14,7 +14,7 @@ $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
 my $matrix_bin = "$script_dir/../snp_matrix.pl";
 
-my $matrix_dir = "$script_dir/t/matrix";
+my $matrix_dir = "$script_dir/matrix";
 my $input_dir = "$matrix_dir/input";
 my $good_out_dir = "$matrix_dir/output";
 
