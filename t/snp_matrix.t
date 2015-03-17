@@ -12,7 +12,7 @@ my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../lib:$script_dir/../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
-my $matrix_bin = "$script_dir/../scripts/snp_matrix.pl";
+my $matrix_bin = "$script_dir/../snp_matrix.pl";
 
 my $matrix_dir = "$script_dir/data/matrix";
 my $input_dir = "$matrix_dir/input";

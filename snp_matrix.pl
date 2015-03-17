@@ -36,7 +36,7 @@ my $out_h;
 
 if (defined $output)
 {
-	open($out_h,">$output") or die "Could not open $output for writing\n".usage;
+	open($out_h, '>', $output) or die "Could not open $output for writing\n".usage;
 }
 else
 {
@@ -110,7 +110,7 @@ column: for my $column (@columns) {
 	}
     }
 }
-use Data::Dumper;
+
 my %accsorter;
 my %sortseen;
 # sort the accessions by values, by inverting the keys, and values
@@ -135,7 +135,7 @@ for my $val (sort {$b <=> $a } keys %accsorter) {
 		}
 	}
 }
-# print Dumper \%accsorter; exit;
+
 print $out_h join "\t","strain",@sortedaccs, "\n";
 for my $acc1 (@sortedaccs)  {
     push my @row, $acc1?$acc1:"0";
