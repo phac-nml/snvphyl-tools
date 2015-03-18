@@ -19,11 +19,11 @@ sub run {
     my ( $dir, $size, $man, $help, $min_depth, $log_dir, $min_map );
 
     GetOptions(
-        "d|dir=s"     => \$dir,
+        "i|dir=s"     => \$dir,
         "l|log_dir=s" => \$log_dir,
         "s|size=s"    => \$size,
-        "min-map=s"	  => \$min_map,
-        "min-depth=s" => \$min_depth,
+        "min-map=f"	  => \$min_map,
+        "min-depth=i" => \$min_depth,
         "h|help"      => \$help,
         "m|man"       => \$man
     );
@@ -35,7 +35,7 @@ sub run {
         pod2usage(1);
     }
     unless ( defined $size ) {
-        print "Please specifiy the size of the genome.\n\n";
+        print "Please specify the size of the genome.\n\n";
         pod2usage(1);
     }
 
@@ -43,13 +43,15 @@ sub run {
     if(!defined $min_depth){
         $min_depth = $MIN_DEPTH;
         print "  Using a minumum depth of $MIN_DEPTH\n";
-        print "  Use the --min_depth flag to set custom depth\n\n";
+        print "  Use the --min-depth flag to set custom depth\n\n";
     }
-	$log_dir='.' if (not defined $log_dir);
+    else{
+    	print "Using a min_depth of ".$min_depth."\n";
+    }
+	$log_dir='' if (not defined $log_dir);
 	$min_map=$MIN_MAP if (not defined $min_map);
 	
 	#create the log file to print warnings to
-	
 	open(my $log, '>'.$log_dir.'mapping_percentage.log');
 	
     my @files;
@@ -60,6 +62,7 @@ sub run {
     @results = verify_percent_coverage( \@files, $size, $min_depth );
     
     print $log "==========Reference Mapping Quality===========\n";
+    print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
     foreach my $result(@results){
     	my @split = split(',', $result);
     	my @double = split('%', $split[1]);
@@ -211,7 +214,7 @@ This documentation refers to verify_mapping_quality.pl version 0.0.1.
 
 =head1 SYNOPSIS
 
-verify_mapping_quality.pl -l /log-direcotry -i /inputDataDirectory -d minimum-depth -m minimum-percent-mapping -g genome-size(bp) -h help
+verify_mapping_quality.pl -l /log-direcotry -i /inputDataDirectory --min-depth minimum-depth --min-map minimum-percent-mapping -s genome-size(bp) -h help
 
 =head1 OPTIONS
 
