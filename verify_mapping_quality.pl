@@ -11,15 +11,17 @@ use Readonly;
 
 Readonly my $MIN_DEPTH => 10;    # THIRD COLUMN
 Readonly my $MIN_MAP => 80;
+
 __PACKAGE__->run unless caller;
 
 1;
 
 sub run {
-    my ( $dir, $size, $man, $help, $min_depth, $log_dir, $min_map );
-
+    my ( $size, $man, $help, $min_depth, $log_dir, $min_map, %bam_files, $cores );
+	
     GetOptions(
-        "i|dir=s"     => \$dir,
+        "c|cores=i"   => \$cores,
+        "bam=s"		  => \%bam_files,
         "l|log_dir=s" => \$log_dir,
         "s|size=s"    => \$size,
         "min-map=f"	  => \$min_map,
@@ -29,16 +31,15 @@ sub run {
     );
     pod2usage(1) if $help;
     pod2usage(-verbose => 2) if $man;
-
-    unless ( (defined $dir && -e $dir) ) {
-        print "Please specifiy a directory or file name.\n\n";
+	
+    unless ( (scalar keys %bam_files != 0 ) ) {
+        print "Unable to find any input bam files.\n\n";
         pod2usage(1);
     }
     unless ( defined $size ) {
-        print "Please specify the size of the genome.\n\n";
-        pod2usage(1);
+        print "Calculating genome size from input BAM files.\n\n";
     }
-
+		
 	#set default values if undefined on command line
     if(!defined $min_depth){
         $min_depth = $MIN_DEPTH;
@@ -48,19 +49,32 @@ sub run {
     else{
     	print "Using a min_depth of ".$min_depth."\n";
     }
-	$log_dir='' if (not defined $log_dir);
+    #set default number of cores
+	$cores = 1 if (not defined $cores);
+	#set default log directory to local directory    
+	$log_dir="./" if (not defined $log_dir);
+	#set default minimum percent mapping
 	$min_map=$MIN_MAP if (not defined $min_map);
 	
 	#create the log file to print warnings to
-	open(my $log, '>'.$log_dir.'mapping_percentage.log');
+	open(my $log, '>', $log_dir.'mapping_percentage.log');
 	
-    my @files;
-    @files = get_bams($dir);
-	
-	#parse results and determine if the pipeline should die, or warnings thrown
+	#retrieve all of the bam file locations from the hash
+    my @files = values %bam_files;
+ 
+ 	#ensure that bam files are properly input on the command line and that each file path exists
+ 	if (@files <= 0){ die "Error: No bam files input."};
+ 	foreach(@files){
+ 		if (!-e $_) {die "Error: Invalid bam file referenced."};
+ 	}
+	#command to get the size of the genome from the bam file:
+	my $command = `samtools view -H $files[0] | grep -P '^\@SQ' | cut -f 3 -d ':' | awk '{sum+=$1} END {print sum}'`;
+	$size = system($command);
+	#ensure the size of the genome is properly determined
+	if(!(defined $size)){die "Error: Size of genome could not be determined."};
+	#parse results and determine what should be written for user to view
 	my @results;
-    @results = verify_percent_coverage( \@files, $size, $min_depth );
-    
+    @results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
     print $log "==========Reference Mapping Quality===========\n";
     print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
     foreach my $result(@results){
@@ -68,18 +82,14 @@ sub run {
     	my @double = split('%', $split[1]);
     	print $log "Mapping to reference for isolate ".$split[0]." is ".$split[1]."\n" if $double[0] < $min_map; 
     }
-   	
+	   	
 }
 
 #----------------------------------------------------------#
 # Calculate the % Coverage for all .bam files in directory #
 #----------------------------------------------------------#
 sub verify_percent_coverage {
-    my ( $files, $size, $min_depth ) = @_;
-
-    # Get the number of available cores
-    #----------------------------------#
-    my $cores = get_num_cores();
+    my ( $files, $size, $min_depth, $cores ) = @_;
 
     # Create a Prallel::ForkManager
     #------------------------------#
@@ -109,12 +119,15 @@ sub verify_percent_coverage {
         
         # Get the actual file name
         #-------------------------#
-        my $name = fileparse( $file, ".bam" );
+        my @suffix = [".bam", ".dat"];
+        my $name = fileparse( $file, @suffix );
 
         # Run samtools depth and get results
         #------------------------------------#
         my $result = `samtools depth $file`;
-
+        #check for errors that occur while running samtools depth
+		die "Error: samtools depth exited with error while working with $file.\n" if (not defined $result);
+		
         # Now that we have the results...
         #--------------------------------#
         my $gap_length = get_gap_length($result, $min_depth);
@@ -184,22 +197,6 @@ sub get_gap_length {
         $previous_pos = $pos;
     }
     return $gap_total;
-}
-
-#-----------------------------------------#
-# Get array of all files in the directory #
-#-----------------------------------------#
-sub get_bams {
-    my ($dir) =@_;
-    
-    opendir my ($dh), $dir;
-    my @dirs = readdir $dh;
-    closedir $dh;
-
-    $dir =~ s/\/$//;
-
-    #removing both '.' and '..' files and putting back the full path to a list
-    return  sort { $a cmp $b  } grep { /\.bam$/ } map { "$dir/$_"} grep { !/^\.\.?/} @dirs;
 }
 
 =pod
