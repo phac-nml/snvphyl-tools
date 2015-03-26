@@ -149,27 +149,6 @@ sub verify_percent_coverage {
     return @results;
 }
 
-#-------------------------------------------#
-# Get the number of cores - leave one alone #
-#-------------------------------------------#
-sub get_num_cores {
-    my $num_cpus = `cat /proc/cpuinfo | grep processor | wc -l`;
-    chomp $num_cpus;
-    return $num_cpus - 1;
-}
-
-#-------------------------------------------#
-# Create a File::Iterator for the bam files #
-#-------------------------------------------#
-sub open_dir {
-    my ($dir) = @_;
-    return new File::Iterator(
-        DIR     => $dir,
-        RECURSE => 0,
-        FILTER  => sub { $_[0] =~ /\.bam$/ }
-    );
-}
-
 #----------------------------------#
 # Find the length with < MIN_DEPTH #
 #----------------------------------#
