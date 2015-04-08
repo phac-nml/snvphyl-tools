@@ -14,7 +14,6 @@ Readonly my $MIN_MAP => 80;
 
 __PACKAGE__->run unless caller;
 
-1;
 
 sub run {
     my ( $size, $man, $help, $min_depth, $log_dir, $min_map, %bam_files, $cores );
@@ -67,16 +66,18 @@ sub run {
  	foreach(@files){
  		if (!-e $_) {die "Error: Invalid bam file referenced."};
  	}
+ 	
 	#command to get the size of the genome from the bam file:
-	my $command = `samtools view -H $files[0] | grep -P '^\@SQ' | cut -f 3 -d ':' | awk '{sum+=$1} END {print sum}'`;
-	$size = system($command);
+	$size = `samtools view -H $files[0] | grep -P '^\@SQ' | cut -f 3 -d ':' | awk '{sum+=\$1} END {print sum}'`;
+	
+	die "Error: Size of reference genome could not be determined." if (not defined $size);	
 	#ensure the size of the genome is properly determined
-	if(!(defined $size)){die "Error: Size of genome could not be determined."};
+	
 	#parse results and determine what should be written for user to view
 	my @results;
-    @results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
-    print $log "==========Reference Mapping Quality===========\n";
-    print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
+	@results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
+	print $log "==========Reference Mapping Quality===========\n";
+	print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
     foreach my $result(@results){
     	my @split = split(',', $result);
     	my @double = split('%', $split[1]);
