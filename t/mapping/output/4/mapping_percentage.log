@@ -1,6 +1,7 @@
 ==========Reference Mapping Quality===========
-NUMBER OF BP's IN REFERENCE GENOME: 27000
-Mapping to reference for isolate sample2.fastq.gz-reference.sorted is 92.75%
-Mapping to reference for isolate sample3.fastq.gz-reference.sorted is 91.81%
-Mapping to reference for isolate sample1.fastq.gz-reference.sorted is 92.16%
-Mapping to reference for isolate sample4.fastq.gz-reference.sorted is 91.76%
+NUMBER OF BP's IN REFERENCE GENOME: 48502
+
+Mapping to reference for isolate sample4.bam is 95.41%
+Mapping to reference for isolate sample1.bam is 95.64%
+Mapping to reference for isolate sample3.bam is 95.44%
+Mapping to reference for isolate sample2.bam is 95.96%
