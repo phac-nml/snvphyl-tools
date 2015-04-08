@@ -129,6 +129,7 @@ sub branchLengthToSNP
 	my $input = <$inputPhy>;
 	my @line = split(/\s/, $input);	
 	
+	#extract the total number of SNP's found in the third column of the first line of the phylogeny.phy file.
 	my $treeTotalSNP = $line[2];
 	
 	my $internalNumber = 1;
@@ -167,6 +168,9 @@ sub resizeTree
 {
 	my ($input_taxa_tree, $exponent, $logger) = @_;
 	
+	#**CAUTION**:depending on the exponent value, near-zero branch lengths will become unproportionately large. 
+	#To avoid this, set all branch lengths that are essentially zero to a true value of zero.  This value will depend
+	#on both the value of the exponent and the branch length values of the tree.
 	my $minimumBranchLength = 0.009;
 	#zero out the branch values that are lower than threshold to maintain tree structure for near 0 branch lengths:
 	foreach( $input_taxa_tree->get_nodes){
@@ -209,7 +213,7 @@ if ($help){
 pod2usage(1) unless $tmp_dir && $input_tree && $output_dir && $matrix_input && $input_phy;
 
 #check to ensure all required command line variables are present and set default values if applicable:
-die "Error: No temp directory defined." if (not defined $tmp_dir);
+$tmp_dir='.' if (not defined $tmp_dir);
 die "Error: Invalid newick file." if (not -e $input_tree);
 die "Error: Invalid matrix.csv file." if (not -e $matrix_input);
 die "Error: Invalid pseudoalign.phy file." if (not -e $input_phy);
@@ -256,7 +260,7 @@ branchLengthToSNP($tree, $input_phy, $logger) if defined $convert;
 open(my $treeout, '>', $output_dir.'/phylogeneticTree.txt') or die "Could not open output file: $!";
 print $treeout $tree->to_newick();
 close($treeout);
-
+exit;
 =head1 NAME
 
 rearrange_snp_matrix.pl - Script to re-root a phylogenetic tree, order the tree in increasing/decreasing order, convert branch lengths to total SNP's, and output a revised matrix.csv to match the phylogenetic tree. 
