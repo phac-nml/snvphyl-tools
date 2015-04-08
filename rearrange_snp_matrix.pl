@@ -29,14 +29,16 @@ sub reRootTree
 	my ($input_taxa_tree, $newRootStrain, $logger) = @_;
 
 	my $newRoot = "'".$newRootStrain."'";
-	foreach my $node ($input_taxa_tree->get_nodes()){ 
+	foreach my $node ($input_taxa_tree->get_nodes()){
+	if($node->id && $newRoot){ 
        if($node->id eq $newRoot)
        {
        	  $input_taxa_tree->reroot_at_midpoint($node);
 		  print $logger "The phylogenetic tree has been successfully re-rooted on strain: ".$node->id()."\n";
 		  return;	
        }
-    }   
+    }
+}   
     print $logger "The requested strain".$newRoot."could not be found in the phylogenetic tree.\n";
 }
 

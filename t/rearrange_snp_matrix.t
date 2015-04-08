@@ -45,15 +45,15 @@ ok((compare('t/tree/output/6/phylogeneticTree.txt', 't/tree/expected/6/phylogene
 
 #=========INVALID INPUT ERROR HANDLING TESTS=========
 #7 => verify that the script dies properly when an invalid phylogenetic tree
-$command = "$rearrange_bin -t t/tree/output/7 -r VC-18 -s increasing -i t/tree/input/INVALIDpseudoalign.phy_phyml_tree.txt -o t/tree/output/7 -m t/tree/input/matrix.csv -p t/tree/input/pseudoalign.phy";
+$command = "$rearrange_bin -t t/tree/output/7 -r VC-18 -s increasing -i t/tree/input/INVALIDpseudoalign.phy_phyml_tree.txt -o t/tree/output/7 -m t/tree/input/matrix.csv -p t/tree/input/pseudoalign.phy 2>/dev/null";
 ok(system(`$command`)!=0, "Invalid newick files are not accepted.");
 
 #8 => verify that the script dies properly when an invalid matrix.csv file is input
-$command = "$rearrange_bin -t t/tree/output/7 -r VC-18 -s increasing -i t/tree/input/pseudoalign.phy_phyml_tree.txt -o t/tree/output/7 -m t/tree/input/INVALIDmatrix.csv -p t/tree/input/pseudoalign.phy";
+$command = "$rearrange_bin -t t/tree/output/7 -r VC-18 -s increasing -i t/tree/input/pseudoalign.phy_phyml_tree.txt -o t/tree/output/7 -m t/tree/input/INVALIDmatrix.csv -p t/tree/input/pseudoalign.phy 2>/dev/null";
 ok(system(`$command`)!=0, "Invalid newick files are not accepted.");
 
 #9 => verify that the script dies properly when an invalid pseudoalign.phy file is input
-$command = "$rearrange_bin -t t/tree/output/7 -r VC-18 -s increasing -i t/tree/input/pseudoalign.phy_phyml_tree.txt -o t/tree/output/7 -m t/tree/input/matrix.csv -p t/tree/input/INVALIDpseudoalign.phy";
+$command = "$rearrange_bin -t t/tree/output/7 -r VC-18 -s increasing -i t/tree/input/pseudoalign.phy_phyml_tree.txt -o t/tree/output/7 -m t/tree/input/matrix.csv -p t/tree/input/INVALIDpseudoalign.phy 2>/dev/null";
 ok(system(`$command`)!=0, "Invalid pseudoalign.phy files are not accepted.");
 #=============================================================================
 done_testing();
