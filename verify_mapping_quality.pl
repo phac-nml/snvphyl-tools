@@ -147,7 +147,7 @@ sub verify_percent_coverage {
         	#if the gap_length is negative, then it currently represents the negative total of all positions that
         	#pass the threshold criteria.  Alter the value to represent the positions that do not pass criteria
         	#in order to get proper output. 
-        	$gap_length = $size - (-$gap_length) if ($gap_length < 0);
+        	$gap_length = $size + $gap_length if ($gap_length < 0);
             $line = sprintf "$name,%3.2f%%", (( $size - $gap_length ) / $size * 100);          
         }
 
