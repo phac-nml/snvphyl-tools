@@ -83,7 +83,7 @@ sub run {
 	@results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
 	print $log "==========Reference Mapping Quality===========\n";
 	print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
-	print $log "MINIMUM COVERAGE CUTOFF: ".$min_depth."\n";
+	print $log "MINIMUM DEPTH: ".$min_depth."\n";
 	print $log "MINIMUM MAPPING: ".$min_map."\n";
     foreach my $result(@results){
     	my @split = split(',', $result);
