@@ -1,24 +1,28 @@
-vcf2pseudoalignment
-===================
+SNVPhyl Tools
+=============
 
-This project contains a number of PERL scripts for converting VCF files to an alignment of SNPs.  This is a subproject of the larger core phylogenomics pipeline project located at https://github.com/apetkau/core-phylogenomics.
+This project contains a number of tools for the SNVPhyl whole genome phylogeny pipeline.
 
 Installation
 ============
 
-Following the install guide of the parent project should automatically download this software.  However, if you wish to install this project independently please follow the below steps.
+Please follow the below steps.
 
 Step 1: Download Software
 -------------------------
 
 Download the software with:
 
-	$ git clone https://github.com/apetkau/vcf2pseudoalignment.git
+```bash
+git clone http://irida.corefacility.ca/gitlab/analysis-pipelines/snvphyl-tools.git
+```
 
 Step 2: Install Dependencies
 ----------------------------
 
-This project requires [vcftools](http://vcftools.sourceforge.net/) as a dependency.  Please download and install this software.
+* [vcftools](http://vcftools.sourceforge.net/)
+* [bcftools](http://www.htslib.org/download/)
+* [BioPerl](http://www.bioperl.org/wiki/Main_Page)
 
 In addition, this software requires the Perl modules from vcftools someplace within your library path (in PERL5LIB for example).  This can be accomplished by running, for example:
 
@@ -43,7 +47,6 @@ Step 3: Run Tests
 
 In order to run the tests, please run the command:
 
-	$ cd /path/to/vcf2pseudoalign
 	$ prove
 	t/compare_pseudoalign_nucmer.t .. ok    
 	t/extract_snps_metaalign.t ...... ok   

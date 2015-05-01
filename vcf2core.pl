@@ -158,7 +158,7 @@ sub print_results {
     
     print "#Reference,total length,total invalid pos, total core,Percentage in core\n";
 
-    foreach my $ref( keys %{$info->{'results'}}) {
+    foreach my $ref( sort { $a cmp $b } keys %{$info->{'results'}}) {
         my ($core,$total) = ($info->{'results'}{$ref}{'core'},$info->{'results'}{$ref}{'total'});
         my $invalid = 'N/A';
         my $perc;
@@ -285,7 +285,8 @@ sub determine_core
 
 
     my $bit_size = 100000;
-    foreach my $chrom( keys %refs) {    
+    foreach my $chrom( sort {$b cmp $a } keys %refs) {
+        
         my ($start,$stop)=(0,0);
         my ($range);
         my $length = $refs{$chrom}{'length'};
@@ -470,7 +471,7 @@ sub create_streamers {
     foreach ( sort {$a cmp $b } keys %$files ) {
         my %info;
         #fetch only the range from the reference that was assigned to this filehandle.
-        my $cmd = "htscmd  vcfquery -r $range -f '%CHROM\\t%POS\\t%ID\\t%REF\\t%ALT\\t%QUAL\\t%FILTER\\t%INFO/DP\n' " . $files->{$_};
+        my $cmd = "bcftools query -r $range -f '%CHROM\\t%POS\\t%ID\\t%REF\\t%ALT\\t%QUAL\\t%FILTER\\t%INFO/DP\n' " . $files->{$_};
         
         #store results
         my $result = `$cmd`;
