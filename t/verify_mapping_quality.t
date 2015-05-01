@@ -23,19 +23,19 @@ my ($command);
 
 #1 => verify that the script saves output in the proper file locations
 system("$mapping_bin -l $mapping_dir/output/1/ --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam 2>/dev/null");
-ok(-e "$mapping_dir/output/1/", "Output file in correct location.");
+ok(-e "$mapping_dir/output/1/mapping_percentage.log", "Output file in correct location.");
 
 #2 => verify that the appropriate number of isolates are logged when default values are used
 system("$mapping_bin -l $mapping_dir/output/2/ --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam 2>/dev/null");
-ok(countLines("$mapping_dir/output/2/mapping_percentage.log") == 3, "The correct number of isolates are logged when default values are used.");
+ok(countLines("$mapping_dir/output/2/mapping_percentage.log") == 4, "The correct number of isolates are logged when default values are used.");
 
 #3 => verify that the appropriate number of isolates are logged when the minimum depth is changed
 system("$mapping_bin -l $mapping_dir/output/3/ --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam --min-depth 35 2>/dev/null");
-ok(countLines("$mapping_dir/output/3/mapping_percentage.log") == 7, "The correct number of isolates are logged when min_depth altered.");
+ok(countLines("$mapping_dir/output/3/mapping_percentage.log") == 8, "The correct number of isolates are logged when min_depth altered.");
 
 #4 => verify that the appropriate number of isolates are logged when the minimum mapping percentage is changed
 system("$mapping_bin -l $mapping_dir/output/4/ --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam -min-map 99.9 2>/dev/null");
-ok(countLines("$mapping_dir/output/4/mapping_percentage.log") == 7, "The correct number of isolates are logged when min_mapping altered.");
+ok(countLines("$mapping_dir/output/4/mapping_percentage.log") == 8, "The correct number of isolates are logged when min_mapping altered.");
 
 #5 => verify that script dies with error message when no valid bam files are input
 $command = "$mapping_bin -l $mapping_dir/output/5/ --bam nobam=$mapping_dir/no_bams_here 2>/dev/null";
@@ -49,7 +49,15 @@ ok($return_code == 0, "Change number of cores test.");
 
 #7 => verify that the script prints the log to the pwd when no logfile location is specified
 system("$mapping_bin --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam 2>/dev/null");
-ok(-e 'mapping_percentage.log', "Log file produced in default location properly");
+ok(-e "mapping_percentage.log", "Log file produced in default location properly");
+
+#8 => verify that the script will work with a draft genome that contains multiple reference contigs to map against
+system("$mapping_bin -l $mapping_dir/output/7/ --bam bam1=$mapping_dir/input/draft_reference/sample1.bam 2>/dev/null");
+ok(-e "$mapping_dir/output/7/mapping_percentage.log", "Script runs when draft genomes are used.");
+
+#9 => verify that the script return the appropriate number of samples for the draft genome
+system("$mapping_bin -l $mapping_dir/output/8/ --bam bam1=$mapping_dir/input/draft_reference/sample1.bam --min-map 99.9 2>/dev/null");
+ok(countLines("$mapping_dir/output/8/mapping_percentage.log") == 5, "The correct output is generated when the reads map to multiple draft reference contigs.");
 
 #Clean up any temp files produced:
 system("rm mapping_percentage.log");

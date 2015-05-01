@@ -51,7 +51,7 @@ sub run {
     #set default number of cores
 	$cores = 1 if (not defined $cores);
 	#set default log directory to local directory    
-	$log_dir="./" if (not defined $log_dir);
+	$log_dir="./" if ((not defined $log_dir)||($log_dir eq '.')||(not -d $log_dir));
 	#set default minimum percent mapping
 	$min_map=$MIN_MAP if (not defined $min_map);
 	
@@ -68,16 +68,23 @@ sub run {
  	}
  	
 	#command to get the size of the genome from the bam file:
-	$size = `samtools view -H $files[0] | grep -P '^\@SQ' | cut -f 3 -d ':' | awk '{sum+=\$1} END {print sum}'`;
+	my @sizeArray = `samtools view -H $files[0] | grep -P '^\@SQ' | cut -f 3 -d ':'`;
 	
-	die "Error: Size of reference genome could not be determined." if (not defined $size);	
-	#ensure the size of the genome is properly determined
-	
+	#if the read maps to several reference contigs, then add the lengths of each reference
+	#contig to calculate the total length for the reference	
+	$size = 0;
+	foreach(@sizeArray){ 
+	   $size += $_;
+	}	
+	die "Error: Size of reference genome could not be determined." if (not defined $size || $size eq 0);	
+		
 	#parse results and determine what should be written for user to view
 	my @results;
 	@results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
 	print $log "==========Reference Mapping Quality===========\n";
 	print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
+	print $log "MINIMUM DEPTH: ".$min_depth."\n";
+	print $log "MINIMUM MAPPING: ".$min_map."\n";
     foreach my $result(@results){
     	my @split = split(',', $result);
     	my @double = split('%', $split[1]);
@@ -126,19 +133,24 @@ sub verify_percent_coverage {
         # Run samtools depth and get results
         #------------------------------------#
         my $result = `samtools depth $file`;
+        
         #check for errors that occur while running samtools depth
 		die "Error: samtools depth exited with error while working with $file.\n" if (not defined $result);
 		
         # Now that we have the results...
         #--------------------------------#
         my $gap_length = get_gap_length($result, $min_depth);
-
+		
         my $line;
         if ( $gap_length == -1) {
             $line = "$name,0%";
         }
         else {
-            $line = sprintf "$name,%3.2f%%", (( $size - $gap_length ) / $size * 100);            
+        	#if the gap_length is negative, then it currently represents the negative total of all positions that
+        	#pass the threshold criteria.  Alter the value to represent the positions that do not pass criteria
+        	#in order to get proper output. 
+        	$gap_length = $size + $gap_length if ($gap_length < 0);
+            $line = sprintf "$name,%3.2f%%", (( $size - $gap_length ) / $size * 100);          
         }
 
 
@@ -154,7 +166,7 @@ sub verify_percent_coverage {
 # Find the length with < MIN_DEPTH #
 #----------------------------------#
 sub get_gap_length {
-    my ($result, $min_depth) = @_;
+	my ($result, $min_depth) = @_;
 
     my @lines = split /\n/, $result;
 
@@ -169,7 +181,6 @@ sub get_gap_length {
             my $start = $previous_pos + 1;
             my $end   = $pos - 1;
             $gap_total += $end - $start;
-
         }
         elsif ( $count <= $min_depth ) {
             $gap_total++;
@@ -191,7 +202,7 @@ This documentation refers to verify_mapping_quality.pl version 0.0.1.
 
 =head1 SYNOPSIS
 
-verify_mapping_quality.pl -l /log-direcotry -i /inputDataDirectory --min-depth minimum-depth --min-map minimum-percent-mapping -s genome-size(bp) -h help
+verify_mapping_quality.pl -l /log-direcotry --bam bamX=/inputDirrectory/toBAM --min-depth minimum-depth --min-map minimum-percent-mapping -s genome-size(bp) -h help
 
 =head1 OPTIONS
 
@@ -201,9 +212,9 @@ verify_mapping_quality.pl -l /log-direcotry -i /inputDataDirectory --min-depth m
 
 The directory location where the log file exists.
 
-=item B<-i>, B<--input-dir> [optional]
+=item B<--bam> [optional]
 
-The input directory that contains all of the BAM files for the run.
+The location for a specific BAM file in the dataset.
 
 =item B<--min-depth> [optional]
 
