@@ -6,7 +6,7 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 
-my ($input, $output, $invalids, %counts, %totals, $help);
+my ($input, $output, $invalids, %counts, %totals, %totalsFiltered, $help);
 
 Getopt::Long::Configure('bundling');
 GetOptions(
@@ -52,8 +52,10 @@ while ($line = <$in>)
 
 	#Valid? No point in doing all the work. Skip
 	next if ($entries[2] eq "valid");
-
-
+	
+	#Not valid? Increment the total number of filtered SNP's for chromosome
+	$totalsFiltered{$chrom}++;
+	
 	#Go through the genomes. First genome starts at the 4th column
 	for my $i(4 .. $#entries)
 	{
@@ -105,11 +107,14 @@ my ($header_out, $t_count, $t_perc);
 
 foreach my $chromosome(sort {$a cmp $b} keys %counts)
 {
-	#set up the header columns/rows
-	$header_out = $chromosome;
-	$t_count = "Total number of N's and -'s";
-	$t_perc = "Total percent of N's and -'s";
-		
+	#set up the header columns/rows and print the summary of combined results as the first column
+	my $chromosome_total_unrounded = $totalsFiltered{$chromosome}/$totals{$chromosome} * 100;
+	my $chromosome_total_percent = sprintf("%.2f", $chromosome_total_unrounded);
+
+	$header_out = $chromosome."\t"."ALL";
+	$t_count = "Total number of N's and -'s"."\t".$totalsFiltered{$chromosome};
+	$t_perc = "Total percent of N's and -'s"."\t".$chromosome_total_percent;
+
 	#Sort the entries by the total count of N's and -'s in descending order
 	for my $genome (sort {$counts{$chromosome}{$b}{$t} <=> $counts{$chromosome}{$a}{$t}} keys %{$counts{$chromosome}})
 	{	
@@ -127,7 +132,7 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 		
 	}
 
-	#Write everthing to file
+	#Write everything to file
 	my $temp = "Chromosome\tGenomes\n".$header_out."\n".$t_count."\n".$t_perc."\n\n";
 	print $out $temp;
 

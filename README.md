@@ -24,6 +24,24 @@ Step 2: Install Dependencies
 * [bcftools](http://www.htslib.org/download/)
 * [BioPerl](http://www.bioperl.org/wiki/Main_Page)
 
+In addition, this software requires the Perl modules from vcftools someplace within your library path (in PERL5LIB for example).  This can be accomplished by running, for example:
+
+	$ export PERL5LIB=/path/to/vcftools/lib/perl5/site_perl/:$PERL5LIB
+
+Or, you can simply link up the appropriate perl modules within the **vcf2pseudoalign/lib** directory.  For example:
+
+	$ ln -s /path/to/vcftools/lib/perl5/site_perl/*.pm /path/to/vcf2pseudoalign/lib
+	$ ls /path/to/vcf2pseudoalign/lib
+	Align  CorePositions.pm  FaSlice.pm  InvalidPositions.pm  NucmerPositionsChecker.pm  PositionsTable.pm  Vcf.pm  VcfStats.pm
+
+Need to compile custom bcftools plugin and modify a few ENV variables
+	$ cd bcfplugins/bcftools-1.2
+	$ make
+	$ export PATH=`pwd`:$PATH
+	$ export LD_LIBRARY_PATH=`pwd`/htslib-1.2.1:$LD_LIBRARY_PATH
+	$ export BCFTOOLS_PLUGINS=`pwd`/plugins:$BCFTOOLS_PLUGINS
+
+	
 Step 3: Run Tests
 -----------------
 

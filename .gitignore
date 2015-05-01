@@ -1,0 +1,5 @@
+*~
+bcfplugins/bcftools-1.2/htslib-1.2.1/*.pico
+bcfplugins/bcftools-1.2/htslib-1.2.1/cram/*.pico
+bcfplugins/bcftools-1.2/htslib-1.2.1/*.o
+bcfplugins/bcftools-1.2/htslib-1.2.1/cram/*.o
