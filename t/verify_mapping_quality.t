@@ -18,6 +18,16 @@ $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 my $mapping_dir = "$script_dir/mapping";
 my $mapping_bin = "$script_dir/../verify_mapping_quality.pl";
 my ($command);
+
+#if the output directories are not present, create them:
+if(! -e "$mapping_bin $mapping_dir/output/1"){
+   system("mkdir -m 777 $mapping_dir/output");
+   foreach(1..8){
+        my $create_dir = "mkdir -m 777 $mapping_dir/output/$_";
+        system($create_dir);
+   }
+}
+
 #==============================================================================
 #UNIT TESTS
 
@@ -59,8 +69,9 @@ ok(-e "$mapping_dir/output/7/mapping_percentage.log", "Script runs when draft ge
 system("$mapping_bin -l $mapping_dir/output/8/ --bam bam1=$mapping_dir/input/draft_reference/sample1.bam --min-map 99.9 2>/dev/null");
 ok(countLines("$mapping_dir/output/8/mapping_percentage.log") == 5, "The correct output is generated when the reads map to multiple draft reference contigs.");
 
-#Clean up any temp files produced:
+#Clean up any temp files produced and remove the output folder:
 system("rm mapping_percentage.log");
+system("rm -r $mapping_dir/output");
  
 done_testing();
 
