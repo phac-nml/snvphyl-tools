@@ -25,7 +25,7 @@ system("$rearrange_bin -k -r VC-18 -s increasing -t $script_dir/tree/input/pseud
 ok(-e $create_dir.'/phylogeneticTree.txt', "Output tree file in correct location.");
 ok(-e $create_dir.'/revisedMatrix.csv', "Revised matrix file in correct location.");
 
-#2 => verify that the script does not make any alterations to the tree or matrix when none of the optional are set
+#2 => verify that the script does not make any alterations to the tree or matrix when none of the optional parameters are set
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
 system("$rearrange_bin -t $script_dir/tree/input/pseudoalign.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/pseudoalign.phy");
 ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/2/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has remained unchanged.");
@@ -50,6 +50,11 @@ ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/5/p
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
 system("$rearrange_bin -r VC-18 -t $script_dir/tree/input/pseudoalign.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/pseudoalign.phy");
 ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/6/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has its branch lengths converted to total SNP estimates.");
+
+#7 => verify that the matrix.csv is properly re-ordered
+$create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
+system("$rearrange_bin -s increasing -t $script_dir/tree/input/pseudoalign.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/pseudoalign.phy");
+ok((compare($create_dir.'/revisedMatrix.csv', $script_dir.'/tree/expected/4/revisedMatrix.csv')==0), "Verify that the revisedMatrix.csv is properly sorted in increasing order.");
 
 #=========INVALID INPUT ERROR HANDLING TESTS=========
 #7 => verify that the script dies properly when an invalid phylogenetic tree

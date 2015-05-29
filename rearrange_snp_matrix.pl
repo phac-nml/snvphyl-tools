@@ -278,10 +278,6 @@ exit;
 
 rearrange_snp_matrix.pl - Script to re-root a phylogenetic tree, order the tree in increasing/decreasing order, convert branch lengths to total SNP's, and output a revised matrix.csv to match the phylogenetic tree. 
 
-=head1 VERSION
-
-This documentation refers to rearrange_snp_matrix.pl version 0.0.1.
-
 =head1 SYNOPSIS
 
  rearrange_snp_matrix.pl -t input_tree -o output_dir -m matrix.csv -p pseudoalign.phy
