@@ -138,7 +138,7 @@ sub branchLengthToSNP
     my $internalNumber = 1;
     foreach my $node ( $input_taxa_tree->get_nodes ){
       my $nodeBranchLength = $node->branch_length();
-      $nodeBranchLength = 0 if !defined $nodeBranchLength;
+      if(not defined $nodeBranchLength) die "Error: Branch length undefined.";
       my $lengthToSNP = $nodeBranchLength*$treeTotalSNP;
       $lengthToSNP = sprintf "%.2f", $lengthToSNP;
       my $nodeName = $node->id();
@@ -180,6 +180,7 @@ sub resizeTree
     foreach( $input_taxa_tree->get_nodes){
         if($_->get_branch_length() < $minimumBranchLength){
             $_->set_branch_length(0);
+            warn "Node $_->id branch length < $minimumBranchLength, setting to 0\n";
         }
     }
     
@@ -262,7 +263,7 @@ branchLengthToSNP($tree, $input_phy, $logger) if defined $convert;
 #print the final newick formatted tree to a file that can be opened by any tree viewing program
 open(my $treeout, '>', $output_dir.'/phylogeneticTree.txt') or croak "Could not open output file: $!";
 
-#SMELLY: hack to remove any parentheses that are added (for unknown reasons) to the node labels by the Bio::Phylo::IO module
+#SMELLY: hack to remove any quotes that are added (for unknown reasons) to the node labels by the Bio::Phylo::IO module
 my $parentheses_removed = $tree->to_newick();
 $parentheses_removed =~ s/'//xg;
 
