@@ -138,7 +138,10 @@ sub branchLengthToSNP
     my $internalNumber = 1;
     foreach my $node ( $input_taxa_tree->get_nodes ){
       my $nodeBranchLength = $node->branch_length();
-      if(not defined $nodeBranchLength) die "Error: Branch length undefined.";
+      if(not defined $nodeBranchLength){
+         $nodeBranchLength = 0;
+         warn "Undefined node branch length set to 0.";
+      }
       my $lengthToSNP = $nodeBranchLength*$treeTotalSNP;
       $lengthToSNP = sprintf "%.2f", $lengthToSNP;
       my $nodeName = $node->id();
