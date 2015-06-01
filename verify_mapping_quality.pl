@@ -9,7 +9,7 @@ use File::Basename;
 use Parallel::ForkManager;
 use Readonly;
 
-Readonly my $MIN_DEPTH => 10;    # THIRD COLUMN
+Readonly my $MIN_DEPTH => 10;    
 Readonly my $MIN_MAP => 80;
 
 __PACKAGE__->run unless caller;
@@ -38,7 +38,7 @@ sub run {
     unless ( defined $size ) {
         print "Calculating genome size from input BAM files.\n\n";
     }
-		
+
 	#set default values if undefined on command line
     if(!defined $min_depth){
         $min_depth = $MIN_DEPTH;
@@ -202,40 +202,36 @@ This documentation refers to verify_mapping_quality.pl version 0.0.1.
 
 =head1 SYNOPSIS
 
-verify_mapping_quality.pl -l /log-direcotry --bam bamX=/inputDirrectory/toBAM --min-depth minimum-depth --min-map minimum-percent-mapping -s genome-size(bp) -h help
+verify_mapping_quality.pl -l /log-direcotry --bam bamX=/inputDirrectory/bamfile.bam --min-depth minimum-depth --min-map minimum-percent-mapping -h help
 
 =head1 OPTIONS
 
 =over
 
-=item B<-l>, B<--log-dir> [required]
+=item B<--bam> [REQUIRED]
 
-The directory location where the log file exists.
+The location for a specific BAM file in the dataset. Multiple BAM files can be input.  Example with 3 BAM files: --bam bam1=/path/bam1.bam --bam bam2=/path/bam2.bam --bam bam3=/path/bam3.bam
 
-=item B<--bam> [optional]
+=item B<-l>, B<--log-dir> [optional]                                                                                                      
 
-The location for a specific BAM file in the dataset.
+The directory location where the output log exists that lists all strains with low reference mapping. Defaults to the script directory.
 
 =item B<--min-depth> [optional]
 
-The minimum depth of coverage required in each BAM file, pipeline will die unless this minimum depth is met.
+The minimum depth of coverage required at each genome position to be considered mapped.  Default value is 15x.
 
 =item B<--min-map> [optional]
 
-The minimum percent coverage required in each BAM file, pipeline will log all BAM files that do not meet the coverage limit.
-
-=item B<-s>, B<--genome-size> [optional]
-
-The minimum percent coverage required in each BAM file, pipeline will die unless this minimum percent mapping is met.
+The minimum percent mapped to reference for each strain, pipeline will log all strains that do not meet this minimum percentage. Default value is 80%.
 
 =item B<-h>, B<--help>
 
-To display help message
+To displays help screen.
 
 =back
 
 =head1 DESCRIPTION
 
-verify_mapping_quality will check BAM files to check the percent of the isolate genomes that have been mapped to the reference sequence. 
+verify_mapping_quality will check BAM files and list any samples that map to <= --min-map of the reference sequence. 
 
 =cut
