@@ -268,11 +268,11 @@ if (defined $convert){ branchLengthToSNP($tree, $input_phy, $logger) };
 open(my $treeout, '>', $output_dir.'/phylogeneticTree.txt') or croak "Could not open output file: $!";
 
 #SMELLY: hack to remove any quotes that are added (for unknown reasons) to the node labels by the Bio::Phylo::IO module
-my $parentheses_removed = $tree->to_newick();
-$parentheses_removed =~ s/'//xg;
+my $quotes_removed = $tree->to_newick();
+$quotes_removed =~ s/'//xg;
 
 #print $parentheses_removed; 
-print $treeout $parentheses_removed;
+print $treeout $quotes_removed;
 close($treeout);
 exit;
 =head1 NAME
