@@ -48,12 +48,12 @@ ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/5/p
 
 #6 => verify that the tree is properly re-rooted
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
-system("$rearrange_bin -r VC-18 -t $script_dir/tree/input/pseudoalign.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/pseudoalign.phy");
+system("$rearrange_bin -c -r VC-18 -t $script_dir/tree/input/pseudoalign.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/pseudoalign.phy");
 ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/6/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has its branch lengths converted to total SNP estimates.");
 
 #7 => verify that the matrix.csv is properly re-ordered
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
-system("$rearrange_bin -s increasing -t $script_dir/tree/input/pseudoalign.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/pseudoalign.phy");
+system("$rearrange_bin -k -c -r VC-10 -s increasing -t $script_dir/tree/input/pseudoalign.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/pseudoalign.phy 2>&1");
 ok((compare($create_dir.'/revisedMatrix.csv', $script_dir.'/tree/expected/4/revisedMatrix.csv')==0), "Verify that the revisedMatrix.csv is properly sorted in increasing order.");
 
 #=========INVALID INPUT ERROR HANDLING TESTS=========
