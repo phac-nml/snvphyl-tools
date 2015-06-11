@@ -115,17 +115,15 @@ sub calc_mean_coverage{
 
 sub calc_stddev{
 	my($average, @data) = @_;
-    #if($data[0] == 1){
-    #    return 0;
-    #}
+
 	my $count = 0;
     my $sqtotal = 0;
     for(split /^/, $data[0]) {
-    	my @tab_parsed = split('\t', $_);
-    	if($tab_parsed[2] && ($tab_parsed[2]>=0)){
+        my @tab_parsed = split('\t', $_);
+        if($tab_parsed[2] && ($tab_parsed[2]>=0)){
             $sqtotal += ($average - $tab_parsed[2]) ** 2;
             $count ++;
-    	}
+        }
     }
     my $std = ($sqtotal / ($count - 1)) ** 0.5;
     return $std;
