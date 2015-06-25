@@ -23,6 +23,7 @@ int flag_density = -1;
 int verbose = -1;
 bcf_hdr_t *in_hdr = NULL;
 bcf_hdr_t *out_hdr = NULL;
+int in_density_region = 0;
 
 //for look ahead functionality
 htsFile *htsAhead=NULL; 
@@ -83,10 +84,10 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
 
 bcf1_t *process(bcf1_t *hts){
    if(bcf_read(htsAhead, htsAheadHdr, bcf_ahead) == -1){
-      printf("Unable to read look ahead bcf record for analysis.\n");    	   
+      printf("Unable to read look ahead bcf record for analysis OR we have reached the end of the bcf file.\n");    	   
    }
    
-   if(check_density(hts, bcf_ahead, density_threshold)){
+   if(check_density(hts, bcf_ahead, density_threshold) || in_density_region){
        mark_density_snp(hts, out_hdr, flag_density);
    }
    //return the bcf record
@@ -117,9 +118,11 @@ int check_density(bcf1_t *current, bcf1_t *next, int density_threshold){
 
 	if(current->rid != next->rid){
 	    if((next_position - current_position) <= density_threshold){
+	    	in_density_region = 1;
 		    return 1;
 	    }
 	}
+	in_density_region = 0;
 	return 0;
 }
 
@@ -133,6 +136,6 @@ const char *usage(void)
 */
 void destroy(void)
 {
-
+   hts_close(htsAhead);
 }
 
