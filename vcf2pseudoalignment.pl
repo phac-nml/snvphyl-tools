@@ -148,7 +148,7 @@ sub combine_vcfs{
         my $cmd;
         
         my $file_name = "$tmp_dir/$sample" . "_combined.bcf.gz";
-
+		
         my ($dir) = "$tmp_dir/$sample" . '_answer';
 
         #confirm SNPS in freebayes by comparing them to mpileup REF and ALT columns
@@ -206,7 +206,10 @@ sub combine_vcfs{
         $cmd = "$bcftools index  $dir/filtered_mpileup.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
+        $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $dir/unfiltered_density.bcf";
+        system($cmd) == 0 or die "Could not run $cmd";
+        
+	    $cmd = "$bcftools plugin filter_snp_density $dir/unfiltered_density.bcf -O b -- -f $dir/unfiltered_density.bcf -t $density_threshold > $file_name"; 
         system($cmd) == 0 or die "Could not run $cmd";
         
         $cmd = "$bcftools index -f $file_name";
