@@ -114,7 +114,7 @@ int mark_density_snp(bcf1_t *bcf_current, bcf_hdr_t *header, int flag_density){
 int check_density(bcf1_t *current, bcf1_t *next, int density_threshold){
 	int current_position = current->pos;
 	int next_position = next->pos;
-	printf("Current position: %d, Next: %d \n", current_position, next_position);
+
 	if(current->rid != next->rid){
 	    if((next_position - current_position) <= density_threshold){
 		    return 1;
