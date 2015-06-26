@@ -45,7 +45,7 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
        {0,0,0,0}
    };
    char c, *tmp;
-   while((c = getopt_long(argc, argv, "f:t:", loptions, NULL)) >= 0)
+   while((c = getopt_long(argc, argv, "f:t", loptions, NULL)) >= 0)
    {
        switch (c)
       {  
@@ -59,7 +59,14 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
          default: error("%s", usage()); break;
       }
    }
-         
+   
+   //perform som validation of input parameters
+   if(density_threhsold <= 0){
+	   density_threshold = 10;
+	   printf("Negative density_threshold value found, setting to default value of %d.", density_threshold);
+   }
+   
+   
    in_hdr = in;
    out_hdr = out;
 
