@@ -16,12 +16,11 @@ __PACKAGE__->run unless caller;
 
 
 sub run {
-    my ( $size, $man, $help, $min_depth, $log_dir, $min_map, %bam_files, $cores );
+    my ( $size, $man, $help, $min_depth, $min_map, %bam_files, $cores );
 	
     GetOptions(
         "c|cores=i"   => \$cores,
         "bam=s"		  => \%bam_files,
-        "l|log_dir=s" => \$log_dir,
         "s|size=s"    => \$size,
         "min-map=f"	  => \$min_map,
         "min-depth=i" => \$min_depth,
@@ -50,13 +49,8 @@ sub run {
     }
     #set default number of cores
 	$cores = 1 if (not defined $cores);
-	#set default log directory to local directory    
-	$log_dir="./" if ((not defined $log_dir)||($log_dir eq '.')||(not -d $log_dir));
 	#set default minimum percent mapping
 	$min_map=$MIN_MAP if (not defined $min_map);
-	
-	#create the log file to print warnings to
-	open(my $log, '>', $log_dir.'mapping_percentage.log');
 	
 	#retrieve all of the bam file locations from the hash
     my @files = values %bam_files;
@@ -81,14 +75,14 @@ sub run {
 	#parse results and determine what should be written for user to view
 	my @results;
 	@results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
-	print $log "==========Reference Mapping Quality===========\n";
-	print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
-	print $log "MINIMUM DEPTH: ".$min_depth."\n";
-	print $log "MINIMUM MAPPING: ".$min_map."\n";
+	print "==========Reference Mapping Quality===========\n";
+	print "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
+	print "MINIMUM DEPTH: ".$min_depth."\n";
+	print "MINIMUM MAPPING: ".$min_map."\n";
     foreach my $result(@results){
     	my @split = split(',', $result);
     	my @double = split('%', $split[1]);
-    	print $log "Mapping to reference for isolate ".$split[0]." is ".$split[1]."\n" if $double[0] < $min_map; 
+    	print "Mapping to reference for isolate ".$split[0]." is ".$split[1]."\n" if $double[0] < $min_map; 
     }
 	   	
 }
@@ -202,7 +196,7 @@ This documentation refers to verify_mapping_quality.pl version 0.0.1.
 
 =head1 SYNOPSIS
 
-verify_mapping_quality.pl -l /log-direcotry --bam bamX=/inputDirrectory/bamfile.bam --min-depth minimum-depth --min-map minimum-percent-mapping -h help
+verify_mapping_quality.pl --bam bamX=/inputDirrectory/bamfile.bam --min-depth minimum-depth --min-map minimum-percent-mapping -h help
 
 =head1 OPTIONS
 
@@ -211,10 +205,6 @@ verify_mapping_quality.pl -l /log-direcotry --bam bamX=/inputDirrectory/bamfile.
 =item B<--bam> [REQUIRED]
 
 The location for a specific BAM file in the dataset. Multiple BAM files can be input.  Example with 3 BAM files: --bam bam1=/path/bam1.bam --bam bam2=/path/bam2.bam --bam bam3=/path/bam3.bam
-
-=item B<-l>, B<--log-dir> [optional]                                                                                                      
-
-The directory location where the output log exists that lists all strains with low reference mapping. Defaults to the script directory.
 
 =item B<--min-depth> [optional]
 
