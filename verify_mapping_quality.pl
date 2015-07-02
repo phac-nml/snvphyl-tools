@@ -34,19 +34,12 @@ sub run {
         print "Unable to find any input bam files.\n\n";
         pod2usage(1);
     }
-    unless ( defined $size ) {
-        print "Calculating genome size from input BAM files.\n\n";
-    }
 
 	#set default values if undefined on command line
     if(!defined $min_depth){
         $min_depth = $MIN_DEPTH;
-        print "  Using a minumum depth of $MIN_DEPTH\n";
-        print "  Use the --min-depth flag to set custom depth\n\n";
     }
-    else{
-    	print "Using a min_depth of ".$min_depth."\n";
-    }
+
     #set default number of cores
 	$cores = 1 if (not defined $cores);
 	#set default minimum percent mapping
@@ -82,7 +75,7 @@ sub run {
     foreach my $result(@results){
     	my @split = split(',', $result);
     	my @double = split('%', $split[1]);
-    	print "Mapping to reference for isolate ".$split[0]." is ".$split[1]."\n" if $double[0] < $min_map; 
+    	print $split[0]." : ".$split[1]."\n" if $double[0] < $min_map; 
     }
 	   	
 }
@@ -92,7 +85,7 @@ sub run {
 #----------------------------------------------------------#
 sub verify_percent_coverage {
     my ( $files, $size, $min_depth, $cores ) = @_;
-
+    
     # Create a Prallel::ForkManager
     #------------------------------#
     my $pm = new Parallel::ForkManager($cores);
