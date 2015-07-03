@@ -37,7 +37,6 @@ sub record_read_mapping_data{
     my $output_data={};
     my $depth;
     
-    #record text of why poor mapping can cause pipeline problems
     $common_problems = "Poorly mapped reads will greatly reduce the number of\n 
                         usable SNP's and produce a final tree of lesser quality.\n 
                         Poor mapping occurs for several reasons, including:\n
@@ -124,7 +123,30 @@ sub record_filter_stats{
 #------------------------------------------------------------------------
 sub record_reference_info{
 	
-	my ($reference_id, $sequencer_type, $source, $assembly, $size);
+	my ($reference_id, $species, $genus, $serotype, $sequencer_type, $source, $plasmid_presence, $size, $denovo_assembly, $n50, 
+	    $number_of_contigs, $assembly_avg_coverage, $min_contig, $max_contig);
+	    
+	my $reference_data = {};
+	$reference_data->{'id'} = $reference_id;
+	$reference_data->{'species'} = $species;
+	$reference_data->{'genus'}= $genus;
+	$reference_data->{'serotype'} = $serotype;
+	$reference_data->{'sequencer'} = $sequencer_type;
+	$reference_data->{'source'} = $source;
+	$reference_data->{'assembly'} = $denovo_assembly;
+	$reference_data->{'plasmids'} = $plasmid_presence;
+	$reference_data->{'size'} = $size;
+	$reference_data->{'n50'} = $n50;
+	$reference_data->{'number_of_contigs'} = $number_of_contigs;
+	$reference_data->{'assembly_avg_coverage'} = $assembly_avg_coverage;
+	$reference_data->{'min_contig'} = $min_contig;
+	$reference_data->{'max_contig'} = $max_contig;
+	
+	#if plasmids are present, add their positions to the masked positions file:
+	
+	
+	return $reference_data;
+	
     #identifier
     #type of sequencer used to generate the reference
     #are plasmids present/position of plasmids
@@ -150,26 +172,14 @@ sub record_file_sizes{
 	    push @fileSizes, $size;	
 	}
 	
-	
-	
 	foreach(@fileSizes){
 		if($_ < $min_file_size){
-			#flag the file
+			#throw warning to user and suggest top up data required
 		}
 		elsif($_ > $max_file_size){
-			#flag the file as requiring downsampling
+			#downsample the file
 		}
 	}
-    #record all file sizes for each bam file and report any small files
-    #as a quality fail
-    #print "File\tSize";
-    #foreach(%bam_keys){
-	#	my $result = `ls -l $_`;
-	#	print "$_\t$result";
-	#}
-	#use the average file size to determine if any of the files are far
-	#smaller than they should be.  Alternatively, identify very large
-	#input files that may need to be downsized for the run.
 		
 }
 

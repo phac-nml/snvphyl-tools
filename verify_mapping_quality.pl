@@ -39,7 +39,7 @@ sub run {
     if(!defined $min_depth){
         $min_depth = $MIN_DEPTH;
     }
-
+			
     #set default number of cores
 	$cores = 1 if (not defined $cores);
 	#set default minimum percent mapping
