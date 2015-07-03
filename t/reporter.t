@@ -33,8 +33,8 @@ ok($results->{'depth'}==15, "The correct depth level is being set.");
 
 #2=> test the record_reference_info submodule:
 my $reference = $reporter->record_reference_info('12345', 'Escherichia', 'coli', 'O157', 'Illumina', 'NML', 'NO', '3500000', 'NO');
-ok();
 
 #3=>
+my $filter_stats = $reporter->record_filter_stats('reporter/pseudoalign-positions1.tsv');
 
 done_testing();

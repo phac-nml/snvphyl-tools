@@ -105,6 +105,10 @@ sub record_read_mapping_data{
 sub record_filter_stats{
 	
 	my($self, $pseudoalign_fp) = @_;
+	
+	my $result = `perl ../filter-stats.pl -i $pseudoalign_fp`;
+	
+	print $result;
 	#display total number of SNP's used to generate the phylogeny
 	#display total number of core SNP's found before filtering
 	#display total number and percentage of SNP's filtered
@@ -180,7 +184,6 @@ sub record_file_sizes{
 			#downsample the file
 		}
 	}
-		
 }
 
 #------------------------------------------------------------------------
