@@ -66,7 +66,7 @@ sub run{
 	
 	#retrieve all of the bam file locations from the hash
     my @files = values %bam_files;
- 
+ 	
  	#ensure that bam files are properly input on the command line and that each file path exists
  	if (@files <= 0){ die "Error: No bam files input."};
  	foreach(@files){
@@ -88,7 +88,7 @@ sub run{
 	my @results;
 	
 	#retrieve the depths of coverage for all positions in each of the strains
-	@results = depth_of_coverage( \@files, $size, $cores, $max_stddev );    
+	@results = depth_of_coverage( \%bam_files, $size, $cores, $max_stddev );    
     
     print @results;
     
@@ -220,20 +220,18 @@ sub depth_of_coverage {
     
     # Let's do the heavy lifing
     #--------------------------#
-    foreach my $file ( @$files ) {
+    foreach my $file ( keys %$files ) {
         $pm->start && next;
-        
-        # Get the actual file name
-        #-------------------------#
-        my @suffix = [".bam", ".dat"];
-        my $name = fileparse( $file, @suffix );
+
+		my $name = $file;
 
         # Run samtools depth and get results
         #------------------------------------#
-        my $result = `samtools depth $file`;
+        my $input_file = $files->{$file};
+        my $result = `samtools depth $input_file`;
         
         #check for errors that occur while running samtools depth
-		die "Error: samtools depth exited with error while working with $file.\n" if (not defined $result);
+		die "Error: samtools depth exited with error while working with $input_file.\n" if (not defined $result);
 		
 		#calculate the averages and std deviation for the coverage stats of each strain
         my $average = calc_mean_coverage($result);
