@@ -37,4 +37,6 @@ my $reference = $reporter->record_reference_info('12345', 'Escherichia', 'coli',
 #3=>
 my $filter_stats = $reporter->record_filter_stats('reporter/pseudoalign-positions1.tsv');
 
+my $file_sizes = $reporter->record_file_sizes('reporter/sample1.bam', 'reporter/sample2.bam', 'reporter/sample3.bam');
+
 done_testing();

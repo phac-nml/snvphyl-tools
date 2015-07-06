@@ -36,7 +36,6 @@ my $d = 1;
 #t stores the total number of N's and -'s. Can be implemented later
 my $t = 2;
 
-
 #Open file
 open my $in, "<", $input or die "Could not open $input!";
 
@@ -111,7 +110,6 @@ while ($line = <$in>)
 }
 close($in);
 
-
 my ($header_out, $t_count, $t_perc);
 
 foreach my $chromosome(sort {$a cmp $b} keys %counts)
@@ -152,14 +150,14 @@ my $percent_filtered = ($total_filtered/$total)*100;
 my $total_used = $total - $total_filtered;
 
 printf "================= Filter Summary Statistics =====================
-Number of sites used to generate phylogeny: $total_used\n
-Total number of sites identified: $total\n
-Number of sites filtered: $total_filtered\n
-Percentage of sites filtered: %.2f\n
-Coverage filtered: $total_coverage\n
-mpileup filtered: $total_mpileup\n
-Density filtered: $total_density\n
-Invalid filtered: $total_invalid\n", $percent_filtered;
+Number of sites used to generate phylogeny: $total_used
+Total number of sites identified: $total
+Number of sites filtered: $total_filtered
+Percentage of sites filtered: %.2f
+Coverage filtered: $total_coverage
+mpileup filtered: $total_mpileup
+Density filtered: $total_density
+Invalid filtered: $total_invalid", $percent_filtered;
 
 sub detailed_filter_stats{
 	my($filter_type)= @_;
@@ -173,7 +171,6 @@ sub detailed_filter_stats{
 	}
 	return;	
 }
-
 
 
 __END__
