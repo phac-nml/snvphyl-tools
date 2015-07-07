@@ -48,6 +48,12 @@ $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to creat
 $command = "$mapping_bin -c 8 --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam > ".$create_dir."/5.txt 2>&1";
 $return_code = system($command);
 ok($return_code == 0, "Change number of cores test.");
+
+#6 => verify that the script produces the exact output expected
+$create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
+system("$mapping_bin -c 8 --max-dev 3 --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam > ".$create_dir."/6.txt 2>&1");
+my $strains_present = (`grep -c "#bam1" $create_dir/6.txt` && `grep -c "#bam2" $create_dir/6.txt` && `grep -c "#bam3" $create_dir/6.txt` && `grep -c "#bam4" $create_dir/6.txt`);
+ok($strains_present, "The correct keys are being used to extract isolate id's.");
  
 done_testing();
 
