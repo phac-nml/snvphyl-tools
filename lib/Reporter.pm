@@ -144,12 +144,10 @@ sub record_reference_info{
     $reference_data{'reference'}{'min_contig'} = $min_contig;
     $reference_data{'reference'}{'max_contig'} = $max_contig;
     
-    my %original = from_json($json_daisy_chain);
-    my $output = merge_json(\%original, \%reference_data);
+    my $additional = to_json(\%reference_data);
+    my $output = merge_json($json_daisy_chain, $additional);    
     
-	#if plasmids are present, add their positions to the masked positions file:
-    print to_json(%reference_data);
-	
+    print $output;
 }
 
 #------------------------------------------------------------------------
@@ -190,18 +188,40 @@ sub record_file_sizes{
 #pipeline.  All information required to replicate the pipeline run.
 #------------------------------------------------------------------------
 sub record_run_parameters{	
-	my($self, $json_daisy_chain) = @_;
+	
+	my($self, $json_daisy_chain, $drmaa_general, $drmaa_trimClean, 
+	$drmaa_vcf2core, $drmaa_vcf2pseudoalign, $freebayes_pvar, 
+	$freebayes_ploidy, $freebayes_left_indels, $freebayes_min_map, 
+	$freebayes_min_base, $freebayes_min_fraction, $max_coverage,
+	$min_coverage, $mode, $processors, $smalt_index, $smalt_map,
+	$trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus) = @_;
 	
 	my %parameters_data;
 	$parameters_data{'parameters'}{'id'} = ;
-	$parameters_data{'parameters'}{'id'} = ;
-	$parameters_data{'parameters'}{'id'} = ;
-	$parameters_data{'parameters'}{'id'} = ;
-	$parameters_data{'parameters'}{'id'} = ;
-	$parameters_data{'parameters'}{'id'} = ;
+	$parameters_data{'parameters'}{'drmaa'}{'general'} = $drmaa_general;
+	$parameters_data{'parameters'}{'drmaa'}{'trimClean'} = $drmaa_trimClean;
+	$parameters_data{'parameters'}{'drmaa'}{'vcf2core'} = $drmaa_vcf2core;
+	$parameters_data{'parameters'}{'drmaa'}{'vcf2pseudoalign'} = $drmaa_vcf2pseudoalign;
+	$parameters_data{'parameters'}{'freebayes'}{'pvar'} = $freebayes_pvar;
+	$parameters_data{'parameters'}{'freebayes'}{'ploidy'} = $freebayes_ploidy;
+	$parameters_data{'parameters'}{'freebayes'}{'left-align-indels'} = $freebayes_left_indels;
+	$parameters_data{'parameters'}{'freebayes'}{'min-mapping-quality'} = $freebayes_min_map;
+	$parameters_data{'parameters'}{'freebayes'}{'min-base-quality'} = $freebayes_min_base;
+	$parameters_data{'parameters'}{'freebayes'}{'min-alternate-fraction'} = $freebayes_min_fraction;
+	$parameters_data{'parameters'}{'max_coverage'} = $max_coverage;
+	$parameters_data{'parameters'}{'min_coverage'} = $min_coverage;
+	$parameters_data{'parameters'}{'mode'} = $mode;
+	$parameters_data{'parameters'}{'processors'} = $processors;
+	$parameters_data{'parameters'}{'smalt_index'} = $smalt_index;
+	$parameters_data{'parameters'}{'smalt_map'} = $smalt_map;
+	$parameters_data{'parameters'}{'trim_clean_params'} = $trim_clean;
+	$parameters_data{'parameters'}{'vcf2core'}{'numcpus'} = $vcf2core_cpus;
+	$parameters_data{'parameters'}{'vcf2pseudoalign'}{'numcpus'} = $vcf2pseudo_cpus;
 	
-	
-	
+	my $additional = to_json(\%parameters_data);
+    my $output = merge_json($json_daisy_chain, $additional);    
+    
+    print $output;
 }
 
 #------------------------------------------------------------------------
@@ -209,7 +229,7 @@ sub record_run_parameters{
 #    
 #------------------------------------------------------------------------
 sub vcf2CoreStats{
-	my($self, $json_daisy_chain, ) = @_;
+	my($self, $json_daisy_chain ) = @_;
 	
 	my $results = ``;		
 }
