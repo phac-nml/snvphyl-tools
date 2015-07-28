@@ -72,7 +72,7 @@ sub run{
  	}	
 	
 	#retrieve the depths of coverage for all positions in each of the strains
-	my @results = check_low_coverage( \@files, $cores, $max_depth );    
+	my @results = check_low_coverage( \%bam_files, $cores, $max_depth );    
     
     print @results;
     
@@ -117,20 +117,17 @@ sub check_low_coverage {
     
     # Let's do the heavy lifing
     #--------------------------#
-    foreach my $file ( @$files ) {
+    foreach my $file ( keys %$files ) {
         $pm->start && next;
         
-        # Get the actual file name
-        #-------------------------#
-        my @suffix = [".bam", ".dat"];
-        my $name = fileparse( $file, @suffix );
-
+        my $name = $file;
+        my $input_file = $files->{$file};
         # Run samtools depth and get results
         #------------------------------------#
-        my $result = `samtools depth $file`;
+        my $result = `samtools depth $input_file`;
         
         #check for errors that occur while running samtools depth
-		die "Error: samtools depth exited with error while working with $file.\n" if (not defined $result);
+		die "Error: samtools depth exited with error while working with $input_file.\n" if (not defined $result);
         
         my $low_coverage;
         my $low_coverage_flag = 0;
