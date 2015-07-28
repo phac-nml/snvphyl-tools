@@ -80,7 +80,7 @@ sub run {
 		
 	#parse results and determine what should be written for user to view
 	my @results;
-	@results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
+	@results = verify_percent_coverage( \%bam_files, $size, $min_depth, $cores );
 	print $log "==========Reference Mapping Quality===========\n";
 	print $log "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
 	print $log "MINIMUM DEPTH: ".$min_depth."\n";
@@ -122,17 +122,15 @@ sub verify_percent_coverage {
     # Let's do the heavy lifing
     #--------------------------#
     
-    foreach my $file ( @$files ) {
+    foreach my $file ( keys %$files ) {
         $pm->start && next;
-        
-        # Get the actual file name
-        #-------------------------#
-        my @suffix = [".bam", ".dat"];
-        my $name = fileparse( $file, @suffix );
+
+        my $name = $file;
 
         # Run samtools depth and get results
         #------------------------------------#
-        my $result = `samtools depth $file`;
+        my $input_file = $files->{$file};
+        my $result = `samtools depth $input_file`;
         
         #check for errors that occur while running samtools depth
 		die "Error: samtools depth exited with error while working with $file.\n" if (not defined $result);
