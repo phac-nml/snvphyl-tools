@@ -36,7 +36,7 @@ sub record_read_mapping_data{
     my $status = 'PASSED';
     my @common_problems;
     my @common_solutions;
-    my $output_data={};
+    my %output_data;
     my $depth;
         
     @common_problems = ['Insufficient amount of sequencing data', 'Sample contamination', 'Imporperly identified/labelled samples', 'Poor reference strain used'];                                             
@@ -78,14 +78,17 @@ sub record_read_mapping_data{
 	}
 	
 	#set the output values for the map
-    $output_data->{'size'} = $reference_size;
-    $output_data->{'depth'} = $depth;
-    $output_data->{'status'} = $status;
-    $output_data->{'Problem strains'} = \@warnings;
-    $output_data->{'Common problems'} = \@common_problems;
-    $output_data->{'Common solutions'} = \@common_solutions;
+    $output_data{'size'} = $reference_size;
+    $output_data{'depth'} = $depth;
+    $output_data{'status'} = $status;
+    $output_data{'Problem strains'} = \@warnings;
+    $output_data{'Common problems'} = \@common_problems;
+    $output_data{'Common solutions'} = \@common_solutions;
+	
+	my $additional = to_json(\%output_data);
+    my $output = merge_json($json_daisy_chain, $additional);    
     
-	print to_json($output_data);
+    print $output;
 }
 
 #------------------------------------------------------------------------
@@ -96,7 +99,7 @@ sub record_read_mapping_data{
 #------------------------------------------------------------------------
 sub record_filter_stats{
 	
-	my($self, $pseudoalign_fp, $json_daisy_chain) = @_;
+	my($self, $json_daisy_chain, $pseudoalign_fp) = @_;
 	my $result = `perl ../filter-stats.pl -i $pseudoalign_fp`;
 	my %filter_stats;
 	
@@ -125,26 +128,20 @@ sub record_filter_stats{
 #------------------------------------------------------------------------
 sub record_reference_info{
 	
-	my ($self, $json_daisy_chain, $reference_id, $species, $genus, $serotype, $sequencer_type, $source, $plasmid_presence, $size, $denovo_assembly, $n50, 
-	    $number_of_contigs, $assembly_avg_coverage, $min_contig, $max_contig);
-    	        
-    my %reference_data;
-	$reference_data{'reference'}{'id'} = $reference_id;
-	$reference_data{'reference'}{'species'} = $species;
-	$reference_data{'reference'}{'genus'}= $genus;
-	$reference_data{'reference'}{'serotype'} = $serotype;
-	$reference_data{'reference'}{'sequencer'} = $sequencer_type;
-	$reference_data{'reference'}{'source'} = $source;
-	$reference_data{'reference'}{'assembly'} = $denovo_assembly;
-	$reference_data{'reference'}{'plasmids'} = $plasmid_presence;
-	$reference_data{'reference'}{'size'} = $size;
-    $reference_data{'reference'}{'n50'} = $n50;
-    $reference_data{'reference'}{'number_of_contigs'} = $number_of_contigs;
-    $reference_data{'reference'}{'assembly_avg_coverage'} = $assembly_avg_coverage;
-    $reference_data{'reference'}{'min_contig'} = $min_contig;
-    $reference_data{'reference'}{'max_contig'} = $max_contig;
+	my ($self, $json_daisy_chain, $reference_file, $sequencer, $source, $plasmid_presence) = @_;
     
-    my $additional = to_json(\%reference_data);
+    my $ref_stats = `perl ../ref_stats.pl -i 1000 $reference_file`;
+    is_valid_json($ref_stats);        
+    my %reference_data;
+    $reference_data{'reference'}{'sequencer'} = $sequencer;
+	$reference_data{'reference'}{'source'} = $source; 
+	$reference_data{'reference'}{'plasmids'} = $plasmid_presence;
+	
+	#TODO:
+    #$reference_data{'reference'}{'min_contig'} = $min_contig;
+    #$reference_data{'reference'}{'max_contig'} = $max_contig;
+    
+    my $additional = merge_json(to_json(\%reference_data), $ref_stats);
     my $output = merge_json($json_daisy_chain, $additional);    
     
     print $output;
@@ -179,7 +176,10 @@ sub record_file_sizes{
 		}
 	}
 	
-	print to_json(\%size_data);
+	my $additional = to_json(\%size_data);
+    my $output = merge_json($json_daisy_chain, $additional);
+	
+	print $output;
 }
 
 #------------------------------------------------------------------------
@@ -194,10 +194,10 @@ sub record_run_parameters{
 	$freebayes_ploidy, $freebayes_left_indels, $freebayes_min_map, 
 	$freebayes_min_base, $freebayes_min_fraction, $max_coverage,
 	$min_coverage, $mode, $processors, $smalt_index, $smalt_map,
-	$trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus) = @_;
+	$trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id) = @_;
 	
 	my %parameters_data;
-	$parameters_data{'parameters'}{'id'} = ;
+	$parameters_data{'parameters'}{'id'} = $id;
 	$parameters_data{'parameters'}{'drmaa'}{'general'} = $drmaa_general;
 	$parameters_data{'parameters'}{'drmaa'}{'trimClean'} = $drmaa_trimClean;
 	$parameters_data{'parameters'}{'drmaa'}{'vcf2core'} = $drmaa_vcf2core;
@@ -226,10 +226,10 @@ sub record_run_parameters{
 
 #------------------------------------------------------------------------
 #Purpose:
-#    
+#        
 #------------------------------------------------------------------------
 sub vcf2CoreStats{
-	my($self, $json_daisy_chain ) = @_;
+	my($self, $json_daisy_chain) = @_;
 	
 	my $results = ``;		
 }
