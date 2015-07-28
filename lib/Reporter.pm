@@ -2,9 +2,10 @@ package Reporter;
 
 use strict;
 use warnings;
-
+use Hash::Merge qw( merge );
 use String::Util 'trim';
 use JSON;
+use Test::JSON;
 use Switch;
 
 sub new{
@@ -27,30 +28,20 @@ sub new{
 #------------------------------------------------------------------------
 sub record_read_mapping_data{
     
-    my($self, @bams) = @_;
+    my($self, $json_daisy_chain, @bams) = @_;
        
     #the variables to set that will be recorded
     my $reference_size;
     my @warnings;
     my $status = 'PASSED';
-    my $common_problems;
-    my $common_solutions;
+    my @common_problems;
+    my @common_solutions;
     my $output_data={};
     my $depth;
         
-    $common_problems = "Poorly mapped reads will greatly reduce the number of\n 
-                        usable SNP's and produce a final tree of lesser quality.\n 
-                        Poor mapping occurs for several reasons, including:\n
-                        1. Insufficient amount of sequencing data\n
-                        2. Sample contamination.\n
-                        3. Imporperly identified/labelled samples.\n
-                        4. Poor reference strain used.\n";    
-    
-    $common_solutions = "Depending on the cause for poor mapping, several potential solutions exist:\n
-                         1. Top up the sequencing data for the poorly mapped isolates.\n
-                         2. Remove isolates that are mapping poorly from the analysis.\n
-                         3. Ensure the samples are identified and labelled correctly.\n
-                         4. Select a different reference strain to map to.\n";
+    @common_problems = ['Insufficient amount of sequencing data', 'Sample contamination', 'Imporperly identified/labelled samples', 'Poor reference strain used'];                                             
+                
+    @common_solutions = ['Top up the sequencing data for the poorly mapped isolates', 'Remove isolates that are mapping poorly from the analysis', 'Ensure the samples are identified and labelled correctly', 'Select a different reference strain to map to'];
                              
     #record thresholds used for depth of coverage (default = 15x)
     #parse through the % mapped for each bam file:
@@ -91,10 +82,10 @@ sub record_read_mapping_data{
     $output_data->{'depth'} = $depth;
     $output_data->{'status'} = $status;
     $output_data->{'Problem strains'} = \@warnings;
-    $output_data->{'Common problems'} = $common_problems;
-    $output_data->{'Common solutions'} = $common_solutions;
+    $output_data->{'Common problems'} = \@common_problems;
+    $output_data->{'Common solutions'} = \@common_solutions;
     
-	return $output_data;
+	print to_json($output_data);
 }
 
 #------------------------------------------------------------------------
@@ -105,23 +96,26 @@ sub record_read_mapping_data{
 #------------------------------------------------------------------------
 sub record_filter_stats{
 	
-	my($self, $pseudoalign_fp) = @_;
-	
+	my($self, $pseudoalign_fp, $json_daisy_chain) = @_;
 	my $result = `perl ../filter-stats.pl -i $pseudoalign_fp`;
-	my $filter_stats = {};
+	my %filter_stats;
 	
     for(split /^/, $result){
     	switch($_){
-    		case {$_ =~ 'generate phylogeny'} {$filter_stats->{'total_used'}=trim((split ":", $_ )[1])}
-    		case {$_ =~ 'sites identified'} {$filter_stats->{'total_unfiltered'}=trim((split ":", $_ )[1])}
-    		case {$_ =~ 'sites filtered'} {$filter_stats->{'sites_filtered'}=trim((split ":", $_ )[1])}
-    		case {$_ =~ 'Coverage filtered'} {$filter_stats->{'filtered_coverage'}=trim((split ":", $_ )[1])}
-    		case {$_ =~ 'mpileup filtered'} {$filter_stats->{'filtered_mpileup'}=trim((split ":", $_ )[1])}
-    		case {$_ =~ 'Density filtered'} {$filter_stats->{'filtered_density'}=trim((split ":", $_ )[1])}
-    		case {$_ =~ 'Invalid filtered'} {$filter_stats->{'filtered_invalid'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'generate phylogeny'} {$filter_stats{'filter_stats'}{'total_used'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'sites identified'} {$filter_stats{'filter_stats'}{'total_unfiltered'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'sites filtered'} {$filter_stats{'filter_stats'}{'sites_filtered'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'Coverage filtered'} {$filter_stats{'filter_stats'}{'filtered_coverage'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'mpileup filtered'} {$filter_stats{'filter_stats'}{'filtered_mpileup'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'Density filtered'} {$filter_stats{'filter_stats'}{'filtered_density'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'Invalid filtered'} {$filter_stats{'filter_stats'}{'filtered_invalid'}=trim((split ":", $_ )[1])}
         }
-    }    
-    print to_json($filter_stats);
+    }
+    
+    my $additional = to_json(\%filter_stats);
+    my $output = merge_json($json_daisy_chain, $additional);    
+    
+    print $output;
 }
 
 #------------------------------------------------------------------------
@@ -131,55 +125,53 @@ sub record_filter_stats{
 #------------------------------------------------------------------------
 sub record_reference_info{
 	
-	my ($reference_id, $species, $genus, $serotype, $sequencer_type, $source, $plasmid_presence, $size, $denovo_assembly, $n50, 
+	my ($self, $json_daisy_chain, $reference_id, $species, $genus, $serotype, $sequencer_type, $source, $plasmid_presence, $size, $denovo_assembly, $n50, 
 	    $number_of_contigs, $assembly_avg_coverage, $min_contig, $max_contig);
     	        
-    my $reference_data = {};
-	$reference_data->{'id'} = $reference_id;
-	$reference_data->{'species'} = $species;
-	$reference_data->{'genus'}= $genus;
-	$reference_data->{'serotype'} = $serotype;
-	$reference_data->{'sequencer'} = $sequencer_type;
-	$reference_data->{'source'} = $source;
-	$reference_data->{'assembly'} = $denovo_assembly;
-	$reference_data->{'plasmids'} = $plasmid_presence;
-	$reference_data->{'size'} = $size;
-    $reference_data->{'n50'} = $n50;
-    $reference_data->{'number_of_contigs'} = $number_of_contigs;
-    $reference_data->{'assembly_avg_coverage'} = $assembly_avg_coverage;
-    $reference_data->{'min_contig'} = $min_contig;
-    $reference_data->{'max_contig'} = $max_contig;
+    my %reference_data;
+	$reference_data{'reference'}{'id'} = $reference_id;
+	$reference_data{'reference'}{'species'} = $species;
+	$reference_data{'reference'}{'genus'}= $genus;
+	$reference_data{'reference'}{'serotype'} = $serotype;
+	$reference_data{'reference'}{'sequencer'} = $sequencer_type;
+	$reference_data{'reference'}{'source'} = $source;
+	$reference_data{'reference'}{'assembly'} = $denovo_assembly;
+	$reference_data{'reference'}{'plasmids'} = $plasmid_presence;
+	$reference_data{'reference'}{'size'} = $size;
+    $reference_data{'reference'}{'n50'} = $n50;
+    $reference_data{'reference'}{'number_of_contigs'} = $number_of_contigs;
+    $reference_data{'reference'}{'assembly_avg_coverage'} = $assembly_avg_coverage;
+    $reference_data{'reference'}{'min_contig'} = $min_contig;
+    $reference_data{'reference'}{'max_contig'} = $max_contig;
+    
+    my %original = from_json($json_daisy_chain);
+    my $output = merge_json(\%original, \%reference_data);
     
 	#if plasmids are present, add their positions to the masked positions file:
-    return $reference_data;
-    	
-    #identifier
-    #type of sequencer used to generate the reference
-    #are plasmids present/position of plasmids
-    #is denovo assembly?
-    	#YES: N50, number of contigs, coverage, min/max contig lengths		
+    print to_json(%reference_data);
+	
 }
-  
+
 #------------------------------------------------------------------------
 #Purpose:
 #    Record the size of all read/alignment files found in the pipeline/
 #------------------------------------------------------------------------
 sub record_file_sizes{
-    	
-	my($self, @files) = @_;
-    	
+		
+    my($self, $type, $json_daisy_chain, @files) = @_;
+     	
 	my @fileSizes;
 	my $min_file_size=0;
-	my $max_file_size=10;
-	my $size_data = {};
-    
-	foreach(@files){
+	my $max_file_size=1000;
+	my %size_data;
+	
+    foreach(@files){
 	    my $output = `ls -l --block-size=M $_`;
 	    my $size = (split " ", $output)[4];
-	    push @fileSizes, $size;
-	    $size_data->{$_} = $size; 	
+        push @fileSizes, $size;
+        $size_data{'file_size'}{$type}{$_} = $size; 	
 	}
-    #get the rest of hte indivdual file sizes
+    #get each of the indivdual file sizes
 	foreach(@fileSizes){
 		if((split 'M', $_)[0] < $min_file_size){
 			#throw warning to user and suggest top up data required
@@ -188,6 +180,8 @@ sub record_file_sizes{
 			#downsample the file 
 		}
 	}
+	
+	print to_json(\%size_data);
 }
 
 #------------------------------------------------------------------------
@@ -196,10 +190,28 @@ sub record_file_sizes{
 #pipeline.  All information required to replicate the pipeline run.
 #------------------------------------------------------------------------
 sub record_run_parameters{	
-	my($self) = @_;
-	#Files used
-	#All parameter values
+	my($self, $json_daisy_chain) = @_;
 	
+	my %parameters_data;
+	$parameters_data{'parameters'}{'id'} = ;
+	$parameters_data{'parameters'}{'id'} = ;
+	$parameters_data{'parameters'}{'id'} = ;
+	$parameters_data{'parameters'}{'id'} = ;
+	$parameters_data{'parameters'}{'id'} = ;
+	$parameters_data{'parameters'}{'id'} = ;
+	
+	
+	
+}
+
+#------------------------------------------------------------------------
+#Purpose:
+#    
+#------------------------------------------------------------------------
+sub vcf2CoreStats{
+	my($self, $json_daisy_chain, ) = @_;
+	
+	my $results = ``;		
 }
 
 #------------------------------------------------------------------------
@@ -209,7 +221,54 @@ sub record_run_parameters{
 #of the resultant protein, if applicable.
 #------------------------------------------------------------------------
 sub record_snp_eff{
-     
+	#IMPLEMENTED TO v2.0
+}
+
+#-----------------------------------------------------------------------
+#Purpose:
+#    Provides a generic plugin interface that allows developers to add 
+#additional QC scripts into various stages of the pipeline without
+#altering the main Reporter.pm module.
+#-----------------------------------------------------------------------
+sub run_plugin{
+	my($self, $json_daisy_chain, $script_name, $script_variables);
+	
+	my $command = $script_name;
+	
+	for(keys in $script_variables){
+		#add each command line variable to the command string
+		$command = $command.' $_ $script_variables{$_} ';
+	}
+	
+	my $output = `$command`;
+	#ensure that the output is in JSON format
+	die "Improperly formatted JSON output for $script_name output" if !(is_valid_json($output));
+	
+	print to_json($json_daisy_chain.$output);	
+}
+
+#------------------------------------------------------------------------
+#Purpose:
+#    Function to merge two json strings into a single properly formatted
+#json string.
+#Inout:
+#    $original: The first json formatted string.
+#    $additional: The second json formatted string.
+#Output:
+#    A JSON string representing the union of the two original json
+#strings.
+#------------------------------------------------------------------------
+sub merge_json{
+	my($original, $additional) = @_;
+    
+    print $original;
+    print $additional;
+    my $first = from_json($original);
+    my $second = from_json($additional);
+    
+    my %output = %{merge($first, $second)};
+    
+    return to_json(\%output); 
 }
 
 1;
