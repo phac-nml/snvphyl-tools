@@ -476,7 +476,7 @@ sub print_stats {
     
     open my $out_fh,'>',$out;
     
-    print $out_fh "#Reference,total length,total invalid pos, total core,Percentage in core\n";
+    print $out_fh "#Reference	total length	total invalid pos	 total core	Percentage in core\n";
     my ($final_core,$final_total,$final_invalid)= (0,0,0);
 
     foreach my $chrom( keys %vcfcore) {
@@ -503,7 +503,7 @@ sub print_stats {
         $final_invalid +=$invalid if $invalid ne 'N/A';
         
             
-        print $out_fh join (',', ($chrom,$total,$invalid,$core,$perc)) . "\n";
+        print $out_fh join ("\t", ($chrom,$total,$invalid,$core,$perc)) . "\n";
         
     }
 
@@ -521,7 +521,7 @@ sub print_stats {
     else {
         $perc = sprintf("%.2f",$final_core/$final_total*100);
     }
-    print $out_fh join (',','all',$final_total,$final_invalid,,$final_core,$perc) . "\n";
+    print $out_fh join ("\t",'all',$final_total,$final_invalid,,$final_core,$perc) . "\n";
 
     return;
 }
