@@ -26,7 +26,7 @@ sub new{
 #Output:
 #   Formatted text output for the log file, and json data.
 #------------------------------------------------------------------------
-sub record_read_mapping_data{
+sub bam_quality_data{
     
     my($self, $json_daisy_chain, @bams) = @_;
        
@@ -48,8 +48,10 @@ sub record_read_mapping_data{
     my $bam_string;
 	my $x = 1;
     foreach(@bams){
-	    $bam_string .= '--bam bam'.$x.'=$_ ';
+	    $bam_string .= ' --bam bam'.$x.'='.$_;
+	    $x++;
 	}
+	print $bam_string;
 	my $mapping_results = `perl ../verify_mapping_quality.pl $bam_string --min-map 90 --min-depth 15`;
            	
 	#parse the results from the verify_mapping_quality.pl script
@@ -61,6 +63,7 @@ sub record_read_mapping_data{
 			$reference_size = trim((split ':', $_)[1]);
 		}
 		if($_ =~ '%'){
+			chomp $_;
 			push @warnings, $_;
 		}
 	}
@@ -78,17 +81,19 @@ sub record_read_mapping_data{
 	}
 	
 	#set the output values for the map
-    $output_data{'size'} = $reference_size;
-    $output_data{'depth'} = $depth;
-    $output_data{'status'} = $status;
-    $output_data{'Problem strains'} = \@warnings;
-    $output_data{'Common problems'} = \@common_problems;
-    $output_data{'Common solutions'} = \@common_solutions;
+    $output_data{'reference'}{'size_from_bam'} = $reference_size;
+    $output_data{'bam_stats'}{'min_depth'} = $depth;
+    $output_data{'bam_stats'}{'failed_mapping_threshold'} = 80;
+    $output_data{'bam_stats'}{'warn_mapping_threshold'} = 90;
+    $output_data{'bam_stats'}{'status'} = $status;
+    $output_data{'bam_stats'}{'Problem strains'} = \@warnings;
+    $output_data{'bam_stats'}{'Common problems'} = \@common_problems;
+    $output_data{'bam_stats'}{'Common solutions'} = \@common_solutions;
 	
 	my $additional = to_json(\%output_data);
     my $output = merge_json($json_daisy_chain, $additional);    
     
-    print $output;
+    return $output;
 }
 
 #------------------------------------------------------------------------
@@ -99,26 +104,26 @@ sub record_read_mapping_data{
 #------------------------------------------------------------------------
 sub record_filter_stats{
 	
-	my($self, $json_daisy_chain, $pseudoalign_fp) = @_;
-	my $result = `perl ../filter-stats.pl -i $pseudoalign_fp`;
+	my($self, $json_daisy_chain, $pseudoalign_filepath) = @_;
+	my $result = `perl ../filter-stats.pl -i $pseudoalign_filepath`;
 	my %filter_stats;
 	
     for(split /^/, $result){
     	switch($_){
-    		case {$_ =~ 'generate phylogeny'} {$filter_stats{'filter_stats'}{'total_used'}=trim((split ":", $_ )[1])}
-    		case {$_ =~ 'sites identified'} {$filter_stats{'filter_stats'}{'total_unfiltered'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'generate phylogeny'} {$filter_stats{'filter_stats'}{'total_sites'}=trim((split ":", $_ )[1])}
+    		case {$_ =~ 'sites identified'} {$filter_stats{'filter_stats'}{'sites_unfiltered'}=trim((split ":", $_ )[1])}
     		case {$_ =~ 'sites filtered'} {$filter_stats{'filter_stats'}{'sites_filtered'}=trim((split ":", $_ )[1])}
     		case {$_ =~ 'Coverage filtered'} {$filter_stats{'filter_stats'}{'filtered_coverage'}=trim((split ":", $_ )[1])}
     		case {$_ =~ 'mpileup filtered'} {$filter_stats{'filter_stats'}{'filtered_mpileup'}=trim((split ":", $_ )[1])}
     		case {$_ =~ 'Density filtered'} {$filter_stats{'filter_stats'}{'filtered_density'}=trim((split ":", $_ )[1])}
     		case {$_ =~ 'Invalid filtered'} {$filter_stats{'filter_stats'}{'filtered_invalid'}=trim((split ":", $_ )[1])}
-        }
+        } 
     }
     
     my $additional = to_json(\%filter_stats);
     my $output = merge_json($json_daisy_chain, $additional);    
     
-    print $output;
+    return $output;
 }
 
 #------------------------------------------------------------------------
@@ -144,7 +149,7 @@ sub record_reference_info{
     my $additional = merge_json(to_json(\%reference_data), $ref_stats);
     my $output = merge_json($json_daisy_chain, $additional);    
     
-    print $output;
+    return $output;
 }
 
 #------------------------------------------------------------------------
@@ -164,8 +169,9 @@ sub record_file_sizes{
 	    my $output = `ls -l --block-size=M $_`;
 	    my $size = (split " ", $output)[4];
         push @fileSizes, $size;
-        $size_data{'file_size'}{$type}{$_} = $size; 	
+        $size_data{'file_sizes'}{$type}{$_} = $size; 	
 	}
+	
     #get each of the indivdual file sizes
 	foreach(@fileSizes){
 		if((split 'M', $_)[0] < $min_file_size){
@@ -179,7 +185,7 @@ sub record_file_sizes{
 	my $additional = to_json(\%size_data);
     my $output = merge_json($json_daisy_chain, $additional);
 	
-	print $output;
+	return $output;
 }
 
 #------------------------------------------------------------------------
@@ -190,11 +196,9 @@ sub record_file_sizes{
 sub record_run_parameters{	
 	
 	my($self, $json_daisy_chain, $drmaa_general, $drmaa_trimClean, 
-	$drmaa_vcf2core, $drmaa_vcf2pseudoalign, $freebayes_pvar, 
-	$freebayes_ploidy, $freebayes_left_indels, $freebayes_min_map, 
-	$freebayes_min_base, $freebayes_min_fraction, $max_coverage,
-	$min_coverage, $mode, $processors, $smalt_index, $smalt_map,
-	$trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id) = @_;
+	$drmaa_vcf2core, $drmaa_vcf2pseudoalign, $freebayes_params, 
+	$max_coverage, $min_coverage, $mode, $processors, $smalt_index, 
+	$smalt_map,	$trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id) = @_;
 	
 	my %parameters_data;
 	$parameters_data{'parameters'}{'id'} = $id;
@@ -202,12 +206,7 @@ sub record_run_parameters{
 	$parameters_data{'parameters'}{'drmaa'}{'trimClean'} = $drmaa_trimClean;
 	$parameters_data{'parameters'}{'drmaa'}{'vcf2core'} = $drmaa_vcf2core;
 	$parameters_data{'parameters'}{'drmaa'}{'vcf2pseudoalign'} = $drmaa_vcf2pseudoalign;
-	$parameters_data{'parameters'}{'freebayes'}{'pvar'} = $freebayes_pvar;
-	$parameters_data{'parameters'}{'freebayes'}{'ploidy'} = $freebayes_ploidy;
-	$parameters_data{'parameters'}{'freebayes'}{'left-align-indels'} = $freebayes_left_indels;
-	$parameters_data{'parameters'}{'freebayes'}{'min-mapping-quality'} = $freebayes_min_map;
-	$parameters_data{'parameters'}{'freebayes'}{'min-base-quality'} = $freebayes_min_base;
-	$parameters_data{'parameters'}{'freebayes'}{'min-alternate-fraction'} = $freebayes_min_fraction;
+	$parameters_data{'parameters'}{'freebayes'} = $freebayes_params;
 	$parameters_data{'parameters'}{'max_coverage'} = $max_coverage;
 	$parameters_data{'parameters'}{'min_coverage'} = $min_coverage;
 	$parameters_data{'parameters'}{'mode'} = $mode;
@@ -215,23 +214,44 @@ sub record_run_parameters{
 	$parameters_data{'parameters'}{'smalt_index'} = $smalt_index;
 	$parameters_data{'parameters'}{'smalt_map'} = $smalt_map;
 	$parameters_data{'parameters'}{'trim_clean_params'} = $trim_clean;
-	$parameters_data{'parameters'}{'vcf2core'}{'numcpus'} = $vcf2core_cpus;
-	$parameters_data{'parameters'}{'vcf2pseudoalign'}{'numcpus'} = $vcf2pseudo_cpus;
+	$parameters_data{'parameters'}{'vcf2core_cpus'} = $vcf2core_cpus;
+	$parameters_data{'parameters'}{'vcf2pseudoalign_cpus'} = $vcf2pseudo_cpus;
 	
 	my $additional = to_json(\%parameters_data);
     my $output = merge_json($json_daisy_chain, $additional);    
     
-    print $output;
+    return $output;
 }
 
 #------------------------------------------------------------------------
 #Purpose:
 #        
 #------------------------------------------------------------------------
-sub vcf2CoreStats{
-	my($self, $json_daisy_chain) = @_;
+sub vcf2core_stats{
+	my($self, $json_daisy_chain, $file_location) = @_;
 	
-	my $results = ``;		
+	my %vcf2core_stats;
+	
+	die "Unable to find the vcf2core.out file at $file_location." if not -e $file_location;
+	open(FILE, '<', $file_location) or die "Unable to open the vcf2core.out file.";
+	
+    while(<FILE>){
+    	if(!($_ =~ '#')){
+    	   chomp($_);
+    	   my @line = split(',', $_);
+    	   if( 0+@line == 5 ){
+    	       $vcf2core_stats{'vcf2core_stats'}{$line[0]}{'total_length'} = $line[1];
+    	       $vcf2core_stats{'vcf2core_stats'}{$line[0]}{'invalid_pos'} = $line[2];
+    	       $vcf2core_stats{'vcf2core_stats'}{$line[0]}{'total_core'} = $line[3];
+               $vcf2core_stats{'vcf2core_stats'}{$line[0]}{'percent_in_core'} = $line[4];  
+    	   }  
+    	}
+    }
+    
+	my $additional = to_json(\%vcf2core_stats);
+    my $output = merge_json($json_daisy_chain, $additional);    
+    
+    return $output;			
 }
 
 #------------------------------------------------------------------------
@@ -260,11 +280,14 @@ sub run_plugin{
 		$command = $command.' $_ $script_variables{$_} ';
 	}
 	
-	my $output = `$command`;
+	my %output = `$command`;
 	#ensure that the output is in JSON format
-	die "Improperly formatted JSON output for $script_name output" if !(is_valid_json($output));
+	die "Improperly formatted JSON output for $script_name output" if !(is_valid_json(\%output));
 	
-	print to_json($json_daisy_chain.$output);	
+	my $additional = to_json(\%output);
+    my $output = merge_json($json_daisy_chain, $additional);    
+    
+    return $output;	
 }
 
 #------------------------------------------------------------------------
@@ -281,15 +304,12 @@ sub run_plugin{
 sub merge_json{
 	my($original, $additional) = @_;
     
-    print $original;
-    print $additional;
     my $first = from_json($original);
     my $second = from_json($additional);
     
     my %output = %{merge($first, $second)};
     
-    return to_json(\%output); 
+    return to_json(\%output, { pretty => 1 }); 
 }
 
 1;
-

@@ -96,16 +96,16 @@ for(my $i=$ints[0]; $i <= $ints[-1]; $i++) {
 
 #alter output to facilitate integration with the reporting module
 my %output;
-$output{'length'} = $totalLength;
-$output{'num_of_contigs'} = $n;
-$output{'N25'}{'N25_value'} = $N25;
-$output{'N25'}{'N25_count'} = $N25count;
-$output{'N50'}{'N50_value'} = $N50;
-$output{'N50'}{'N50_count'} = $N50count;
-$output{'N75'}{'N75_value'} = $N75;
-$output{'N75'}{'N75_count'} = $N75count;
-$output{'GC_count'} = $gcCount;
-$output{'GC_percent'} = ($gcCount/$totalLength * 100);
+$output{'reference'}{'length'} = $totalLength;
+$output{'reference'}{'num_of_contigs'} = $n;
+$output{'reference'}{'N25'}{'N25_value'} = $N25;
+$output{'reference'}{'N25'}{'N25_count'} = $N25count;
+$output{'reference'}{'N50'}{'N50_value'} = $N50;
+$output{'reference'}{'N50'}{'N50_count'} = $N50count;
+$output{'reference'}{'N75'}{'N75_value'} = $N75;
+$output{'reference'}{'N75'}{'N75_count'} = $N75count;
+$output{'reference'}{'GC_count'} = $gcCount;
+$output{'reference'}{'GC_percent'} = ($gcCount/$totalLength * 100);
 
 print to_json(\%output);
 
