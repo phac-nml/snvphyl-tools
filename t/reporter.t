@@ -39,8 +39,8 @@ ok((from_json($results))->{'bam_stats'}{'min_depth'} eq '15', "Bam stats are rep
 my $filter_stats = $reporter->record_filter_stats($results, 'reporter/pseudoalign-positions1.tsv');
 is_valid_json($filter_stats, "The filter stats data is being generated properly.");
 ok((from_json($filter_stats))->{'filter_stats'}{'sites_unfiltered'} eq '4648', "Filter stats data is correct.");
-my $file_sizes = $reporter->record_file_sizes('bam', $filter_stats, 'reporter/sample1.bam', 'reporter/sample2.bam', 'reporter/sample3.bam');
-my $file_sizes = $reporter->record_file_sizes('reference', $file_sizes, '../t/reporter/reference.fasta');
+my $file_sizes = $reporter->record_file_sizes($filter_stats, 'bam', 'reporter/sample1.bam', 'reporter/sample2.bam', 'reporter/sample3.bam');
+my $file_sizes = $reporter->record_file_sizes($file_sizes, 'reference', '../t/reporter/reference.fasta');
 is_valid_json($file_sizes, "File size data is being formatted properly.");
 ok((from_json($file_sizes))->{'file_sizes'}{'bam'}{'reporter/sample1.bam'} eq '3M', "File size data is correct.");
 my $ref_stats = $reporter->record_reference_info($file_sizes, '../t/reporter/reference.fasta', 'Illumina', 'NCBI', 'YES', 

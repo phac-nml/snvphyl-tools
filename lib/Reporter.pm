@@ -19,12 +19,14 @@ sub new{
 
 #------------------------------------------------------------------------
 #Purpose:
-#    Analyzes the results from the verify_mapping.pl script to determine 
-#the quality with which reads have mapped to the reference strain.  Will
-#mark the analysis as a PASS, FAIL, or WARN and log additional info
-#if relevant.
+#    Analyzes the quality with which each .bam file mapped to the 
+#reference sequence for the run.  Marks the results as PASS, WARN, or 
+#FAIL depending on the % mapped for each .bam input.  
+#Input:
+#   $json_daisy_chain: JSON string containing reporter data for the run.
+#   @bams: A list of file paths to .bam files.
 #Output:
-#   Formatted text output for the log file, and json data.
+#   JSON daisy chain with bam quality data included. 
 #------------------------------------------------------------------------
 sub bam_quality_data{
     
@@ -98,9 +100,14 @@ sub bam_quality_data{
 
 #------------------------------------------------------------------------
 #Purpose:
-#    Display the output from the filter-stats.pl script to the user in an
-#easily readable format for the reporter log file.  Converts the data into 
-#json format as well.
+#    Analyze the output from the filter-stats.pl script to the user in an
+#easily readable format for the reporter log file.
+#Input:
+#   $json_daisy_chain: JSON string containing reporter data for the run.
+#   $pseudoalign_filepath: File path to the pseudoalign-positions.tsv
+#                          for the run.
+#Output:
+#   JSON daisy chain with the filter stats data included.
 #------------------------------------------------------------------------
 sub record_filter_stats{
 	
@@ -128,8 +135,20 @@ sub record_filter_stats{
 
 #------------------------------------------------------------------------
 #Purpose:
-#   Prints user-provided information about the reference.  Converts all 
-#output to json format.
+#   Records information about the reference used in the run.
+#Input:
+#   $json_daisy_chain: JSON string containing reporter data for the run.
+#   $reference_file: The file location for the reference .fasta file.
+#   $sequencer: The type of sequencer used to generate the reference reads.
+#   $source: The lab/site/team that the reference sequence was retrieved
+#            from.
+#   $plasmid_presence: YES/NO flag indicating whether a plasmids are 
+#                      present in the reference sequence.
+#   $genus: The genus of the reference organism.
+#   $species: The species of the reference organism.
+#   $serotype: The serotype of the reference organism.
+#Output:
+#   JSON daisy chain with the reference information included.
 #------------------------------------------------------------------------
 sub record_reference_info{
 	
@@ -158,11 +177,17 @@ sub record_reference_info{
 
 #------------------------------------------------------------------------
 #Purpose:
-#    Record the size of all read/alignment files found in the pipeline/
+#    Records information about the size of files used in the pipeline.
+#Input:
+#   $json_daisy_chain: JSON string containing reporter data for the run.
+#   $type: The file format.
+#   @files: The list of file paths for files to be analyzed.
+#Output:
+#   JSON daisy chain with the file size information included.   
 #------------------------------------------------------------------------
 sub record_file_sizes{
 		
-    my($self, $type, $json_daisy_chain, @files) = @_;
+    my($self, $json_daisy_chain, $type, @files) = @_;
      	
 	my @fileSizes;
 	my $min_file_size=0;
@@ -194,8 +219,29 @@ sub record_file_sizes{
 
 #------------------------------------------------------------------------
 #Purpose:
-#    Record all of the parameters used for the various steps in the 
-#pipeline.  All information required to replicate the pipeline run.
+#    Records information on all of the parameters used for the various 
+#stages of the pipeline. 
+#Input:
+#   $json_daisy_chain: JSON string containing reporter data for the run.
+#   $drmaa_general: drmaa general parameter string.
+#   $drmaa_trimClean: drmaa_trimclean parameter string.
+#   $drmaa_vcf2core: drmaa_vcf2core parameter string.
+#   $drmaa_vcf2pseudoalign: drmaa_vcf2pseudoalign parameter string.
+#   $freebayes_params: The freebayes parameter string.
+#   $max_coverage: The max coverage value.
+#   $min_coverage: The min coverage value.
+#   $mode: The mode used for the run.
+#   $processors: The number of processors used for parallelization.
+#   $smalt_index: The parameter string for smalt_index.
+#   $smalt_map: The parameter string for smalt_map.
+#   $trim_clean: The parameter string for trim_clean.
+#   $vcf2core_cpus: The number of cpus used for the vcf2core stage.
+#   $vcf2pseudo_cpus: The number of cpus used for the vcf2pseudo stage.
+#   $id: The run id.
+#   $masked_positions: The file path to the masked positions file.
+#   @read_files: A list of file paths to the fastq files used in the run.
+#Output:
+#   JSON daisy chain with the run parameter information included.   
 #------------------------------------------------------------------------
 sub record_run_parameters{	
 	
@@ -232,7 +278,13 @@ sub record_run_parameters{
 
 #------------------------------------------------------------------------
 #Purpose:
-#        
+#   Script to analyze and report the vcf2core stats from the pipeline
+#run.
+#Input:
+#   $json_daisy_chain: JSON string containing reporter data for the run.
+#   $file_location: The file location for the vcf2core stats output file.
+#Output:
+#   JSON daisy chain with the vcf2core stats included.   
 #------------------------------------------------------------------------
 sub vcf2core_stats{
 	my($self, $json_daisy_chain, $file_location) = @_;
@@ -276,6 +328,14 @@ sub record_snp_eff{
 #    Provides a generic plugin interface that allows developers to add 
 #additional QC scripts into various stages of the pipeline without
 #altering the main Reporter.pm module.
+#Input:
+#   $json_daisy_chain: JSON string containing reporter data for the run.
+#   $script_name: The filepath and name of the script to run.
+#   $script_variables: A hash reference that contains a list of script
+#                      variables.  Must be in the format of KEY:VALUE,
+#                      where KEY = '-x OR --XXXXX' and VALUE= 'XXXXX'
+#Output:
+#   JSON daisy chain with the plugin information included.   
 #-----------------------------------------------------------------------
 sub run_plugin{
 	my($self, $json_daisy_chain, $script_name, $script_variables);
