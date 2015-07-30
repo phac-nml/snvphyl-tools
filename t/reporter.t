@@ -40,18 +40,16 @@ my $filter_stats = $reporter->record_filter_stats($results, 'reporter/pseudoalig
 is_valid_json($filter_stats, "The filter stats data is being generated properly.");
 ok((from_json($filter_stats))->{'filter_stats'}{'sites_unfiltered'} eq '4648', "Filter stats data is correct.");
 my $file_sizes = $reporter->record_file_sizes($filter_stats, 'bam', 'reporter/sample1.bam', 'reporter/sample2.bam', 'reporter/sample3.bam');
-my $file_sizes = $reporter->record_file_sizes($file_sizes, 'reference', '../t/reporter/reference.fasta');
+my $file_sizes = $reporter->record_file_sizes($file_sizes, 'reference', 'reporter/reference.fasta');
 is_valid_json($file_sizes, "File size data is being formatted properly.");
 ok((from_json($file_sizes))->{'file_sizes'}{'bam'}{'reporter/sample1.bam'} eq '3M', "File size data is correct.");
-my $ref_stats = $reporter->record_reference_info($file_sizes, '../t/reporter/reference.fasta', 'Illumina', 'NCBI', 'YES', 
+my $ref_stats = $reporter->record_reference_info($file_sizes, 'reporter/reference.fasta', 'Illumina', 'NCBI', 'YES', 
                                                  'Escherichia', 'coli', 'O157');
 is_valid_json($ref_stats, "The reference stats are being generated and formatted properly.");
 ok((from_json($ref_stats))->{'reference'}{'source'} eq 'NCBI', "The reference information is correct.");
 my $vcfstats = $reporter->vcf2core_stats($ref_stats, 'reporter/vcf2core.out');
 is_valid_json($vcfstats, "The vcfstats are being formatted properly.");
 ok((from_json($vcfstats))->{'vcf2core_stats'}{'all'}{'total_core'} eq '4910571', "The vcfstats are correct.");
-
-print $vcfstats;
 
 #4=> test that the reference information is being recorded correctly
 done_testing();

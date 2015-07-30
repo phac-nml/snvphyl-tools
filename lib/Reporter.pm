@@ -1,5 +1,6 @@
 package Reporter;
 
+use FindBin;
 use strict;
 use warnings;
 use Hash::Merge qw( merge );
@@ -7,6 +8,8 @@ use String::Util 'trim';
 use JSON;
 use Test::JSON;
 use Switch;
+
+my $script_dir = $FindBin::Bin;
 
 sub new{
     my ($class) = @_;
@@ -50,11 +53,12 @@ sub bam_quality_data{
     my $bam_string;
 	my $x = 1;
     foreach(@bams){
-	    $bam_string .= ' --bam bam'.$x.'='.$_;
+    	my $file = $script_dir.'/'.$_;
+	    $bam_string .= ' --bam bam'.$x.'='.$file;
 	    $x++;
 	}
 	
-	my $mapping_results = `perl ../verify_mapping_quality.pl $bam_string --min-map 90 --min-depth 15`;
+	my $mapping_results = `perl $script_dir/../verify_mapping_quality.pl $bam_string --min-map 90 --min-depth 15`;
            	
 	#parse the results from the verify_mapping_quality.pl script
 	for(split /^/, $mapping_results){	
@@ -112,7 +116,8 @@ sub bam_quality_data{
 sub record_filter_stats{
 	
 	my($self, $json_daisy_chain, $pseudoalign_filepath) = @_;
-	my $result = `perl ../filter-stats.pl -i $pseudoalign_filepath`;
+	my $file = $script_dir.'/'.$pseudoalign_filepath;
+	my $result = `perl $script_dir/../filter-stats.pl -i $file`;
 	my %filter_stats;
 	
     for(split /^/, $result){
@@ -154,7 +159,8 @@ sub record_reference_info{
 	
 	my ($self, $json_daisy_chain, $reference_file, $sequencer, $source, $plasmid_presence, $genus, $species, $serotype) = @_;
     
-    my $ref_stats = `perl ../ref_stats.pl -i 1000 $reference_file`;
+    my $file = $script_dir.'/'.$reference_file;
+    my $ref_stats = `perl $script_dir/../ref_stats.pl -i 1000 $file`;
             
     my %reference_data;
     $reference_data{'reference'}{'sequencer'} = $sequencer;
@@ -181,7 +187,8 @@ sub record_reference_info{
 #Input:
 #   $json_daisy_chain: JSON string containing reporter data for the run.
 #   $type: The file format.
-#   @files: The list of file paths for files to be analyzed.
+#   @files: The list of file paths for files to be analyzed relative to 
+#           current working directory.
 #Output:
 #   JSON daisy chain with the file size information included.   
 #------------------------------------------------------------------------
@@ -195,7 +202,8 @@ sub record_file_sizes{
 	my %size_data;
 	
     foreach(@files){
-	    my $output = `ls -l --block-size=M $_`;
+    	my $file = $script_dir.'/'.$_;
+	    my $output = `ls -l --block-size=M $file`;
 	    my $size = (split " ", $output)[4];
         push @fileSizes, $size;
         $size_data{'file_sizes'}{$type}{$_} = $size; 	
@@ -291,8 +299,8 @@ sub vcf2core_stats{
 	
 	my %vcf2core_stats;
 	
-	die "Unable to find the vcf2core.out file at $file_location." if not -e $file_location;
-	open(FILE, '<', $file_location) or die "Unable to open the vcf2core.out file.";
+	die "Unable to find the vcf2core.out file at $file_location." if not -e $script_dir.'/'.$file_location;
+	open(FILE, '<', $script_dir.'/'.$file_location) or die "Unable to open the vcf2core.out file.";
 	
     while(<FILE>){
     	if(!($_ =~ '#')){
