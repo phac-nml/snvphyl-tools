@@ -128,12 +128,12 @@ sub record_filter_stats{
 
 #------------------------------------------------------------------------
 #Purpose:
-#   Prints user-provided information about the reference.  Converts the 
-#information into json format.
+#   Prints user-provided information about the reference.  Converts all 
+#output to json format.
 #------------------------------------------------------------------------
 sub record_reference_info{
 	
-	my ($self, $json_daisy_chain, $reference_file, $sequencer, $source, $plasmid_presence) = @_;
+	my ($self, $json_daisy_chain, $reference_file, $sequencer, $source, $plasmid_presence, $genus, $species, $serotype) = @_;
     
     my $ref_stats = `perl ../ref_stats.pl -i 1000 $reference_file`;
             
@@ -141,6 +141,10 @@ sub record_reference_info{
     $reference_data{'reference'}{'sequencer'} = $sequencer;
 	$reference_data{'reference'}{'source'} = $source; 
 	$reference_data{'reference'}{'plasmids'} = $plasmid_presence;
+	$reference_data{'reference'}{'genus'} = $genus;
+	$reference_data{'reference'}{'species'} = $species;
+	$reference_data{'reference'}{'serotype'} = $serotype;
+	$reference_data{'input_files'}{'input_reference'} = $reference_file;
 	
 	#TODO:
     #$reference_data{'reference'}{'min_contig'} = $min_contig;
@@ -198,7 +202,8 @@ sub record_run_parameters{
 	my($self, $json_daisy_chain, $drmaa_general, $drmaa_trimClean, 
 	$drmaa_vcf2core, $drmaa_vcf2pseudoalign, $freebayes_params, 
 	$max_coverage, $min_coverage, $mode, $processors, $smalt_index, 
-	$smalt_map,	$trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id) = @_;
+	$smalt_map,	$trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id,
+	$masked_positions, @read_files) = @_;
 	
 	my %parameters_data;
 	$parameters_data{'parameters'}{'id'} = $id;
@@ -216,6 +221,8 @@ sub record_run_parameters{
 	$parameters_data{'parameters'}{'trim_clean_params'} = $trim_clean;
 	$parameters_data{'parameters'}{'vcf2core_cpus'} = $vcf2core_cpus;
 	$parameters_data{'parameters'}{'vcf2pseudoalign_cpus'} = $vcf2pseudo_cpus;
+	$parameters_data{'input_files'}{'input_bams'} = \@read_files;  
+	$parameters_data{'input_files'}{'masked_positions'} = $masked_positions;
 	
 	my $additional = to_json(\%parameters_data);
     my $output = merge_json($json_daisy_chain, $additional);    
@@ -247,7 +254,7 @@ sub vcf2core_stats{
     	   }  
     	}
     }
-    
+    close(FILE);
 	my $additional = to_json(\%vcf2core_stats);
     my $output = merge_json($json_daisy_chain, $additional);    
     
