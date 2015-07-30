@@ -68,7 +68,7 @@ sub run {
 	#parse results and determine what should be written for user to view
 	my @results;
 
-	@results = verify_percent_coverage( \@files, $size, $min_depth, $cores );
+	@results = verify_percent_coverage( \%bam_files, $size, $min_depth, $cores );
 	print "==========Reference Mapping Quality===========\n";
 	print "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
 	print "MINIMUM DEPTH: ".$min_depth."\n";
