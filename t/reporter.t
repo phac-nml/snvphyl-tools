@@ -26,23 +26,29 @@ my ($command);
 
 my %test_json;
 
-#1 => test the record_read_mapping submodule:
 my $reporter = Reporter->new;
+
 my $run_params = $reporter->record_run_parameters('{}', '-V', '-pe smp 16', '-pe smp 16', '-pe smp 4', '--pvar 0 --ploidy 1', '200', '15', 'mapping', '1', '--pvar 0 --ploidy 1', '--pvar 0 --ploidy 1', '--pvar 0 --ploidy 1', '8', '1');
+is_valid_json($run_params, "The run parameters are being output in correct JSON format.");
+ok((from_json($run_params))->{'parameters'}{'max_coverage'} eq '200', "The run params are correct.");
 my $results = $reporter->bam_quality_data($run_params, 'reporter/sample1.bam', 'reporter/sample2.bam', 'reporter/sample3.bam');
-
-#2=> test the record_reference_info submodule:
-#my $reference = $reporter->record_reference_info(to_json($test_json), '12345', 'Escherichia', 'coli', 'O157', 'Illumina', 'NML', 'NO', '3500000', 'NO');
-
+is_valid_json($results, "The bam quality stats are being generated properly.");
+ok((from_json($results))->{'bam_stats'}{'min_depth'} eq '15', "Bam stats are reported properly.");
 my $filter_stats = $reporter->record_filter_stats($results, 'reporter/pseudoalign-positions1.tsv');
-
+is_valid_json($filter_stats, "The filter stats data is being generated properly.");
+ok((from_json($filter_stats))->{'filter_stats'}{'sites_unfiltered'} eq '4648', "Filter stats data is correct.");
 my $file_sizes = $reporter->record_file_sizes('bam', $filter_stats, 'reporter/sample1.bam', 'reporter/sample2.bam', 'reporter/sample3.bam');
 my $file_sizes = $reporter->record_file_sizes('reference', $file_sizes, '../t/reporter/reference.fasta');
+is_valid_json($file_sizes, "File size data is being formatted properly.");
+ok((from_json($file_sizes))->{'file_sizes'}{'bam'}{'reporter/sample1.bam'} eq '3M', "File size data is correct.");
 my $ref_stats = $reporter->record_reference_info($file_sizes, '../t/reporter/reference.fasta', 'Illumina', 'NCBI', 'YES');
+is_valid_json($ref_stats, "The reference stats are being generated and formatted properly.");
+ok((from_json($ref_stats))->{'reference'}{'source'} eq 'NCBI', "The reference information is correct.");
 my $vcfstats = $reporter->vcf2core_stats($ref_stats, 'reporter/vcf2core.out');
+is_valid_json($vcfstats, "The vcfstats are being formatted properly.");
+ok((from_json($vcfstats))->{'vcf2core_stats'}{'all'}{'total_core'} eq '4910571', "The vcfstats are correct.");
 
 print $vcfstats;
 
 #4=> test that the reference information is being recorded correctly
-
 done_testing();

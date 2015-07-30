@@ -51,7 +51,7 @@ sub bam_quality_data{
 	    $bam_string .= ' --bam bam'.$x.'='.$_;
 	    $x++;
 	}
-	print $bam_string;
+	
 	my $mapping_results = `perl ../verify_mapping_quality.pl $bam_string --min-map 90 --min-depth 15`;
            	
 	#parse the results from the verify_mapping_quality.pl script
@@ -136,7 +136,7 @@ sub record_reference_info{
 	my ($self, $json_daisy_chain, $reference_file, $sequencer, $source, $plasmid_presence) = @_;
     
     my $ref_stats = `perl ../ref_stats.pl -i 1000 $reference_file`;
-    is_valid_json($ref_stats);        
+            
     my %reference_data;
     $reference_data{'reference'}{'sequencer'} = $sequencer;
 	$reference_data{'reference'}{'source'} = $source; 
