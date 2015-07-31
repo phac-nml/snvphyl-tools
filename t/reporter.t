@@ -52,5 +52,4 @@ is_valid_json($vcfstats, "The vcfstats are being formatted properly.");
 ok((from_json($vcfstats))->{'vcf2core_stats'}{'all'}{'total_core'} eq '4910571', "The vcfstats are correct.");
 
 #4=> test that the reference information is being recorded correctly
-
 done_testing();
