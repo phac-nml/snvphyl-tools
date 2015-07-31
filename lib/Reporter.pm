@@ -10,6 +10,7 @@ use Test::JSON;
 use Switch;
 
 my $script_dir = $FindBin::Bin;
+our $VERSION = 0.1;
 
 sub new{
     my ($class) = @_;
