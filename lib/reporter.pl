@@ -58,7 +58,6 @@ sub run{
       open(JSON_FILE, $json_input) or die "Unable to open input file handle: $json_input";  
    	  while(<JSON_FILE>){
    	     $json_daisy_chain .= $_;
-   	     print $_;	
    	  }
    }
    
