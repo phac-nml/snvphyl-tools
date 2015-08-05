@@ -61,9 +61,6 @@ sub run{
    	     print $_;	
    	  }
    }
-   else{
-      warn "Input json file not defined.";
-   }
    
    switch($step){
          case "bam_quality_data" { $output = bam_quality_data($json_daisy_chain, %bam_files) }
