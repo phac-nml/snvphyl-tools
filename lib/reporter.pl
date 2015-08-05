@@ -54,7 +54,7 @@ sub run{
    my $json_daisy_chain="";
    my $output;
    my $json_file;
-   open(JSON_FILE, "../t/$json_input") if defined $json_input;
+   open(JSON_FILE, $json_input) or die "Unable to open output file handle.";
    if(defined $json_input){
    	  while(<JSON_FILE>){
    	     $json_daisy_chain .= $_;
