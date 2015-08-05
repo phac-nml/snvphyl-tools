@@ -62,7 +62,7 @@ sub run{
    	  }
    }
    else{
-      warn "Input json file, $json_input, not defined.";
+      warn "Input json file not defined.";
    }
    
    switch($step){
