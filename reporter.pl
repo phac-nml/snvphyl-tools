@@ -17,7 +17,7 @@ sub run{
     
    my ( $step, $output_json, $json_input, %bam_files, $pseudoalign_filepath, $reference_filepath, $ref_sequencer, $ref_source, 
         $plasmids, $genus, $species, $serotype, $file_type, %file_sizes, $drmaa_general, $drmaa_trimClean, 
-        $drmaa_vcf2core, $drmaa_vcf2pseudoalign, $freebayes_params, $max_coverage, $min_coverage, $mode, 
+        $drmaa_vcf2core, $drmaa_vcf2pseudoalign, $freebayes_params, $max_coverage, $min_coverage,
         $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id, $masked_positions, 
         %read_files, $vcf2core_stats);
  
@@ -39,7 +39,6 @@ sub run{
       "freebayes-params=s" => \$freebayes_params,
       "max-coverage=i" => \$max_coverage,
       "min-coverage=i" => \$min_coverage,
-      "mode=s" => \$mode,
       "processors=i" => \$processors,
       "smalt-index=s" => \$smalt_index,
       "smalt-map=s" => \$smalt_map,
@@ -66,7 +65,7 @@ sub run{
          case "record_filter_stats"{ $output = record_filter_stats($json_daisy_chain, $pseudoalign_filepath)}
          case "record_reference_info"{ $output = record_reference_info($json_daisy_chain, $reference_filepath, $ref_sequencer, $ref_source, $plasmids, $genus, $species, $serotype)};
          case "record_file_sizes"{ $output = record_file_sizes($json_daisy_chain, $file_type, %file_sizes)};
-         case "record_run_parameters"{ $output = record_run_parameters($json_daisy_chain, $freebayes_params, $max_coverage, $min_coverage, $mode, $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $id, 
+         case "record_run_parameters"{ $output = record_run_parameters($json_daisy_chain, $freebayes_params, $max_coverage, $min_coverage, $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $id, 
                                                     $masked_positions, %read_files)};
          case "vcf2core_stats"{$output = vcf2core_stats($json_daisy_chain, $vcf2core_stats)};
          #TODO:case {'run_plugin'}{return run_plugin($json_daisy_chain)};
@@ -114,7 +113,7 @@ sub bam_quality_data{
         $bam_string .= ' --bam '.$_.'='.$bams{$_};
     }
     
-    my $mapping_results = `perl $script_dir/../verify_mapping_quality.pl $bam_string --min-map 90 --min-depth 15`;
+    my $mapping_results = `perl $script_dir/verify_mapping_quality.pl $bam_string --min-map 90 --min-depth 15`;
                
     #parse the results from the verify_mapping_quality.pl script
     for(split /^/, $mapping_results){    
@@ -175,7 +174,7 @@ sub record_filter_stats{
     
     my($json_daisy_chain, $pseudoalign_filepath) = @_;
     my $file = $script_dir.$pseudoalign_filepath;
-    my $result = `perl $script_dir/../filter-stats.pl -i $file`;
+    my $result = `perl $script_dir/filter-stats.pl -i $file`;
     my %filter_stats;
     
     for(split /^/, $result){
@@ -217,7 +216,7 @@ sub record_reference_info{
     my ($json_daisy_chain, $reference_file, $sequencer, $source, $plasmid_presence, $genus, $species, $serotype) = @_;
     
     my $file = $script_dir.'/'.$reference_file;
-    my $ref_stats = `perl $script_dir/../ref_stats.pl -i 1000 $file`;
+    my $ref_stats = `perl $script_dir/ref_stats.pl -i 1000 $file`;
             
     my %reference_data;
     $reference_data{'reference'}{'sequencer'} = $sequencer;
@@ -311,7 +310,7 @@ sub record_file_sizes{
 sub record_run_parameters{    
     
     my($json_daisy_chain, $freebayes_params, 
-    $max_coverage, $min_coverage, $mode, $processors, $smalt_index, 
+    $max_coverage, $min_coverage, $processors, $smalt_index, 
     $smalt_map,    $trim_clean, $vcf2core_cpus, $id,
     $masked_positions, %read_files) = @_;
     
@@ -320,7 +319,6 @@ sub record_run_parameters{
     $parameters_data{'parameters'}{'freebayes'} = $freebayes_params;
     $parameters_data{'parameters'}{'max_coverage'} = $max_coverage;
     $parameters_data{'parameters'}{'min_coverage'} = $min_coverage;
-    $parameters_data{'parameters'}{'mode'} = $mode;
     $parameters_data{'parameters'}{'processors'} = $processors;
     $parameters_data{'parameters'}{'smalt_index'} = $smalt_index;
     $parameters_data{'parameters'}{'smalt_map'} = $smalt_map;
