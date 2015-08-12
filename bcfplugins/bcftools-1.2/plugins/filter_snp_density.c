@@ -40,7 +40,7 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
 {
    static struct option loptions[] =
    {
-	   {"filename",1,0,'f'},		   
+	   {"filename",1,0,'f'},	   
        {"threshold",1,0,'t'},
        {0,0,0,0}
    };
@@ -53,19 +53,19 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
 	       filename = optarg; 
 	       break;
          case 't':	 
-           density_threshold = strtol(optarg, &tmp, 10); break;
+           density_threshold = strtol(optarg, &tmp, 10);
+           break;
            if (*tmp) error("Unexpected argument to -t: %s\n", optarg); break;
          case '?':
          default: error("%s", usage()); break;
       }
    }
-   
+
    //perform som validation of input parameters
-   if(density_threhsold <= 0){
+   if(density_threshold <= 0){
 	   density_threshold = 10;
 	   printf("Negative density_threshold value found, setting to default value of %d.", density_threshold);
    }
-   
    
    in_hdr = in;
    out_hdr = out;
