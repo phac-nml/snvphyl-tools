@@ -83,7 +83,7 @@ my $tmp_dir = tempdir (CLEANUP => 1);
     
 #combine the mpileup and freebayes vcf files together
 #in the future, might be taken out to it's own script
-my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$mean_mapping_quality);
+my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping);
 
 
 my $valid_positions = $output_base . "-positions.tsv";
@@ -112,7 +112,7 @@ exit;
 
 
 sub combine_vcfs{
-    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$mean_mapping_quality) = @_;
+    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping) = @_;
 
     my %files;
 
@@ -195,7 +195,7 @@ sub combine_vcfs{
         #also filter by MQM flag = minumum mean mapping quality with > 30
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --dp $coverage_cutoff  --mqm $mean_mapping_qualiy --ao 75    > $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --dp $coverage_cutoff  --mqm $min_mean_mapping --ao 75    > $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
                 
 
