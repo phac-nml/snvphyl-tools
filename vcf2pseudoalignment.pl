@@ -74,7 +74,7 @@ my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 
 my ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,$formats,
-    $refs_info,$invalid_pos,$reference
+    $refs_info,$invalid_pos,$reference, $min_mean_mapping
 ) = prepare_inputs();
 
 #create temp working directory for all combines vcf files
