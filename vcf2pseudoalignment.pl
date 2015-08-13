@@ -546,7 +546,7 @@ sub prepare_inputs {
                     'fasta=s' => \$fasta,
                     'coverage-cutoff|c=i' => \$coverage_cutoff,
                     'invalid-pos=s' => \$invalid,
-                    'min-mean-mapping'=> \$min_mean_mapping,
+                    'min-mean-mapping=s'=> \$min_mean_mapping,
                     'help|h' => \$help,
                     'numcpus=i' => \$requested_cpus,
                     'b|bcftools-path=s' => \$bcftools,     
