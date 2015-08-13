@@ -581,6 +581,9 @@ sub prepare_inputs {
         
     }
     
+    if(not defined $min_mean_mapping){
+    	$min_mean_mapping = 30;
+    }
     
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
     my $usage_state = `$bcftools 2>&1 1>/dev/null`;
@@ -687,5 +690,5 @@ sub prepare_inputs {
 
 
     return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
-            $refs_info,$invalid_pos,$reference);
+            $refs_info,$invalid_pos,$reference, $min_mean_mapping);
 }    
