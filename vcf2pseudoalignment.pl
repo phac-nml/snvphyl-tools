@@ -74,7 +74,7 @@ my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 
 my ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,$formats,
-    $refs_info,$invalid_pos,$reference, $min_mean_mapping
+    $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao
 ) = prepare_inputs();
 
 #create temp working directory for all combines vcf files
@@ -83,7 +83,7 @@ my $tmp_dir = tempdir (CLEANUP => 1);
     
 #combine the mpileup and freebayes vcf files together
 #in the future, might be taken out to it's own script
-my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping);
+my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping,$ao);
 
 
 my $valid_positions = $output_base . "-positions.tsv";
@@ -112,7 +112,7 @@ exit;
 
 
 sub combine_vcfs{
-    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping) = @_;
+    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping,$ao) = @_;
 
     my %files;
 
@@ -195,7 +195,7 @@ sub combine_vcfs{
         #also filter by MQM flag = minumum mean mapping quality with > 30
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --dp $coverage_cutoff  --mqm $min_mean_mapping --ao 75    > $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --dp $coverage_cutoff  --mqm $min_mean_mapping --ao $ao    > $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
                 
 
@@ -530,7 +530,7 @@ sub print_stats {
 
 sub prepare_inputs {
 
-    my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff, $min_mean_mapping);
+    my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff, $min_mean_mapping, $ao);
     my ($help, $requested_cpus, $invalid,$fasta,$bcftools);
     my (%vcf_files, %mpileup_files);
 
@@ -547,6 +547,7 @@ sub prepare_inputs {
                     'coverage-cutoff|c=i' => \$coverage_cutoff,
                     'invalid-pos=s' => \$invalid,
                     'min-mean-mapping=i'=> \$min_mean_mapping,
+                    'ao=i' => \$ao,
                     'help|h' => \$help,
                     'numcpus=i' => \$requested_cpus,
                     'b|bcftools-path=s' => \$bcftools,     
@@ -583,6 +584,10 @@ sub prepare_inputs {
     
     if(not defined $min_mean_mapping){
     	$min_mean_mapping = 30;
+    }
+
+    if(not defined $ao){
+       $ao = 75;
     }
     
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
@@ -690,5 +695,5 @@ sub prepare_inputs {
 
 
     return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
-            $refs_info,$invalid_pos,$reference, $min_mean_mapping);
+            $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao);
 }    
