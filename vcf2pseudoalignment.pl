@@ -210,7 +210,7 @@ sub combine_vcfs{
         $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $dir/unfiltered_density.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
         
-	    $cmd = "$bcftools plugin filter_snp_density $dir/unfiltered_density.bcf -O b -o $file_name -- -f $dir/unfiltered_density.bcf -t $density_threshold"; 
+	    $cmd = "$bcftools plugin filter_snp_density $dir/unfiltered_density.bcf -O b -o $file_name -- -f $dir/unfiltered_density.bcf --threshold $density_threshold"; 
         system($cmd) == 0 or die "Could not run $cmd";
         
         $cmd = "$bcftools index -f $file_name";

@@ -40,7 +40,7 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
 {
    static struct option loptions[] =
    {
-	   {"filename",1,0,'f'},	   
+       {"filename",1,0,'f'},	   
        {"threshold",1,0,'t'},
        {0,0,0,0}
    };
