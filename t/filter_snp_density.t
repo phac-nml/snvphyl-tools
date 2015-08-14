@@ -19,7 +19,7 @@ my ($command);
 
 #==============================================================================
 #UNIT TESTS
-my $create_dir = tempdir(TEMPLATE => '$density_dir/tempXXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
+my $create_dir = tempdir(TEMPLATE => $density_dir.'/tempXXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
 system("bcftools plugin filter_snp_density $density_dir/input/1.bcf -O b -- -f $density_dir/input/1.bcf --threshold 10 > $create_dir/temp1.bcf 2>&1");
 ok(-e $create_dir."/temp1.bcf", "Output bcf file is in the correct location.");
 my $lines;
