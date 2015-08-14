@@ -73,7 +73,10 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
         }
     }
 
-  
+  if(min_ao < 1){
+    min_ao = min_ao * 100;
+  }
+ 
   in_hdr  = in;
   out_hdr  = out;
 
