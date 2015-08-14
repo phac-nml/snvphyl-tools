@@ -71,7 +71,7 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
    out_hdr = out;
 
    //input the bcf file in order to "look ahead" when iterating over the records
-   htsAhead = hts_open(filename, "ru");
+   htsAhead = hts_open(filename, "r");
    htsAheadHdr = bcf_hdr_read(htsAhead);
    bcf_ahead = bcf_init();
    //skip the first record so that we are always looking ahead when the 
