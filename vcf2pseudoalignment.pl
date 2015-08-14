@@ -491,7 +491,7 @@ sub print_stats {
                 $perc =0;
             }
             else {
-                $perc = sprintf("%.2f",($core/( $invalid)*100));
+                $perc = sprintf("%.2f",($core/( $total-$invalid)*100));
             }
             
         }
