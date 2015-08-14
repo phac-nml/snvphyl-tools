@@ -5,6 +5,7 @@ use warnings;
 use strict;
 use Getopt::Long;
 use Pod::Usage;
+use Switch;
 
 my ($input, $output, $invalids, %counts, %totals, %totalsFiltered, $help);
 
@@ -16,8 +17,16 @@ GetOptions(
 	'h|help'	=> \$help
 );
 pod2usage(1) if $help;
-pod2usage(1) unless $input && $output;
+pod2usage(1) unless $input;
 
+#variables to track more detailed stats on variants
+my $total = 0;
+my $total_filtered = 0;
+my $total_invalid = 0;
+my $total_density = 0;
+my $total_mpileup = 0;
+my $total_freebayes = 0;
+my $total_coverage = 0;
 
 #These variables are just used for the hash to store different information
 #n stores the number of N's found in that genome
@@ -26,7 +35,6 @@ my $n = 0;
 my $d = 1;
 #t stores the total number of N's and -'s. Can be implemented later
 my $t = 2;
-
 
 #Open file
 open my $in, "<", $input or die "Could not open $input!";
@@ -44,12 +52,15 @@ while ($line = <$in>)
 	#Get the chromosome name which is the first thing in the line
 	my $chrom = $entries[0];
 
+	
+
 	#Does the user want the filtered-invalid entries included? If not, skip
 	next if ($entries[2] eq "filtered-invalid" and !$invalids);
 
         #Increment totals
         $totals{$chrom}++;
-
+	
+	detailed_filter_stats($entries[2]);
 	#Valid? No point in doing all the work. Skip
 	next if ($entries[2] eq "valid");
 	
@@ -99,10 +110,6 @@ while ($line = <$in>)
 }
 close($in);
 
-
-#Now let's start writing the output file.
-open my $out, ">", $output or die "Could not open $output for writing!";
-
 my ($header_out, $t_count, $t_perc);
 
 foreach my $chromosome(sort {$a cmp $b} keys %counts)
@@ -134,13 +141,36 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 
 	#Write everything to file
 	my $temp = "Chromosome\tGenomes\n".$header_out."\n".$t_count."\n".$t_perc."\n\n";
-	print $out $temp;
+	print $temp;
 
 }
 
-close($out);
+#print the detailed variant stats out to the screen
+my $percent_filtered = ($total_filtered/$total)*100;
+my $total_used = $total - $total_filtered;
 
+printf "================= Filter Summary Statistics =====================
+Number of sites used to generate phylogeny: $total_used
+Total number of sites identified: $total
+Number of sites filtered: $total_filtered
+Percentage of sites filtered: %.2f
+Coverage filtered: $total_coverage
+mpileup filtered: $total_mpileup
+Density filtered: $total_density
+Invalid filtered: $total_invalid", $percent_filtered;
 
+sub detailed_filter_stats{
+	my($filter_type)= @_;
+	$total++;
+	switch($filter_type){
+		case "filtered-density" {$total_filtered++, $total_density++}
+		case "filtered-mpileup" {$total_filtered++, $total_mpileup++}
+		case "filtered-coverage" {$total_filtered++, $total_coverage++}
+		case "filtered-invalid" {$total_filtered++, $total_invalid++}
+		case "filtered-freebayes" {$total_filtered++, $total_freebayes++}
+	}
+	return;	
+}
 
 
 __END__
@@ -151,7 +181,7 @@ __END__
 
 =head1 SYNOPSIS
 	
-	filter_stats.pl -i <input tsv file> -o <output file name> [-a]
+	filter_stats.pl -i <input tsv file> [-a]
 
 =head1 OPTIONS
 
@@ -160,10 +190,6 @@ __END__
 =item B<-i> B<--input>
 
 The psudo-alignment positions tab delimited file
-
-=item B<-o> B<--output>
-
-The name of the output file
 
 =item B<-a> B<-all>
 
