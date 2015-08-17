@@ -119,7 +119,7 @@ sub run_command
 	{
 		$command .= " 2>&1 1>/dev/null";
 	}
-	#
+
 	#my $command2="$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
 	print "## Running $command\n\n";
 	#pass("filter_freebayes accepts a double for --ao param") if(system($command2) == 0);
