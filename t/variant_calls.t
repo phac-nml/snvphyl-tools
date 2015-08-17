@@ -105,10 +105,10 @@ sub run_command
         if ( $dirs_vcfs && $pileup_vcfs) {
             my $singles = "--vcfsplit " . join (" --vcfsplit " , map { " $_=" . $dirs_vcfs->{$_} } keys %$dirs_vcfs);
             $singles .= " --mpileup " . join (" --mpileup " , map { " $_=" . $pileup_vcfs->{$_} } keys %$pileup_vcfs);
-            $command = "$vcf_align_bin $singles --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
+            $command = "$vcf_align_bin $singles --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 75";
         }
         else {
-            $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
+            $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 75";
         }
 	
 	if ($verbose)
@@ -119,9 +119,10 @@ sub run_command
 	{
 		$command .= " 2>&1 1>/dev/null";
 	}
+	my $command2="$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
 	print "## Running $command\n\n";
+	pass("filter_freebayes accepts a double for --ao param") if(system($command2) == 0);
 	system($command) == 0 or die "Could not run command $command: $!";
-
 	return ($actual_out_base,@out_files);
 }
 
