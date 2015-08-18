@@ -61,7 +61,7 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
       }
    }
 
-   //perform som validation of input parameters
+   //perform som validation of input parameters.
    if(density_threshold <= 0){
 	   density_threshold = 10;
 	   printf("Negative density_threshold value found, setting to default value of %d.", density_threshold);
