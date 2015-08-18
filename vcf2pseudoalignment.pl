@@ -39,7 +39,7 @@ sub usage
 	"\t-r|--reference:  The name of the reference to use in the alignment (default: reference)\n".
 	"\t-f|--format:  The format to output the alignment to, one of the Bio::AlignIO supported formats (default: fasta)\n".
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
-	"\t-d|--density-threhsold: The cutoff in bp's defining dense vs non-dense SNP spacing"
+	"\t-d|--density-threhsold: The cutoff in bp's defining dense vs non-dense SNP spacing".
 	"\t--invalid-pos: A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\\tEND_POS\\n".
 	"\t--verbose:  More information printed\n".
 	"\t-h|--help:  Help\n";
@@ -75,7 +75,7 @@ my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 
 my ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,$formats,
-    $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao
+    $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao, $density_threhsold
 ) = prepare_inputs();
 
 #create temp working directory for all combines vcf files
@@ -84,7 +84,7 @@ my $tmp_dir = tempdir (CLEANUP => 1);
     
 #combine the mpileup and freebayes vcf files together
 #in the future, might be taken out to it's own script
-my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping,$ao);
+my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping,$ao, $density_threhsold);
 
 
 my $valid_positions = $output_base . "-positions.tsv";
@@ -114,7 +114,7 @@ exit;
 
 sub combine_vcfs{
 
-    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping,$ao) = @_;
+    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping,$ao,$density_threshold) = @_;
 
     my %files;
 
@@ -535,7 +535,7 @@ sub print_stats {
 
 sub prepare_inputs {
 
-    my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff, $min_mean_mapping, $ao);
+    my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff, $min_mean_mapping, $ao, $density_threshold);
     my ($help, $requested_cpus, $invalid,$fasta,$bcftools);
     my (%vcf_files, %mpileup_files);
 
@@ -701,5 +701,5 @@ sub prepare_inputs {
 
 
     return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
-            $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao);
+            $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao, $density_threshold);
 }    
