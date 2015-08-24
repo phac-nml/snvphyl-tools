@@ -26,10 +26,10 @@ my $create_dir = tempdir(TEMPLATE => 'tempjsonXXXXX', CLEANUP => 1) or die "Unab
 
 my $output = `perl $script_dir/../reporter.pl --output=$create_dir/reporter.json --step=bam_quality_data --bam bam1=$script_dir/reporter/sample1.bam --bam bam2=$script_dir/reporter/sample2.bam --bam bam3=$script_dir/reporter/sample3.bam`;
 
-$output = `perl $script_dir/../reporter.pl --step=record_filter_stats --output=$create_dir/reporter.json --pseudo=/t/reporter/pseudoalign-positions1.tsv --json=$create_dir/reporter.json`;
+$output = `perl $script_dir/../reporter.pl --step=record_filter_stats --output=$create_dir/reporter.json --pseudo=t/reporter/pseudoalign-positions1.tsv --json=$create_dir/reporter.json`;
 ok(check_json("$create_dir/reporter.json"), "The json for filter stats is correct.");
 
-$output = `perl $script_dir/../reporter.pl --step=record_reference_info --output=$create_dir/reporter.json --json=$create_dir/reporter.json --ref-file='t/reporter/reference.fasta' --ref-sequencer='Illumina' --ref-source='NCBI' --plasmids='YES' --genus='Escherichia' --species='coli' --serotype='O157'`;
+$output = `perl $script_dir/../reporter.pl --step=record_reference_info --output=$create_dir/reporter.json --json=$create_dir/reporter.json --ref-file='$mapping_dir/reference.fasta' --ref-sequencer='Illumina' --ref-source='NCBI' --plasmids='YES' --genus='Escherichia' --species='coli' --serotype='O157'`;
 ok(check_json("$create_dir/reporter.json"), "The json for reference info is correct.");
 
 $output = `perl $script_dir/../reporter.pl --step=record_file_sizes --output=$create_dir/reporter.json --json=$create_dir/reporter.json --file-type='bam' --file-sizes file1=t/reporter/sample1.bam --file-sizes file2=t/reporter/sample2.bam --file-sizes file3=t/reporter/sample3.bam`;
