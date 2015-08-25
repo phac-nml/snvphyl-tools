@@ -206,6 +206,16 @@ sub combine_vcfs{
         $cmd = "$bcftools index  $dir/filtered_mpileup.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
+        #need to have mpileup header otherwise bcftools index has issues
+        #reason being is that freebayes does not report ##contig which is needed for bcftools index/query. Issue arise with some edge cases
+        $cmd = "$bcftools merge --print-header  $dir/filtered_mpileup.bcf $dir/filtered_freebayes.bcf > $dir/header";
+        system($cmd) == 0 or die "Could not run $cmd";
+
+        $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
+        system($cmd) == 0 or die "Could not run $cmd";
+
+        
+        
         $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
         
