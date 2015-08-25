@@ -214,11 +214,6 @@ sub combine_vcfs{
         $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        
-        
-        $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
-        system($cmd) == 0 or die "Could not run $cmd";
-        
         $cmd = "$bcftools index -f $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
         
