@@ -214,11 +214,6 @@ sub combine_vcfs{
         $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        
-        
-        $cmd = "$bcftools  merge -O b $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
-        system($cmd) == 0 or die "Could not run $cmd";
-        
         $cmd = "$bcftools index -f $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
         
@@ -489,7 +484,7 @@ sub print_stats {
     print $out_fh "#Reference	total length	total invalid pos	 total core	Percentage in core\n";
     my ($final_core,$final_total,$final_invalid)= (0,0,0);
 
-    foreach my $chrom( keys %vcfcore) {
+    foreach my $chrom( sort {$a cmp $b } keys %vcfcore) {
         my ($core,$total) = ($vcfcore{$chrom}{'core'},$vcfcore{$chrom}{'total'});
         my $invalid = 'N/A';
         my $perc;
