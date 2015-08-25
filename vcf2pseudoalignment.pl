@@ -484,7 +484,7 @@ sub print_stats {
     print $out_fh "#Reference	total length	total invalid pos	 total core	Percentage in core\n";
     my ($final_core,$final_total,$final_invalid)= (0,0,0);
 
-    foreach my $chrom( keys %vcfcore) {
+    foreach my $chrom( sort {$a cmp $b } keys %vcfcore) {
         my ($core,$total) = ($vcfcore{$chrom}{'core'},$vcfcore{$chrom}{'total'});
         my $invalid = 'N/A';
         my $perc;
