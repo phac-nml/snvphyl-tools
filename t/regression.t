@@ -36,7 +36,7 @@ sub compare_files
 	my $success = 1;
 
         #check to see if both files are empty, if so, they are the same.
-        if ( (not -e $actual_out_file && -s $expected_out_file ==0) and (not -e $actual_out_file && -s $actual_out_file ==0 ) ) {
+        if ( (not -e $actual_out_file) and (not -e $expected_out_file) ) {
             return $success;
         }
 
