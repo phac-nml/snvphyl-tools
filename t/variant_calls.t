@@ -36,7 +36,7 @@ sub compare_files
 	my $success = 1;
 
         #check to see if both files are empty, if so, they are the same.
-        if ( (not -e $actual_out_file && -s $expected_out_file ==0) and (not -e $actual_out_file && -s $actual_out_file ==0 ) ) {
+        if ( (not -e $actual_out_file) && -s $expected_out_file ==0 ) {
             return $success;
         }
 
@@ -274,63 +274,6 @@ for my $dir (@in_files)
 	print "### done ###\n";
         
         
-}
-
-my $actual_base;
-my $actual_file;
-my $expected_file;
-my $curr_input;
-my $got;
-my $expected;
-my $expected_positions_file;
-my $actual_positions_file;
-my $actual_core_file;
-my ($actual_file_1,$actual_file_2);
-my ($expected_file_phy,$expected_file_fasta);
-my $expected_core_file;
-my $extra_params;
-
-
-
-
-$curr_input = "$input_dir/1";
-test_header("phylip output format in $curr_input");
-$expected_file = "$curr_input/expected.phy";
-$expected = `cat $expected_file`;
-$expected_positions_file = "$curr_input/expected.positions.tsv";
-$expected_core_file = "$curr_input/expected_core.csv";
-print "### Expected ###\n";
-print "$expected\n";
-die("could not find input dir $curr_input") if (not -e $curr_input);
-$extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta "; 
-($actual_base,$actual_file) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip'],$extra_params);
-$actual_positions_file = "$actual_base-positions.tsv";
-$actual_core_file = "$actual_base-stats.csv";
-$got = `cat $actual_file`;
-print "### Got ###\n";
-print "$got\n";
-pass("pass test for phylip output") if (CompareFiles::compare_phylip_files($expected_file,$actual_file));
-pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
-pass ("pass test for core output") if (compare_files($expected_core_file,$actual_core_file));
-
-$curr_input = "$input_dir/1";
-test_header("phylip/fasta output format in $curr_input");
-$expected_file_phy = "$curr_input/expected.phy";
-$expected_file_fasta = "$curr_input/expected.fasta";
-die("could not find input dir $curr_input") if (not -e $curr_input);
-$extra_params = " --bcftools-path /share/apps/bcftools/bcftools/bcftools --fasta $curr_input/reference.fasta "; 
-($actual_base,$actual_file_1,$actual_file_2) = run_command($curr_input,"$curr_input/pileup",'ref',$coverage_cutoff,['phylip', 'fasta'],$extra_params);
-$actual_positions_file = "$actual_base-positions.tsv";
-pass ("pass test for positions output") if (compare_files($expected_positions_file,$actual_positions_file));
-if ($actual_file_1 =~ /phy$/)
-{
-        pass("pass test for phylip output") if (CompareFiles::compare_phylip_files($expected_file_phy,$actual_file_1));
-        pass("pass test for fasta output") if (compare_files($expected_file_fasta,$actual_file_2));
-}
-else
-{
-        pass("pass test for phylip output") if (CompareFiles::compare_phylip_files($expected_file_phy,$actual_file_2));
-        pass("pass test for fasta output") if (compare_files($expected_file_fasta,$actual_file_1));
 }
 
 done_testing();
