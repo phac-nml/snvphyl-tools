@@ -256,7 +256,7 @@ sub record_file_sizes{
     my %size_data;
  
     for(keys %files){
-        my $file = $script_dir.'/'.$files{$_};
+        my $file = $files{$_};
         my $output = `ls -l --block-size=M $file`;
         my $size = (split " ", $output)[4];
         push @fileSizes, $size;
