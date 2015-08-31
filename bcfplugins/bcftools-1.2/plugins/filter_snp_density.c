@@ -123,7 +123,7 @@ int check_density(bcf1_t *current, bcf1_t *next, int density_threshold){
 	int current_position = current->pos;
 	int next_position = next->pos;
 
-    if(((next_position - current_position) <= density_threshold) && ((current_position - next_position) <= density_threshold)){
+    if(((next_position - current_position) <= density_threshold) && ((current_position - next_position) <= density_threshold) && (current_position != next_position)){
     	in_density_region = 1;
 	    return 1;
     }
