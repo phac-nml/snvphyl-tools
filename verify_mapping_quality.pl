@@ -73,7 +73,7 @@ sub run {
 	print "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
 	print "MINIMUM DEPTH: ".$min_depth."\n";
 	print "MINIMUM MAPPING: ".$min_map."\n";
-
+	
     foreach my $result(@results){
     	my @split = split(',', $result);
     	my @double = split('%', $split[1]);
@@ -126,20 +126,9 @@ sub verify_percent_coverage {
 		
         # Now that we have the results...
         #--------------------------------#
-        my $gap_length = get_gap_length($result, $min_depth);
+        my $total_passed = total_passed_positions($result, $min_depth);
 		
-        my $line;
-        if ( $gap_length == -1) {
-            $line = "$name,0%";
-        }
-        else {
-        	#if the gap_length is negative, then it currently represents the negative total of all positions that
-        	#pass the threshold criteria.  Alter the value to represent the positions that do not pass criteria
-        	#in order to get proper output. 
-        	$gap_length = $size + $gap_length if ($gap_length < 0);
-            $line = sprintf "$name,%3.2f%%", (( $size - $gap_length ) / $size * 100);          
-        }
-
+        my $line = sprintf "$name,%3.2f%%", (($total_passed/ $size) * 100);  
 
         $pm->finish(0,\$line);
     }
@@ -149,33 +138,23 @@ sub verify_percent_coverage {
     return @results;
 }
 
-#----------------------------------#
-# Find the length with < MIN_DEPTH #
-#----------------------------------#
-sub get_gap_length {
+#
+#Returns the total number of positions that pass the min depth
+#
+sub total_passed_positions{
 	my ($result, $min_depth) = @_;
-
+    my $total_passed = 0;
+    
     my @lines = split /\n/, $result;
-
-    my $previous_pos = 0;
-    my $gap_total    = -1;
-    foreach (@lines) {
-        my ( undef, $pos, $count ) = split /\s+/;
-
-        # OOPS, You skipped an area
-        #--------------------------#
-        if ( $previous_pos != $pos - 1 ) {
-            my $start = $previous_pos + 1;
-            my $end   = $pos - 1;
-            $gap_total += $end - $start;
-        }
-        elsif ( $count <= $min_depth ) {
-            $gap_total++;
-        }
-        $previous_pos = $pos;
+    foreach (@lines){
+    	my ( undef, $pos, $count ) = split /\s+/;
+    	if($count > $min_depth){
+    		$total_passed++;
+    	}
     }
-    return $gap_total;
+    return $total_passed;    
 }
+
 
 =pod
 
