@@ -55,7 +55,6 @@ ok($result, "Script runs when draft genomes are used.");
 
 #8 => Using designed output, ensure that with min-mpa at 80 and min depth at 2, 7.29% of the positions map
 $result = `$mapping_bin --bam bam1=$mapping_dir/input/sample5.bam --min-depth 2 --min-map 80 2>&1`;
-print $result;
 ok($result =~ '7.29%', "The script generates the correct mapping percentage with designed data.");
  
 done_testing();
