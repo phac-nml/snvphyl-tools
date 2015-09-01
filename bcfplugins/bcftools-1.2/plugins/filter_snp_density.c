@@ -60,7 +60,7 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
          default: error("%s", usage()); break;
       }
    }
-
+   
    //perform som validation of input parameters
    if(density_threshold <= 0){
 	   density_threshold = 10;
@@ -94,7 +94,7 @@ bcf1_t *process(bcf1_t *hts){
       printf("Unable to read look ahead bcf record for analysis OR we have reached the end of the bcf file.\n");    	   
    }
    
-   if(check_density(hts, bcf_ahead, density_threshold) || in_density_region){
+   if(in_density_region || check_density(hts, bcf_ahead, density_threshold)){
        mark_density_snp(hts, out_hdr, flag_density);
    }
    //return the bcf record
