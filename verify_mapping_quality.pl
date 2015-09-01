@@ -148,7 +148,7 @@ sub total_passed_positions{
     my @lines = split /\n/, $result;
     foreach (@lines){
     	my ( undef, $pos, $count ) = split /\s+/;
-    	if($count > $min_depth){
+    	if($count >= $min_depth){
     		$total_passed++;
     	}
     }
