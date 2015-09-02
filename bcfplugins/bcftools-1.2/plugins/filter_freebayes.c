@@ -92,15 +92,14 @@ bcf1_t *process(bcf1_t *rec)
   int *buf = NULL;
   int nbuf = 0;   // NB: number of elements, not bytes
   int DP =-1;
-  int dp_set=0;
+
   if (bcf_get_info_values(in_hdr,rec,"DP",(void**)&buf,&nbuf,dp_type)) {
     DP = *buf;
   }
-  /*  else {
-    printf ("A record does not contain DP flag in INFO column\n");
-    return -1;
+  else {
+    error("A record does not contain DP flag in INFO column\n");
   }
-  */
+  
 
   float *buf2 = NULL;
   int nbuf2 = 0;   // NB: number of elements, not bytes
@@ -113,14 +112,12 @@ bcf1_t *process(bcf1_t *rec)
       return NULL;
     }
   }
-  /*  else {
-    printf ("A record does not contain MQM flag in INFO column\n");
-    return -1;
+  else {
+    error("A record does not contain MQM flag in INFO column\n");
   }
-  */
+  
 
   //get INFO/AO and see if over % of total reads
-
   if (bcf_get_info_values(in_hdr,rec,"AO",(void**)&buf,&nbuf,dp_type)) {
     int AO = *buf;
 
@@ -130,36 +127,15 @@ bcf1_t *process(bcf1_t *rec)
       return NULL; 
     }
   }
-  /*  else {
-    printf ("A record does not contain AO flag in INFO column\n");
-    return -1;
-  }
-  */
-
-
-/* turn off complex/mnp region filtering completely for now. 
- * Want to get the same results as Aaron version
-  char *buf3 = NULL;
-  int nbuf3 = 0;   // NB: number of elements, not bytes
-  if (bcf_get_info_values(in_hdr,rec,"TYPE",(void**)&buf3,&nbuf3,type_type)) {
-    char *type = buf3;
-
-    //we are throwing out complex or mnp regions
-    if (strcmp(type,"complex") == 0 || strcmp(type,"mnp") == 0) {
-      return NULL;
-    }
+  else {
+    error("A record does not contain AO flag in INFO column\n");
   }
   
-  else {
-    printf ("A record does not contain TYPE flag in INFO column\n");
-    return -1;
-  }
-*/
+
+
   //add that we passed all filtering!
-  //only add pass flag if 'filtered-coverage' not set
-  if (! dp_set){
-    bcf_add_filter(out_hdr,rec,0);
-  }
+  bcf_add_filter(out_hdr,rec,0);
+
 
   return rec;
 }
