@@ -74,7 +74,7 @@ my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 
 my ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,$formats,
-    $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao
+    $refs_info,$invalid_pos,$invalid_total,$reference, $min_mean_mapping, $ao
 ) = prepare_inputs();
 
 #create temp working directory for all combines vcf files
@@ -93,7 +93,7 @@ my $valid_positions = $output_base . "-positions.tsv";
 my $stats = filter_positions($files,$refs_info,$invalid_pos,$valid_positions,$bcftools,$requested_cpus);
 
 #create pseudo-stats.csv file
-print_stats($stats,$output_base . '-stats.csv');
+print_stats($stats,$invalid_total,$output_base . '-stats.csv');
 
 
 #create alignment files
@@ -151,6 +151,23 @@ sub combine_vcfs{
 
         my ($dir) = "$tmp_dir/$sample" . '_answer';
 
+        if ( not -d $dir) {
+            mkdir $dir;
+        }
+
+        
+
+        #before running anything else
+        #need to run filtered-coverage on original mpileup bcf file
+        #going to use the default one provided from bcftools filter instead of a custom one.
+        $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff' $m_file -O b > $dir/coverage_mpileup.bcf";
+        system($cmd) == 0 or die "Could not run $cmd";
+
+
+        $cmd = "$bcftools index  $dir/coverage_mpileup.bcf";
+        system($cmd) == 0 or die "Could not run $cmd";
+
+        
         #confirm SNPS in freebayes by comparing them to mpileup REF and ALT columns
         #mark all SNPS found in mpileup but NOT in freebayes as filtered-mpileup with 'some' option. 'some' options allows
         #only records where some subset of ALT alleles match are compatible
@@ -158,7 +175,7 @@ sub combine_vcfs{
         #so if mpileup had NC_007530.2|668709 . T     G,A
         #it will map to a freebayes with
         #                  NC_007530.2|668709 . T     G
-        $cmd = "$bcftools  isec $f_file $m_file -p $dir -c some -O b";
+        $cmd = "$bcftools  isec $f_file $dir/coverage_mpileup.bcf -p $dir -c some -O b";
         system($cmd) == 0 or die "Could not run $cmd";
 
 	#result from bcftools isec is a directory that contains multiple *.bcf files
@@ -187,19 +204,27 @@ sub combine_vcfs{
 	######################################################################################################
 
         #filter with C complied nml specific filtering
-	$cmd = "$bcftools  plugin filter_mpileup  $dir/1-0001.bcf -O b -- --dp $coverage_cutoff   > $dir/filtered_mpileup.bcf";
+	$cmd = "$bcftools  plugin filter_mpileup  $dir/1-0001.bcf -O b  > $dir/filtered_mpileup.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        
+
+       
         #filter by coverage and ratio of 75% with alternative allele
         #also filter by MQM flag = minumum mean mapping quality with > 30
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --dp $coverage_cutoff  --mqm $min_mean_mapping --ao $ao    > $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --mqm $min_mean_mapping --ao $ao    > $dir/filtered_freebayes.bcf && bcftools index $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
-                
 
-        $cmd = "$bcftools index  $dir/filtered_freebayes.bcf";
+
+
+        my $mpileup_checked_bcf = check_reference($bcftools,"$dir/filtered_freebayes.bcf","$dir/0003.bcf",$dir,"$dir/filtered_freebayes2.bcf");
+
+        if ($mpileup_checked_bcf ) {
+            die "Could not corretly format intersection mpileup file\n";
+        }
+
+        $cmd = "$bcftools index  $dir/filtered_freebayes2.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
@@ -208,10 +233,10 @@ sub combine_vcfs{
 
         #need to have mpileup header otherwise bcftools index has issues
         #reason being is that freebayes does not report ##contig which is needed for bcftools index/query. Issue arise with some edge cases
-        $cmd = "$bcftools merge --print-header  $dir/filtered_mpileup.bcf $dir/filtered_freebayes.bcf > $dir/header";
+        $cmd = "$bcftools merge --print-header  $dir/filtered_mpileup.bcf $dir/filtered_freebayes2.bcf > $dir/header";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes.bcf $dir/filtered_mpileup.bcf > $file_name";
+        $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes2.bcf $dir/filtered_mpileup.bcf > $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
 
         $cmd = "$bcftools index -f $file_name";
@@ -226,7 +251,86 @@ sub combine_vcfs{
     
     $pm->wait_all_children;
 
+    
     return \%files;
+}
+
+
+sub check_reference {
+    my ($bcftools,$freebayes,$mpileup,$basedir,$output) = @_;
+    my $cmd;
+    
+        #check to see if we have any records to run again
+        my $stats = `$bcftools  stats  $freebayes`;
+        if ( $stats =~ /number of records:\s+(\d+)/) {
+            if ($1) {
+
+
+                #check to ensure that there is no reference in the header that does NOT at least one have record. It there is no record for a reference
+                #bcftools will simply freeze up
+                #get header line and parse out the ##contig=
+
+                my $out = `$bcftools view -h $mpileup | grep "##contig" | cut -f 3 -d '=' | cut -f 1 -d ','`;
+                my %refs;
+                
+                foreach ( split /\n/,$out) {
+                    $refs{$_}++;
+                }
+                
+                $out = `$bcftools index -s  $mpileup`;
+
+                foreach my $line( split/\n/,$out) {
+                    my @data=split/\t/,$line;
+                    if (exists $refs{$data[0]}) {
+                        delete $refs{$data[0]};
+                    }
+                }
+
+
+                #if any reference still in %refs, means there is NO position in the vcf and need to be removed!
+                if ( keys %refs) {
+                    my $old_header = `$bcftools view -h $mpileup`;
+                    open my $out, ">$basedir/newheader";
+
+                    foreach my $line( split/\n/,$old_header) {
+                        my $filter_in=1;
+                        foreach my $ref( keys %refs) {
+                            if ( (index $line,$ref) !=-1) {
+                                $filter_in--;
+                                last;
+                            }
+                        }
+                        if ( $filter_in) {
+                            print $out "$line\n";
+                        }
+
+                    }
+                    close $out;
+                    #put new header on the file
+                    $cmd = "$bcftools view -H  $mpileup > $basedir/beer";
+                    system($cmd) == 0 or die "Could not run $cmd";
+                    $cmd = "cat $basedir/newheader $basedir/beer > $basedir/beer2";
+                    system($cmd) == 0 or die "Could not run $cmd";
+                    $cmd = "$bcftools view $basedir/beer2 -O b > $mpileup";
+                    system($cmd) == 0 or die "Could not run $cmd";
+                    $cmd = "$bcftools index -f $mpileup";
+                    system($cmd) == 0 or die "Could not run $cmd";
+                }
+                
+                $cmd = "$bcftools  annotate  $freebayes -a $mpileup -O b -c FILTER     > $output";
+                system($cmd) == 0 or die "Could not run $cmd";
+            }
+            else {
+                $cmd = "ln -s $freebayes  $output";
+                system($cmd) == 0 or die "Could not run $cmd";
+            }
+        }
+
+    
+        
+
+        
+    return 0;
 }
 
 
@@ -280,7 +384,7 @@ sub filter_positions {
     close $out;
     
     
-    foreach my $chrom( keys %$refs) {
+    foreach my $chrom( sort { $a cmp $b } keys %$refs) {
         
         my ($start,$stop)=(0,0);
         my ($range);
@@ -325,7 +429,6 @@ sub filter_positions {
 
                 #get current bp for current positions
                 my $ref_bp = $refs->{$chrom}{'bps'}[$cur_pos];
-                
 
                 #if we do not have any SNP, we do not print at all!
                 if ( any {  exists $_->{'alt'} && $_->{'alt'} ne '.' } @data ) {
@@ -358,9 +461,11 @@ sub filter_positions {
                     #now we are working with position where there is at least one SNP and at least one filtered-*
                     elsif (any {  ( $_->{'status'} eq 'PASS' || $_->{'status'} eq 'filtered-invalid' )  && $_->{'alt'} ne '.'} @data ){
                         
+                        my $is_core=1; #if all positions have coverage, part of the core regardless if we do not agree it's a high quality SNP or invalid position                
                         if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
                             push @line, 'filtered-invalid';
                             $stats{$chrom}{'invalid'}++;
+                            $is_core--;
                         }
                         else {
                             #always take filtered-invalid before anything else if it there.
@@ -375,27 +480,32 @@ sub filter_positions {
                                 push @line,'filtered-coverage';
                             }
                             else {
-                                push @line,$data[$index]->{'status'};
+                                my $stats = 'filtered-' . $data[$index]->{'status'};
+                                push @line,$stats;
                             }
                         }
 
                         
                         push @line,$ref_bp;
+
                         
                         foreach my $col ( @data) {
                             my $status = $col->{'status'};
                             
                             #if '', implies there is no reads covering that $cur_pos
-                            if ( $status eq '' || $status eq 'EOF') {
+                            if ( $status eq '' || $status eq 'EOF' || $status eq 'coverage') {
                                 push @line,'-';
+                                $is_core--;
                             }
                             else {
                                 #if we have filtered-mpileup, we have inconsistent calles between variant callers
-                                if ($status eq 'filtered-mpileup' ) {
+                                if ($status eq 'mpileup' ) {
                                     push @line,'N';
                                 }
                                 #have a position that passes the cut-off parameter. Either show the SNP or the reference
                                 elsif ( $status eq 'PASS' || $status eq 'filtered-invalid') {
+                                    $is_core-- if $status eq 'filtered-invalid';
+                                    
                                     if ( $col->{'alt'} eq '.') {
                                         push @line,$ref_bp;
                                     }
@@ -410,6 +520,8 @@ sub filter_positions {
                             }
                         }
                         
+                        $stats{$chrom}{'core'}++ if $is_core; #if all positions had coverage, add to the core
+                        
                         print $out join("\t",@line) . "\n";
                         
                         
@@ -419,7 +531,13 @@ sub filter_positions {
                 }#end if
                 #see if everyone has a PASS status and there is no SNP
                 elsif ( all { $_->{'status'} eq 'PASS' }  @data ) {
-                    $stats{$chrom}{'core'}++;
+
+                    #check to see if the positions in the invalid position, if not, count it toward the total
+                    if (not ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} )) {
+                        $stats{$chrom}{'core'}++;                                            
+                    }
+
+                    
                 }
                 
                 
@@ -475,22 +593,30 @@ sub refs_info {
 
 
 sub print_stats {
-    my ($stats,$out) = @_;
+    my ($stats,$invalid_total,$out) = @_;
 
     my %vcfcore = %{$stats};
     
     open my $out_fh,'>',$out;
     
     print $out_fh "#Reference	total length	total invalid pos	 total core	Percentage in core\n";
+    #negative final_invalid indicates there was no invalid positions file given
     my ($final_core,$final_total,$final_invalid)= (0,0,0);
 
+    if (not  $invalid_total) {
+        $final_invalid='N/A';
+    }
+    
     foreach my $chrom( sort {$a cmp $b } keys %vcfcore) {
         my ($core,$total) = ($vcfcore{$chrom}{'core'},$vcfcore{$chrom}{'total'});
         my $invalid = 'N/A';
         my $perc;
 
-        if ( $vcfcore{$chrom}{'invalid'}) {
-            $invalid = $vcfcore{$chrom}{'invalid'};
+        
+        #if there was invalid found
+        if (exists $invalid_total->{$chrom}) {
+            $invalid = $invalid_total->{$chrom}; #grab the total number of invalid positions marked by the user for the current chrom
+            $final_invalid +=$invalid;
             
             if ($total == $invalid ) {
                 $perc =0;
@@ -500,22 +626,27 @@ sub print_stats {
             }
             
         }
+        elsif ( $vcfcore{$chrom}{'invalid'} && not exists $invalid_total->{$chrom}) {
+            die "Found invalid positions for '$chrom' but was not found in invalid positions file.\n";
+        }
         else {
             $perc = sprintf("%.2f",($core/$total*100));
         }
         $final_core +=$core;
         $final_total +=$total;
-        $final_invalid +=$invalid if $invalid ne 'N/A';
-        
-            
+
         print $out_fh join ("\t", ($chrom,$total,$invalid,$core,$perc)) . "\n";
         
     }
 
 
     #getting the total for all references
-    my ($perc,$invalid_total)= (0);
-    if ($final_invalid) {
+    my $perc;
+    
+    if ($final_invalid eq 'N/A' || $final_invalid == 0 ) {
+        $perc = sprintf("%.2f",$final_core/$final_total*100);
+    }
+    else {
         if ($final_total == $final_invalid ) {
             $perc =0;
          }
@@ -523,10 +654,7 @@ sub print_stats {
             $perc = sprintf("%.2f",$final_core/($final_total - $final_invalid)*100);        
         }
     }
-    else {
-        $perc = sprintf("%.2f",$final_core/$final_total*100);
-    }
-    print $out_fh join ("\t",'all',$final_total,$final_invalid,,$final_core,$perc) . "\n";
+    print $out_fh join ("\t",'all',$final_total,$final_invalid,$final_core,$perc) . "\n";
 
     return;
 }
@@ -691,14 +819,14 @@ sub prepare_inputs {
     
     my $refs_info = refs_info($fasta);
     
-    my $invalid_pos;
+    my ($invalid_pos,$invalid_total);
     
     if ($invalid){
         my $invalid_positions_parser = InvalidPositions->new;
-        $invalid_pos = $invalid_positions_parser->read_invalid_positions($invalid);
+        ($invalid_pos,$invalid_total) = $invalid_positions_parser->read_invalid_positions($invalid);
     }
 
 
     return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
-            $refs_info,$invalid_pos,$reference, $min_mean_mapping, $ao);
+            $refs_info,$invalid_pos,$invalid_total,$reference, $min_mean_mapping, $ao);
 }    
