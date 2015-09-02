@@ -15,7 +15,7 @@
 const char *about(void)
 {
     return 
-      "A plugin which filters on freebayes based on depth of coverage (INFO/DP), mean mapping quality (MQM) and \n"
+      "A plugin which filters on freebayes based mean mapping quality (MQM) and \n"
         "Percentage of alternative alleles from total DP of coverage (INFO/AO / INFO/DP ) * 100 \n";
 }
 
