@@ -26,7 +26,7 @@ my $create_dir = tempdir(TEMPLATE => 'tempjsonXXXXX', CLEANUP => 1) or die "Unab
 
 my $output = `perl $script_dir/../reporter.pl --output=$create_dir/reporter.json --step=bam_quality_data --bam bam1=$script_dir/reporter/sample1.bam --bam bam2=$script_dir/reporter/sample2.bam --bam bam3=$script_dir/reporter/sample3.bam`;
 
-$output = `perl $script_dir/../reporter.pl --step=record_filter_stats --output=$create_dir/reporter.json --pseudo=/t/reporter/pseudoalign-positions1.tsv --json=$create_dir/reporter.json`;
+$output = `perl $script_dir/../reporter.pl --step=record_filter_stats --output=$create_dir/reporter.json --pseudo=t/reporter/pseudoalign-positions1.tsv --json=$create_dir/reporter.json`;
 ok(check_json("$create_dir/reporter.json"), "The json for filter stats is correct.");
 
 $output = `perl $script_dir/../reporter.pl --step=record_reference_info --output=$create_dir/reporter.json --json=$create_dir/reporter.json --ref-file='t/reporter/reference.fasta' --ref-sequencer='Illumina' --ref-source='NCBI' --plasmids='YES' --genus='Escherichia' --species='coli' --serotype='O157'`;
