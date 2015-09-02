@@ -19,11 +19,16 @@ sub new
 # output
 #	a table containing the invalid positions, formatted like
 #		{ chrom_pos => 1 } if chromosome_position is invalid
+#       a table that containing total number of invalid positions
+#               { chrom => total_invalid }
 sub read_invalid_positions
 {
 	my ($self,$invalid_positions_file) = @_;
 
 	my %invalid;
+        my %count_per_ref; #keep track of positions that were marked as invalid. 
+        my %invalid_per_ref; #summary of %count_per_ref, we only want to return how many positions were marked as invalid. 
+         
 
 	open(my $fh, "<" , "$invalid_positions_file") or die "Could not open $invalid_positions_file: $!";
 
@@ -57,11 +62,19 @@ sub read_invalid_positions
 
 		foreach my $i ( $real_start..$real_end ) {
 			$invalid{"${chrom}_${i}"} = 1;
+                        $count_per_ref{$chrom}{$i}++;
 		}
 	}
 
 	close($fh);
-	return  \%invalid;
+
+
+        #summaries up how many positions were marked as invalid per reference
+        foreach my $ref ( keys %count_per_ref) {
+            $invalid_per_ref{$ref} = scalar keys %{$count_per_ref{$ref}};
+        }
+        
+	return  (\%invalid,\%invalid_per_ref);
 }
 
 1;
