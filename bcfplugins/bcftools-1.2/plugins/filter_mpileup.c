@@ -46,8 +46,6 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
 
     //add this bogus flag otherwise for some reason the 'DP4' flag is the same id as first filtered 
     bcf_hdr_append(out_hdr,"##FILTER=<ID=DP44,Number=4,Type=Integer,Description=\"Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases\">");
-    int dp4 = bcf_hdr_id2int(out_hdr, BCF_DT_ID, "DP44");
-    dp4=-1;
     //needs to golf down into a simple plugin and reported as a bug. Phil Feb 16,2015 
 
 
