@@ -1,4 +1,4 @@
 #Reference	total length	total invalid pos	 total core	Percentage in core
-ref1	8	N/A	6	75.00
+ref1	8	2	4	66.67
 ref2	8	N/A	8	100.00
-all	16	N/A	14	87.5
+all	16	2	12	85.71
