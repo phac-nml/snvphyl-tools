@@ -29,7 +29,6 @@ const char *usage(void)
 int dp_type = BCF_HT_INT;
 int mqm_type = BCF_HT_REAL;
 int type_type = BCF_HT_STR;
-int min_dp =-1;
 double min_ao =-1;
 float min_mqm = -1;
 bcf_hdr_t *in_hdr = NULL;
@@ -48,19 +47,15 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
     static struct option loptions[] =
     {
         {"verbose",1,0,'v'},
-        {"dp",1,0,'d'},
         {"mqm",1,0,'m'},
         {"ao",1,0,'a'},
         {0,0,0,0}
     };
     char c, *tmp;
-    while ((c = getopt_long(argc, argv, "vd:m:a:",loptions,NULL)) >= 0)
+    while ((c = getopt_long(argc, argv, "v:m:a:",loptions,NULL)) >= 0)
     {
         switch (c) {
             case 'v': verbose = 1; break; 
-            case 'd': 
-                min_dp = strtol(optarg,&tmp,10); 
-                if (*tmp) error("Unexpected argument to --dp: %s\n", optarg); break; 
             case 'm': 
                 min_mqm = strtol(optarg,&tmp,10); 
                 if (*tmp) error("Unexpected argument to --mqm: %s\n", optarg); break; 
@@ -79,13 +74,6 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
  
   in_hdr  = in;
   out_hdr  = out;
-
-  char info[100];
-  sprintf(info, "##FILTER=<ID=filtered-coverage,Description=\"Set true if DP < %d\">", min_dp);
-  bcf_hdr_append(out_hdr, info);
-    
-  //get flag index id so we can mark as such
-  flag_coverage = bcf_hdr_id2int(out_hdr,BCF_DT_ID,"filtered-coverage");
 
   
   return 0;
@@ -107,15 +95,6 @@ bcf1_t *process(bcf1_t *rec)
   int dp_set=0;
   if (bcf_get_info_values(in_hdr,rec,"DP",(void**)&buf,&nbuf,dp_type)) {
     DP = *buf;
-
-    //check to see if we have or over the minimum depth of coverage
-    //if not we are softclipping out of file
-    if (DP < min_dp) {
-//take out for now otherwise not same answer as aaron
-////had to put back all the filtering directly when running the pipeline
-    //  bcf_add_filter(out_hdr,rec,flag_coverage);
-    //  dp_set=1;
-    }
   }
   /*  else {
     printf ("A record does not contain DP flag in INFO column\n");
