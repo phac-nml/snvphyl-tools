@@ -33,7 +33,7 @@ ok($result =~ tr/\n// == 4, "The correct number of isolates are logged when defa
 
 #3 => verify that the appropriate number of isolates are logged when the minimum depth is changed
 $result = `$mapping_bin --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam --min-depth 35`;
-ok($result =~ tr/\n// == 8, "The correct number of isolates are logged when min_depth altered.");
+ok($result =~ tr/\n// == 7, "The correct number of isolates are logged when min_depth altered.");
 
 #4 => verify that the appropriate number of isolates are logged when the minimum mapping percentage is changed
 $result = `$mapping_bin --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample2.bam --bam bam3=$mapping_dir/input/sample3.bam --bam bam4=$mapping_dir/input/sample4.bam -min-map 99.9`;
@@ -53,9 +53,9 @@ ok($return_code == 0, "Change number of cores test.");
 $result = `$mapping_bin --bam bam1=$mapping_dir/input/draft_reference/sample1.bam 2>&1`;
 ok($result, "Script runs when draft genomes are used.");
 
-#8 => verify that the script return the appropriate number of samples for the draft genome
-#$result = `$mapping_bin --bam bam1=$mapping_dir/input/draft_reference/sample1.bam --min-map 99.9 2>&1`;
-#ok($result =~ tr/\n// == 8, "The correct output is generated when the reads map to multiple draft reference contigs.");
+#8 => Using designed output, ensure that with min-mpa at 80 and min depth at 2, 7.29% of the positions map
+$result = `$mapping_bin --bam bam1=$mapping_dir/input/sample5.bam --min-depth 2 --min-map 80 2>&1`;
+ok($result =~ '7.29%', "The script generates the correct mapping percentage with designed data.");
  
 done_testing();
 
