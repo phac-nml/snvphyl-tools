@@ -271,6 +271,8 @@ sub check_reference {
                 #get header line and parse out the ##contig=
 
                 my $out = `$bcftools view -h $mpileup | grep "##contig" | sed -e 's/^##contig=<ID=//' -e 's/,length=[0-9][0-9]*>//'`;
+                die "Error: no ##contig entries in '$out'" if ($out =~ //); #assume that we have at least one reference
+                
                 my %refs;
                 
                 foreach ( split /\n/,$out) {
