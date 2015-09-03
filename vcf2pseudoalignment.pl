@@ -598,8 +598,10 @@ sub print_stats {
     my %vcfcore = %{$stats};
     
     open my $out_fh,'>',$out;
+
+    my @header = ("#Reference","total length","total invalid pos","total valid pos","total core","Percentage in core");
     
-    print $out_fh "#Reference	total length	total invalid pos	 total core	Percentage in core\n";
+    print $out_fh join("\t",@header) . "\n";
     #negative final_invalid indicates there was no invalid positions file given
     my ($final_core,$final_total,$final_invalid)= (0,0,0);
 
@@ -610,6 +612,8 @@ sub print_stats {
     foreach my $chrom( sort {$a cmp $b } keys %vcfcore) {
         my ($core,$total) = ($vcfcore{$chrom}{'core'},$vcfcore{$chrom}{'total'});
         my $invalid = 'N/A';
+        my $total_no_invalid;
+        
         my $perc;
 
         
@@ -620,9 +624,11 @@ sub print_stats {
             
             if ($total == $invalid ) {
                 $perc =0;
+                $total_no_invalid=0;
             }
             else {
                 $perc = sprintf("%.2f",($core/( $total-$invalid)*100));
+                $total_no_invalid = $total-$invalid;
             }
             
         }
@@ -631,30 +637,34 @@ sub print_stats {
         }
         else {
             $perc = sprintf("%.2f",($core/$total*100));
+            $total_no_invalid = $total;
         }
         $final_core +=$core;
         $final_total +=$total;
 
-        print $out_fh join ("\t", ($chrom,$total,$invalid,$core,$perc)) . "\n";
+        print $out_fh join ("\t", ($chrom,$total,$invalid,$total_no_invalid,$core,$perc)) . "\n";
         
     }
 
 
     #getting the total for all references
-    my $perc;
+    my ($perc,$final_total_no_invalid);
     
     if ($final_invalid eq 'N/A' || $final_invalid == 0 ) {
         $perc = sprintf("%.2f",$final_core/$final_total*100);
+        $final_total_no_invalid=$final_total;
     }
     else {
         if ($final_total == $final_invalid ) {
             $perc =0;
+            $final_total_no_invalid=0;
          }
         else {
-            $perc = sprintf("%.2f",$final_core/($final_total - $final_invalid)*100);        
+            $perc = sprintf("%.2f",$final_core/($final_total - $final_invalid)*100);
+            $final_total_no_invalid=$final_total-$final_invalid;
         }
     }
-    print $out_fh join ("\t",'all',$final_total,$final_invalid,$final_core,$perc) . "\n";
+    print $out_fh join ("\t",'all',$final_total,$final_invalid,$final_total_no_invalid,$final_core,$perc) . "\n";
 
     return;
 }
