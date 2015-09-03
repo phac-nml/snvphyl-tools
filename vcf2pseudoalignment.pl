@@ -753,11 +753,6 @@ sub prepare_inputs {
     if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
         die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
     }
-    my $plugins_state = `$bcftools plugin -l`;
-    if ( not ( $plugins_state =~ /-- filter_mpileup --/ && $plugins_state =~ /-- filter_freebayes --/ ) ) {
-        die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
-    }
-
     
     if (not defined $reference){
         print STDERR "reference name not defined, calling it 'reference'\n";
