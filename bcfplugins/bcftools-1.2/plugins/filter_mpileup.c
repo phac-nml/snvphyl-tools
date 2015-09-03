@@ -51,10 +51,10 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
 
   
           
-    bcf_hdr_append(out_hdr, "##FILTER=<ID=mpileup,Description=\"Set if not true: SNP not found in Freebayes\">");
+    bcf_hdr_append(out_hdr, "##FILTER=<ID=filtered-mpileup,Description=\"Set if not true: SNP not found in Freebayes\">");
     
     //get flag index id so we can mark as such
-    flag_mpileup = bcf_hdr_id2int(out_hdr, BCF_DT_ID, "mpileup");
+    flag_mpileup = bcf_hdr_id2int(out_hdr, BCF_DT_ID, "filtered-mpileup");
 
     return 0;
 }
