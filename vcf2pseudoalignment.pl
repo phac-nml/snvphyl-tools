@@ -628,7 +628,7 @@ sub print_stats {
             $final_invalid +=$invalid;
             
             if ($total == $invalid ) {
-                $perc =0;
+                $perc ="NaN";
                 $total_no_invalid=0;
             }
             else {
