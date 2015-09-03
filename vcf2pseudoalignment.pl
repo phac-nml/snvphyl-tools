@@ -270,7 +270,7 @@ sub check_reference {
                 #bcftools will simply freeze up
                 #get header line and parse out the ##contig=
 
-                my $out = `$bcftools view -h $mpileup | grep "##contig" | cut -f 3 -d '=' | cut -f 1 -d ','`;
+                my $out = `$bcftools view -h $mpileup | grep "##contig" | sed -e 's/^##contig=<ID=//' -e 's/,length=[0-9][0-9]*>//'`;
                 my %refs;
                 
                 foreach ( split /\n/,$out) {
