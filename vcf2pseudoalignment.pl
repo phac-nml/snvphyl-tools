@@ -526,6 +526,9 @@ sub filter_positions {
                         
                         
                     }#end else
+                    else {
+                        print "WARNING: Edge case found at '$chrom' on position '$cur_pos'\n" if $verbose;
+                    }
                     
                 }#end if
                 #see if everyone has a PASS status and there is no SNP
@@ -539,7 +542,7 @@ sub filter_positions {
                     
                 }
                 else {
-                    die "WARNING: Edge case found at '$chrom' on position '$cur_pos'\n" if $verbose;
+                    print "WARNING: Edge case found at '$chrom' on position '$cur_pos'\n" if $verbose;
                 }
                 
                 
