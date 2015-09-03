@@ -280,7 +280,7 @@ sub check_reference {
                 }
                 
                 $out = `$bcftools index -s  $mpileup`;
-
+                die "Error: no ##contig found using bcftools index  in '$out'" if ($out =~ //); #assume that we have at least one reference coming back from bcftools index
                 foreach my $line( split/\n/,$out) {
                     my @data=split/\t/,$line;
                     if (exists $refs{$data[0]}) {
