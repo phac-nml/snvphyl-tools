@@ -382,7 +382,7 @@ sub filter_positions {
     my $tmp_dir = tempdir (CLEANUP => 1);
 
     #print header file
-    open my $out, '>', "$job_id";
+    open my $out, '>', "$tmp_dir/$job_id";
     print $out "#Chromosome\tPosition\tStatus\tReference\t";
     my @samples_list = sort {$a cmp $b } keys %$files;
     print $out join("\t",@samples_list);
@@ -421,7 +421,7 @@ sub filter_positions {
                                     'core' => 0,
                                 });
             
-            my $f_name = "$job_id";
+            my $f_name = "$tmp_dir/$job_id";
             open my $out, '>',$f_name;
             
             my $streamers = Streaming::create_streamers($files,$range,$job_id,$bcftools);
@@ -558,8 +558,8 @@ sub filter_positions {
             
             close $out;
             
-            $pm->finish(0,{'job_file' =>$f_name, 'stats' => \%stats}) if $parallel;
-            $results{$f_name}=$f_name if not $parallel;
+            $pm->finish(0,{'job_file' =>$job_id, 'stats' => \%stats}) if $parallel;
+            $results{$job_id}=$job_id if not $parallel;
         }
         
     
@@ -567,9 +567,9 @@ sub filter_positions {
     $pm->wait_all_children if $parallel;   
 
     #combine all results files in order
-    my @cmd = "cat 0";
+    my @cmd = "cat $tmp_dir/0";
     foreach ( sort {$a <=> $b } keys %results) {
-         push @cmd, $results{$_};
+         push @cmd, "$tmp_dir/" . $results{$_};
     }
     my $cmd = join(' ' , @cmd) . " > $valid_positions";
     
