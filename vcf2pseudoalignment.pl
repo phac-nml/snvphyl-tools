@@ -663,7 +663,7 @@ sub print_stats {
     }
     else {
         if ($final_total == $final_invalid ) {
-            $perc =0;
+            $perc ="NaN";
             $final_total_no_invalid=0;
          }
         else {
