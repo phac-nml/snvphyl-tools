@@ -183,7 +183,7 @@ sub combine_vcfs{
 	#use: 0001.bcf is for unique position only found in mpileup 
 	#use: 0002.bcf is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
 	      #VCF line that is kept is the one from freebayes and NOT mpileup
-	#ignoring: 0003.bcf same as 0002.bcf but where mpileup VCF line is kept and not freebayes
+	#use: 0003.bcf same as 0002.bcf but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002.bcf)
 	
 
 
