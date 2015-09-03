@@ -186,8 +186,9 @@ sub combine_vcfs{
 	#use: 0003.bcf same as 0002.bcf but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002.bcf)
 
 
-        #filter with C complied nml specific filtering
-	$cmd = "$bcftools  plugin filter_mpileup  $dir/0001.bcf -O b  > $dir/1-0001.bcf";
+        #filter out SNPs that were only found in mpileup but NOT in freebayes
+        $cmd = "$bcftools  filter  -m + -s 'filtered-mpileup' -i ' TYPE!=\"snp\" ' $dir/0001.bcf -O b  > $dir/1-0001.bcf";
+        
         system($cmd) == 0 or die "Could not run $cmd";
 
 
@@ -195,7 +196,6 @@ sub combine_vcfs{
 
 
 	#need to get rid of the stupid format information since they cannot be merge later downstream
-	#plan is to incoproate the removal all the FORMAT in each plugin so do not have to waste another step.
 	$cmd ="$bcftools  view -h $dir/1-0001.bcf";
         my $result = `$cmd`;
 	if ($result =~ /##FORMAT=\<ID=GL/){
@@ -211,11 +211,13 @@ sub combine_vcfs{
 	######################################################################################################
 
        
-        #filter by coverage and ratio of 75% with alternative allele
-        #also filter by MQM flag = minumum mean mapping quality with > 30
+        #Doing two level of filtering here
+        #first is by alternative allele ratio. Default is 75% of the reads need to show a SNP exist
+        #Second is MQM (min mean mapping) needs to be above a threshold (default is 30)
+        #if either of them fail, it will be hard clip out.
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --mqm $min_mean_mapping --ao $ao    > $dir/filtered_freebayes.bcf && bcftools index $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/1-0002.bcf -O b   > $dir/filtered_freebayes.bcf && bcftools index $dir/filtered_freebayes.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
@@ -738,8 +740,12 @@ sub prepare_inputs {
     	$min_mean_mapping = 30;
     }
 
+    #need to have ratio/percentage in double format i.e 75% = 0.75
     if(not defined $ao){
-       $ao = 75;
+       $ao = 0.75;
+    }
+    elsif ( $ao > 1) {
+        $ao = $ao/100;
     }
     
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
