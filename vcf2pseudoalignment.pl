@@ -264,8 +264,6 @@ sub check_reference {
         my $stats = `$bcftools  stats  $freebayes`;
         if ( $stats =~ /number of records:\s+(\d+)/) {
             if ($1) {
-
-
                 #check to ensure that there is no reference in the header that does NOT at least one have record. It there is no record for a reference
                 #bcftools will simply freeze up
                 #get header line and parse out the ##contig=
@@ -287,7 +285,6 @@ sub check_reference {
                         delete $refs{$data[0]};
                     }
                 }
-
 
                 #if any reference still in %refs, means there is NO position in the vcf and need to be removed!
                 if ( keys %refs) {
@@ -326,7 +323,10 @@ sub check_reference {
                 $cmd = "ln -s $freebayes  $output";
                 system($cmd) == 0 or die "Could not run $cmd";
             }
-        }
+    }
+    else {
+        die "Could not run bcftools stats on file '$freebayes'\n";
+    }
 
     
         
