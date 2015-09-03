@@ -527,7 +527,6 @@ sub filter_positions {
                         
                     }#end else
                     
-                    
                 }#end if
                 #see if everyone has a PASS status and there is no SNP
                 elsif ( all { $_->{'status'} eq 'PASS' }  @data ) {
@@ -538,6 +537,9 @@ sub filter_positions {
                     }
 
                     
+                }
+                else {
+                    die "WARNING: Edge case found at '$chrom' on position '$cur_pos'\n" if $verbose;
                 }
                 
                 
