@@ -399,7 +399,7 @@ sub run_plugin{
     
     my $command = $plugin_name;
     
-    for(keys in $script_variables){
+    foreach (keys  %{$script_variables}){
         #add each command line variable to the command string
         $command = $command.' $_ $script_variables{$_} ';
     }
