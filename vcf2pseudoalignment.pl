@@ -206,8 +206,6 @@ sub combine_vcfs{
 	}
         system($cmd) == 0 or die "Could not run $cmd";
 
-	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/0002.bcf -O b > $dir/1-0002.bcf";
-        system($cmd) == 0 or die "Could not run $cmd";
 	######################################################################################################
 
        
@@ -217,17 +215,22 @@ sub combine_vcfs{
         #if either of them fail, it will be hard clip out.
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/1-0002.bcf -O b   > $dir/filtered_freebayes.bcf && bcftools index $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/0002.bcf -O b   > $dir/1-0002.bcf && bcftools index $dir/1-0002.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
 
-        my $mpileup_checked_bcf = check_reference($bcftools,"$dir/filtered_freebayes.bcf","$dir/0003.bcf",$dir,"$dir/filtered_freebayes2.bcf");
+        my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002.bcf","$dir/0003.bcf",$dir,"$dir/filtered_freebayes.bcf");
 
         if ($mpileup_checked_bcf ) {
             die "Could not corretly format intersection mpileup file\n";
         }
 
+
+	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/filtered_freebayes.bcf -O b > $dir/filtered_freebayes2.bcf";
+        system($cmd) == 0 or die "Could not run $cmd";
+
+        
         $cmd = "$bcftools index  $dir/filtered_freebayes2.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
