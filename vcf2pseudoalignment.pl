@@ -296,7 +296,7 @@ sub check_reference {
                         my $filter_in=1;
                         foreach my $ref( keys %refs) {
                             if ( (index $line,$ref) !=-1) {
-                                $filter_in--;
+                                $filter_in=0;
                                 last;
                             }
                         }
@@ -465,7 +465,7 @@ sub filter_positions {
                         if ($invalid_pos && exists $invalid_pos->{"${chrom}_${cur_pos}"} ) {
                             push @line, 'filtered-invalid';
                             $stats{$chrom}{'invalid'}++;
-                            $is_core--;
+                            $is_core=0;
                         }
                         else {
                             #always take filtered-invalid before anything else if it there.
@@ -495,7 +495,7 @@ sub filter_positions {
                             #if '', implies there is no reads covering that $cur_pos
                             if ( $status eq '' || $status eq 'EOF' || $status eq 'coverage') {
                                 push @line,'-';
-                                $is_core--;
+                                $is_core=0;
                             }
                             else {
                                 #if we have filtered-mpileup, we have inconsistent calles between variant callers
@@ -504,7 +504,7 @@ sub filter_positions {
                                 }
                                 #have a position that passes the cut-off parameter. Either show the SNP or the reference
                                 elsif ( $status eq 'PASS' || $status eq 'filtered-invalid') {
-                                    $is_core-- if $status eq 'filtered-invalid';
+                                    $is_core=0 if $status eq 'filtered-invalid';
                                     
                                     if ( $col->{'alt'} eq '.') {
                                         push @line,$ref_bp;
