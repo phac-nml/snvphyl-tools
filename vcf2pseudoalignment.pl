@@ -160,7 +160,7 @@ sub combine_vcfs{
         #before running anything else
         #need to run filtered-coverage on original mpileup bcf file
         #going to use the default one provided from bcftools filter instead of a custom one.
-        $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff' $m_file -O b > $dir/coverage_mpileup.bcf";
+        $cmd = "$bcftools  filter -s 'filtered-coverage' -i 'DP>=$coverage_cutoff' $m_file -O b > $dir/coverage_mpileup.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
@@ -184,46 +184,56 @@ sub combine_vcfs{
 	#use: 0002.bcf is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
 	      #VCF line that is kept is the one from freebayes and NOT mpileup
 	#use: 0003.bcf same as 0002.bcf but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002.bcf)
+
+
+        #filter out SNPs that were only found in mpileup but NOT in freebayes
+        $cmd = "$bcftools  filter  -m + -s 'filtered-mpileup' -i ' TYPE!=\"snp\" ' $dir/0001.bcf -O b  > $dir/1-0001.bcf";
+        
+        system($cmd) == 0 or die "Could not run $cmd";
+
+
 	
 
 
 	#need to get rid of the stupid format information since they cannot be merge later downstream
-	#plan is to incoproate the removal all the FORMAT in each plugin so do not have to waste another step.
-	$cmd ="$bcftools  view -h $dir/0001.bcf";
+	$cmd ="$bcftools  view -h $dir/1-0001.bcf";
         my $result = `$cmd`;
 	if ($result =~ /##FORMAT=\<ID=GL/){
-	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/0001.bcf -O b > $dir/1-0001.bcf";
+	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/1-0001.bcf -O b > $dir/filtered_mpileup.bcf";
 	}
+        elsif ( $result eq '') {
+            die "Failed to retrieve header of '1-0001.bcf' for strain '$sample'\n";
+        }
 	else{
-	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/0001.bcf -O b > $dir/1-0001.bcf";
+	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/1-0001.bcf -O b > $dir/filtered_mpileup.bcf";
 	}
         system($cmd) == 0 or die "Could not run $cmd";
 
-	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/0002.bcf -O b > $dir/1-0002.bcf";
-        system($cmd) == 0 or die "Could not run $cmd";
 	######################################################################################################
 
-        #filter with C complied nml specific filtering
-	$cmd = "$bcftools  plugin filter_mpileup  $dir/1-0001.bcf -O b  > $dir/filtered_mpileup.bcf";
-        system($cmd) == 0 or die "Could not run $cmd";
-
-
        
-        #filter by coverage and ratio of 75% with alternative allele
-        #also filter by MQM flag = minumum mean mapping quality with > 30
+        #Doing two level of filtering here
+        #first is by alternative allele ratio. Default is 75% of the reads need to show a SNP exist
+        #Second is MQM (min mean mapping) needs to be above a threshold (default is 30)
+        #if either of them fail, it will be hard clip out.
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  plugin  filter_freebayes $dir/1-0002.bcf -O b -- --mqm $min_mean_mapping --ao $ao    > $dir/filtered_freebayes.bcf && bcftools index $dir/filtered_freebayes.bcf";
+        $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/0002.bcf -O b   > $dir/1-0002.bcf && bcftools index $dir/1-0002.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
 
-        my $mpileup_checked_bcf = check_reference($bcftools,"$dir/filtered_freebayes.bcf","$dir/0003.bcf",$dir,"$dir/filtered_freebayes2.bcf");
+        my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002.bcf","$dir/0003.bcf",$dir,"$dir/filtered_freebayes.bcf");
 
         if ($mpileup_checked_bcf ) {
             die "Could not corretly format intersection mpileup file\n";
         }
 
+
+	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/filtered_freebayes.bcf -O b > $dir/filtered_freebayes2.bcf";
+        system($cmd) == 0 or die "Could not run $cmd";
+
+        
         $cmd = "$bcftools index  $dir/filtered_freebayes2.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
@@ -378,7 +388,7 @@ sub filter_positions {
     my $tmp_dir = tempdir (CLEANUP => 1);
 
     #print header file
-    open my $out, '>', "$job_id";
+    open my $out, '>', "$tmp_dir/$job_id";
     print $out "#Chromosome\tPosition\tStatus\tReference\t";
     my @samples_list = sort {$a cmp $b } keys %$files;
     print $out join("\t",@samples_list);
@@ -417,7 +427,7 @@ sub filter_positions {
                                     'core' => 0,
                                 });
             
-            my $f_name = "$job_id";
+            my $f_name = "$tmp_dir/$job_id";
             open my $out, '>',$f_name;
             
             my $streamers = Streaming::create_streamers($files,$range,$job_id,$bcftools);
@@ -482,7 +492,7 @@ sub filter_positions {
                                 push @line,'filtered-coverage';
                             }
                             else {
-                                my $stats = 'filtered-' . $data[$index]->{'status'};
+                                my $stats =  $data[$index]->{'status'};
                                 push @line,$stats;
                             }
                         }
@@ -495,13 +505,13 @@ sub filter_positions {
                             my $status = $col->{'status'};
                             
                             #if '', implies there is no reads covering that $cur_pos
-                            if ( $status eq '' || $status eq 'EOF' || $status eq 'coverage') {
+                            if ( $status eq '' || $status eq 'EOF' || $status eq 'filtered-coverage') {
                                 push @line,'-';
                                 $is_core=0;
                             }
                             else {
                                 #if we have filtered-mpileup, we have inconsistent calles between variant callers
-                                if ($status eq 'mpileup' ) {
+                                if ($status eq 'filtered-mpileup' ) {
                                     push @line,'N';
                                 }
                                 #have a position that passes the cut-off parameter. Either show the SNP or the reference
@@ -554,8 +564,8 @@ sub filter_positions {
             
             close $out;
             
-            $pm->finish(0,{'job_file' =>$f_name, 'stats' => \%stats}) if $parallel;
-            $results{$f_name}=$f_name if not $parallel;
+            $pm->finish(0,{'job_file' =>$job_id, 'stats' => \%stats}) if $parallel;
+            $results{$job_id}=$job_id if not $parallel;
         }
         
     
@@ -563,9 +573,9 @@ sub filter_positions {
     $pm->wait_all_children if $parallel;   
 
     #combine all results files in order
-    my @cmd = "cat 0";
+    my @cmd = "cat $tmp_dir/0";
     foreach ( sort {$a <=> $b } keys %results) {
-         push @cmd, $results{$_};
+         push @cmd, "$tmp_dir/" . $results{$_};
     }
     my $cmd = join(' ' , @cmd) . " > $valid_positions";
     
@@ -736,8 +746,13 @@ sub prepare_inputs {
     	$min_mean_mapping = 30;
     }
 
+    #need to have ratio/percentage in double format i.e 75% = 0.75
     if(not defined $ao){
-       $ao = 75;
+       $ao = 0.75;
+    }
+    elsif ( $ao > 1) {
+        print "Assuming that '$ao' is given as percentage for alternative allele. Changing to a decimal\n";
+        $ao = $ao/100;
     }
     
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
@@ -745,11 +760,6 @@ sub prepare_inputs {
     if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
         die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
     }
-    my $plugins_state = `$bcftools plugin -l`;
-    if ( not ( $plugins_state =~ /-- filter_mpileup --/ && $plugins_state =~ /-- filter_freebayes --/ ) ) {
-        die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
-    }
-
     
     if (not defined $reference){
         print STDERR "reference name not defined, calling it 'reference'\n";
