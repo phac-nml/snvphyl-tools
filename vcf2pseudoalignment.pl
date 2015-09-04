@@ -201,6 +201,9 @@ sub combine_vcfs{
 	if ($result =~ /##FORMAT=\<ID=GL/){
 	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/1-0001.bcf -O b > $dir/filtered_mpileup.bcf";
 	}
+        elsif ( $result eq '') {
+            die "Failed to retrieve header of '1-0001.bcf' for strain '$sample'\n";
+        }
 	else{
 	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/1-0001.bcf -O b > $dir/filtered_mpileup.bcf";
 	}
@@ -748,6 +751,7 @@ sub prepare_inputs {
        $ao = 0.75;
     }
     elsif ( $ao > 1) {
+        print "Assuming that '$ao' is given as percentage for alternative allele. Changing to a decimal\n";
         $ao = $ao/100;
     }
     
