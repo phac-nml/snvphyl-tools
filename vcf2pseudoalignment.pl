@@ -160,7 +160,7 @@ sub combine_vcfs{
         #before running anything else
         #need to run filtered-coverage on original mpileup bcf file
         #going to use the default one provided from bcftools filter instead of a custom one.
-        $cmd = "$bcftools  filter -s 'filtered-coverage' -i 'DP>=$coverage_cutoff' $m_file -O b > $dir/coverage_mpileup.bcf";
+        $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff' $m_file -O b > $dir/coverage_mpileup.bcf";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
@@ -187,7 +187,7 @@ sub combine_vcfs{
 
 
         #filter out SNPs that were only found in mpileup but NOT in freebayes
-        $cmd = "$bcftools  filter  -m + -s 'filtered-mpileup' -i ' TYPE!=\"snp\" ' $dir/0001.bcf -O b  > $dir/1-0001.bcf";
+        $cmd = "$bcftools  filter  -m + -s 'mpileup' -i ' TYPE!=\"snp\" ' $dir/0001.bcf -O b  > $dir/1-0001.bcf";
         
         system($cmd) == 0 or die "Could not run $cmd";
 
@@ -493,6 +493,7 @@ sub filter_positions {
                             }
                             else {
                                 my $stats =  $data[$index]->{'status'};
+                                $stats = 'filtered-' . $stats;
                                 push @line,$stats;
                             }
                         }
@@ -505,13 +506,13 @@ sub filter_positions {
                             my $status = $col->{'status'};
                             
                             #if '', implies there is no reads covering that $cur_pos
-                            if ( $status eq '' || $status eq 'EOF' || $status eq 'filtered-coverage') {
+                            if ( $status eq '' || $status eq 'EOF' || $status eq 'coverage') {
                                 push @line,'-';
                                 $is_core=0;
                             }
                             else {
                                 #if we have filtered-mpileup, we have inconsistent calles between variant callers
-                                if ($status eq 'filtered-mpileup' ) {
+                                if ($status eq 'mpileup' ) {
                                     push @line,'N';
                                 }
                                 #have a position that passes the cut-off parameter. Either show the SNP or the reference
