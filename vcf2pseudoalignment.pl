@@ -139,6 +139,13 @@ sub combine_vcfs{
         }
     );
 
+    #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
+    #we need to switch to using vcf. Hence, will add ability to toggle between the two formats with a single commmenting one line
+    #issue has been reported on github bcftools as issue # 317
+#   my ($ext,$out_type) = ('.bcf','-O b');
+    my ($ext,$out_type) = ('.vcf.gz','-O z');
+
+    
     foreach my $sample( keys %$mpileup_files) {
         
         my $pid = $pm->start and next;
@@ -160,11 +167,18 @@ sub combine_vcfs{
         #before running anything else
         #need to run filtered-coverage on original mpileup bcf file
         #going to use the default one provided from bcftools filter instead of a custom one.
-        $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff' $m_file -O b > $dir/coverage_mpileup.bcf";
+        #if we are using vcf files, need to convert first to vcf before applying the filter. The reason is bug with bcftools where SOME files will put the wrong FLAG in....
+        if ( $ext eq '.vcf.gz') {
+            $cmd = "$bcftools view $m_file -O v | $bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff'  $out_type > $dir/coverage_mpileup$ext";
+        }
+        else {
+            $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff' $m_file $out_type > $dir/coverage_mpileup$ext";            
+        }
+
         system($cmd) == 0 or die "Could not run $cmd";
 
 
-        $cmd = "$bcftools index  $dir/coverage_mpileup.bcf";
+        $cmd = "$bcftools index  $dir/coverage_mpileup$ext";
         system($cmd) == 0 or die "Could not run $cmd";
 
         
@@ -175,19 +189,19 @@ sub combine_vcfs{
         #so if mpileup had NC_007530.2|668709 . T     G,A
         #it will map to a freebayes with
         #                  NC_007530.2|668709 . T     G
-        $cmd = "$bcftools  isec $f_file $dir/coverage_mpileup.bcf -p $dir -c some -O b";
+        $cmd = "$bcftools  isec $f_file $dir/coverage_mpileup$ext -p $dir -c some $out_type";
         system($cmd) == 0 or die "Could not run $cmd";
 
-	#result from bcftools isec is a directory that contains multiple *.bcf files
-	#ignoring: 0000.bcf is for unique position just for vcf-split aka freebayes (we do not use at all since should be empty because mpileup report ALL positions)
-	#use: 0001.bcf is for unique position only found in mpileup 
-	#use: 0002.bcf is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
+	#result from bcftools isec is a directory that contains multiple *$ext files
+	#ignoring: 0000$ext is for unique position just for vcf-split aka freebayes (we do not use at all since should be empty because mpileup report ALL positions)
+	#use: 0001$ext is for unique position only found in mpileup 
+	#use: 0002$ext is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
 	      #VCF line that is kept is the one from freebayes and NOT mpileup
-	#use: 0003.bcf same as 0002.bcf but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002.bcf)
+	#use: 0003$ext same as 0002$ext but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002$ext)
 
 
         #filter out SNPs that were only found in mpileup but NOT in freebayes
-        $cmd = "$bcftools  filter  -m + -s 'mpileup' -i ' TYPE!=\"snp\" ' $dir/0001.bcf -O b  > $dir/1-0001.bcf";
+        $cmd = "$bcftools  filter  -m + -s 'mpileup' -i ' TYPE!=\"snp\" ' $dir/0001$ext $out_type  > $dir/1-0001$ext";
         
         system($cmd) == 0 or die "Could not run $cmd";
 
@@ -196,16 +210,16 @@ sub combine_vcfs{
 
 
 	#need to get rid of the stupid format information since they cannot be merge later downstream
-	$cmd ="$bcftools  view -h $dir/1-0001.bcf";
+	$cmd ="$bcftools  view -h $dir/1-0001$ext";
         my $result = `$cmd`;
 	if ($result =~ /##FORMAT=\<ID=GL/){
-	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/1-0001.bcf -O b > $dir/filtered_mpileup.bcf";
+	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/1-0001$ext $out_type > $dir/filtered_mpileup$ext";
 	}
         elsif ( $result eq '') {
-            die "Failed to retrieve header of '1-0001.bcf' for strain '$sample'\n";
+            die "Failed to retrieve header of '1-0001$ext' for strain '$sample'\n";
         }
 	else{
-	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/1-0001.bcf -O b > $dir/filtered_mpileup.bcf";
+	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/1-0001$ext $out_type > $dir/filtered_mpileup$ext";
 	}
         system($cmd) == 0 or die "Could not run $cmd";
 
@@ -218,35 +232,35 @@ sub combine_vcfs{
         #if either of them fail, it will be hard clip out.
         #NB that not sure how it handles when have multiple different alternative alleles
         #also hard clipping ones that fail filtering. Do not want to have them appear in the pseudo-positions since they never passed
-        $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/0002.bcf -O b   > $dir/1-0002.bcf && bcftools index $dir/1-0002.bcf";
+        $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/0002$ext $out_type   > $dir/1-0002$ext && bcftools index $dir/1-0002$ext";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
 
-        my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002.bcf","$dir/0003.bcf",$dir,"$dir/filtered_freebayes.bcf");
+        my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002$ext","$dir/0003$ext",$dir,"$dir/filtered_freebayes$ext",$out_type);
 
         if ($mpileup_checked_bcf ) {
             die "Could not corretly format intersection mpileup file\n";
         }
 
 
-	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/filtered_freebayes.bcf -O b > $dir/filtered_freebayes2.bcf";
+	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/filtered_freebayes$ext $out_type > $dir/filtered_freebayes2$ext";
         system($cmd) == 0 or die "Could not run $cmd";
 
         
-        $cmd = "$bcftools index  $dir/filtered_freebayes2.bcf";
+        $cmd = "$bcftools index  $dir/filtered_freebayes2$ext";
         system($cmd) == 0 or die "Could not run $cmd";
 
 
-        $cmd = "$bcftools index  $dir/filtered_mpileup.bcf";
+        $cmd = "$bcftools index  $dir/filtered_mpileup$ext";
         system($cmd) == 0 or die "Could not run $cmd";
 
         #need to have mpileup header otherwise bcftools index has issues
         #reason being is that freebayes does not report ##contig which is needed for bcftools index/query. Issue arise with some edge cases
-        $cmd = "$bcftools merge --print-header  $dir/filtered_mpileup.bcf $dir/filtered_freebayes2.bcf > $dir/header";
+        $cmd = "$bcftools merge --print-header  $dir/filtered_mpileup$ext $dir/filtered_freebayes2$ext > $dir/header";
         system($cmd) == 0 or die "Could not run $cmd";
 
-        $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes2.bcf $dir/filtered_mpileup.bcf > $file_name";
+        $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes2$ext $dir/filtered_mpileup$ext > $file_name";
         system($cmd) == 0 or die "Could not run $cmd";
 
         $cmd = "$bcftools index -f $file_name";
@@ -267,7 +281,7 @@ sub combine_vcfs{
 
 
 sub check_reference {
-    my ($bcftools,$freebayes,$mpileup,$basedir,$output) = @_;
+    my ($bcftools,$freebayes,$mpileup,$basedir,$output,$out_type) = @_;
     my $cmd;
     
         #check to see if we have any records to run again
@@ -320,13 +334,13 @@ sub check_reference {
                     system($cmd) == 0 or die "Could not run $cmd";
                     $cmd = "cat $basedir/newheader $basedir/beer > $basedir/beer2";
                     system($cmd) == 0 or die "Could not run $cmd";
-                    $cmd = "$bcftools view $basedir/beer2 -O b > $mpileup";
+                    $cmd = "$bcftools view $basedir/beer2 $out_type > $mpileup";
                     system($cmd) == 0 or die "Could not run $cmd";
                     $cmd = "$bcftools index -f $mpileup";
                     system($cmd) == 0 or die "Could not run $cmd";
                 }
                 
-                $cmd = "$bcftools  annotate  $freebayes -a $mpileup -O b -c FILTER     > $output";
+                $cmd = "$bcftools  annotate  $freebayes -a $mpileup $out_type -c FILTER     > $output";
                 system($cmd) == 0 or die "Could not run $cmd";
             }
             else {
