@@ -23,38 +23,44 @@ use InvalidPositions;
 use List::MoreUtils qw/all any firstidx/;
 use File::Path qw /rmtree /;
 
-
+__PACKAGE__->run unless caller;
 
 my $verbose;
 
-sub usage
+sub run
 {
-	my ( $man, $help, %vcf_files, %mpileup_files, $coverage_cutoff, $min_mean_mapping, $ao, $requested_cpus, $bcftools );
+	############
+	### MAIN ###
+	############
 
-    GetOptions(
-        "vcfsplit=s"					=> \%vcf_files,
-        "mpileup=s"						=> \%mpileup_files,
-        "coverage-cutoff|c=i"	=> \$coverage_cutoff,
-        "min-mean-mapping=i"	=> \$min_mean_mapping,
-        "ao=s" 								=> \$ao,
-				"numcpus=i"						=> \$requested_cpus,
-				"b|bcftools-path=s"		=> \$bcftools,
-        "h|help"							=> \$help,
-        "m|man"								=> \$man
-    );
-    pod2usage(1) if $help;
-    pod2usage(-verbose => 2) if $man;
+	# maps format name to format file extension
+	my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
+
+
+	my (%vcf_files,%mpileup_files,$coverage_cutoff,$min_mean_mapping,$ao,$requested_cpus,$bcftools) = prepare_inputs(@_);
+
+	#create temp working directory for all combines vcf files
+	#in future make them stay around...
+	my $tmp_dir = tempdir (CLEANUP => 1);
+
+	#combine the mpileup and freebayes vcf files together
+	#in the future, might be taken out to it's own script
+	my $files = combine_vcfs(%vcf_files,%mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping,$ao);
+
+	### Return values here, script ends
+
+	exit;
 }
 
 sub create_mpileup_table
 {
-	my ($vcf_files, $vcf_dir, $mpileup_dir) = @_;
+	my ($vcf_files) = @_;
 	my %mpileup_table;
 
 	for my $vcf_name (keys %$vcf_files)
 	{
 		my $vcf_file = $vcf_files->{$vcf_name};
-		my $mpileup_file = "$mpileup_dir/".basename($vcf_file);
+		my $mpileup_file = "".basename($vcf_file);
 		$mpileup_table{$vcf_name} = $mpileup_file;
 		if (not (-e $mpileup_file))
 		{
@@ -67,29 +73,7 @@ sub create_mpileup_table
 }
 
 
-############
-### MAIN ###
-############
 
-# maps format name to format file extension
-my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
-
-
-my ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,$formats,
-    $refs_info,$invalid_pos,$invalid_total,$reference, $min_mean_mapping, $ao
-) = prepare_inputs();
-
-#create temp working directory for all combines vcf files
-#in future make them stay around...
-my $tmp_dir = tempdir (CLEANUP => 1);
-
-#combine the mpileup and freebayes vcf files together
-#in the future, might be taken out to it's own script
-my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping,$ao);
-
-### Return values here, script ends
-
-exit;
 
 
 sub combine_vcfs{
@@ -333,10 +317,6 @@ sub check_reference {
         die "Could not run bcftools stats on file '$freebayes'\n";
     }
 
-
-
-
-
     return 0;
 }
 
@@ -363,43 +343,38 @@ sub refs_info {
 
 sub prepare_inputs {
 
-    my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff, $min_mean_mapping, $ao);
-    my ($help, $requested_cpus, $invalid,$fasta,$bcftools);
-    my (%vcf_files, %mpileup_files);
+		my ( $man, $help, %vcf_files, %mpileup_files, $coverage_cutoff, $min_mean_mapping, $ao, $requested_cpus, $bcftools );
+
+		if( @_ && $_[0] eq __PACKAGE__ )
+		{
+			GetOptions(
+					"vcfsplit=s"          => \%vcf_files,
+					"mpileup=s"           => \%mpileup_files,
+					"coverage-cutoff|c=i" => \$coverage_cutoff,
+					"min-mean-mapping=i"  => \$min_mean_mapping,
+					"ao=s"                => \$ao,
+					"numcpus=i"           => \$requested_cpus,
+					"b|bcftools-path=s"   => \$bcftools,
+					"h|help"              => \$help,
+					"m|man"               => \$man
+			);
+			pod2usage(1) if $help;
+			pod2usage(-verbose => 2) if $man;
+
+			unless ( (scalar keys %vcf_files != 0 ) ) {
+					print "Unable to find any input vcf files.\n\n";
+					pod2usage(1);
+			}
+		}
+		else
+		{
+				(%vcf_files,%mpileup_files,$coverage_cutoff,$min_mean_mapping,$ao,$requested_cpus,$bcftools) = @_;
+		}
 
 
-
-    if (!GetOptions('vcf-dir|d=s' => \$vcf_dir,
-                    'vcfsplit=s' => \%vcf_files,
-                    'mpileup-dir|b=s' => \$mpileup_dir,
-                    'mpileup=s' => \%mpileup_files,
-                    'format|f=s' => \@formats,
-                    'output-base|o=s' => \$output_base,
-                    'reference|r=s' => \$reference,
-                    'fasta=s' => \$fasta,
-                    'coverage-cutoff|c=i' => \$coverage_cutoff,
-                    'invalid-pos=s' => \$invalid,
-                    'min-mean-mapping=i'=> \$min_mean_mapping,
-                    'ao=s' => \$ao,
-                    'help|h' => \$help,
-                    'numcpus=i' => \$requested_cpus,
-                    'b|bcftools-path=s' => \$bcftools,
-                    'verbose|v' => \$verbose)){
-        die "Invalid option\n".usage;
-    }
-
-    print usage and exit(0) if (defined $help);
-    $verbose = 0 if (not defined $verbose);
-
-    if ( $vcf_dir and $mpileup_dir){
-        die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
-        die "mpileup-dir does not exist\n".usage if (not -e $mpileup_dir);
-    }
-    elsif ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0){
+    if ( scalar keys %vcf_files == 0 or scalar keys %mpileup_files ==0){
         die "Was not able to find any vcf files from freebayes and/or mpileup.";
     }
-
-    die "output-base undefined\n".usage if (not defined $output_base);
 
     if (not defined $bcftools or not -e $bcftools){
 
@@ -410,7 +385,8 @@ sub prepare_inputs {
             $bcftools="bcftools";
         }
         else {
-            die "bcftools-path not defined and not found on the path.\n".usage
+            print "bcftools-path not defined and not found on the path.\n";
+						pod2usage(1);
         }
 
     }
@@ -434,41 +410,15 @@ sub prepare_inputs {
         die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
     }
 
-    if (not defined $reference){
-        print STDERR "reference name not defined, calling it 'reference'\n";
-        $reference = 'reference';
-    }
-
-
-
-    if (defined $invalid){
-        if ( ! -e $invalid){
-            die "Was given an invalid position file but could not locate it '$invalid'\n";
-        }
-    }
-    else{
-        print STDERR "invalid position file not defined, Will ignore step\n";
-    }
-
-
     $requested_cpus = 1 if (not defined $requested_cpus);
-
-    if (@formats <= 0){
-	print STDERR "warning: format not defined, assuming fasta\n";
-	@formats = ("fasta");
-    }
-    else{
-        for my $format (@formats){
-            die "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n" if (not defined $valid_formats{$format});
-        }
-    }
 
     if (not defined $coverage_cutoff){
         print STDERR "warning: coverage-cutoff not set, assuming it is 1\n";
         $coverage_cutoff = 1;
     }
     elsif ($coverage_cutoff !~ /^\d+$/){
-        die "coverage-cutoff=$coverage_cutoff is invalid\n".usage;
+        print "coverage-cutoff=$coverage_cutoff is invalid\n";
+				pod2usage(1);
     }
 
 
@@ -476,57 +426,78 @@ sub prepare_inputs {
     # fill table vcf_files with entries like if only provided the vcf-dir
     #  vcf1 => dir/vcf1.bcf.gz
     #  vcf2 => dir/vcf2.bcf.gz
-    if ( $vcf_dir) {
-        opendir($dh, $vcf_dir) or die "error opening directory $vcf_dir: $!";
-        %vcf_files = map { /^(.*)\.bcf\.gz$/; $1 => "$vcf_dir/$_"} grep { /\.bcf\.gz$/ } readdir($dh);
-        closedir($dh);
-    }
-
-    die "No *.bcf.gz files found in $vcf_dir.  Perhas you need to compress and index with 'tabix' tools\n".
-        "Example: bgzip file.vcf; tabix -p vcf file.bcf.gz" if (keys(%vcf_files) <= 0);
 
     my $total_samples = (keys %vcf_files);
 
 
-    if ( $mpileup_dir){
-        # create table of mpileup files corresponding to input freebayes/variant vcf files
-        # assumes files are named with the same prefix
-        # ex vcf-dir/file1.bcf.gz and mpileup-dir/file1.bcf.gz
-        my $mpileup_table = create_mpileup_table(\%vcf_files, $vcf_dir, $mpileup_dir);
 
-        if (not defined $mpileup_table){
-            die "Error: vcf-dir contains unmatched files in mpileup-dir";
-        }
-        else{
-            %mpileup_files = %{$mpileup_table};
-        }
-
+    if (scalar keys %mpileup_files != scalar keys %vcf_files ){
+        die "Error: vcfsplit contains uneven number compare to mpileup-files";
     }
-    else{
-        if (scalar keys %mpileup_files != scalar keys %vcf_files ){
-            die "Error: vcfsplit contains uneven number compare to mpileup-files";
-        }
-        my $m_name= join ('',sort {$a cmp $b } keys %mpileup_files);
-        my $v_name= join ('',sort {$a cmp $b } keys %vcf_files);
-        if ( $m_name ne $v_name) {
-            die "Error: vcfsplit contains unmatched files to mpileup-files";
-        }
-
-    }
-    if ( not -e $fasta) {
-        die "Error: Was not given reference fasta file\n";
+    my $m_name= join ('',sort {$a cmp $b } keys %mpileup_files);
+    my $v_name= join ('',sort {$a cmp $b } keys %vcf_files);
+    if ( $m_name ne $v_name) {
+        die "Error: vcfsplit contains unmatched files to mpileup-files";
     }
 
-    my $refs_info = refs_info($fasta);
-
-    my ($invalid_pos,$invalid_total);
-
-    if ($invalid){
-        my $invalid_positions_parser = InvalidPositions->new;
-        ($invalid_pos,$invalid_total) = $invalid_positions_parser->read_invalid_positions($invalid);
-    }
-
-
-    return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
-            $refs_info,$invalid_pos,$invalid_total,$reference, $min_mean_mapping, $ao);
+    return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$min_mean_mapping,$ao,$requested_cpus,$bcftools);
 }
+
+
+=pod
+
+=head1 NAME
+
+consolidate_vcfs.pl
+
+=head1 VERSION
+
+This documentation refers to consolidate_vcfs.pl version 0.0.1.
+
+=head1 SYNOPSIS
+
+consolidate_vcfs.pl --vcfsplit [key/value pair file] --mpileup [key/value pair file] --coverage-cutoff [cutoff for coverage go include a reference base] --min-mean-mapping [TODO: something here] --ao [TODO:something here] --requested_cpus [Number of desired CPUs for the job] --bcftools-path [path to bcftools]
+
+=head1 OPTIONS
+
+=over
+
+=item B<--vcfsplit> [REQUIRED]
+
+Multiple list of key/value pair. Multiple .gz files can be input.  Example with 3 gz files: --vcfsplit 'name=/path/vcf1.gz' --vcfsplit 'name=/path/vcf2.gz' --vcfsplit 'name=/path/vcf3.gz'
+
+=item B<--mpileup> [REQUIRED]
+
+Multiple list of key/value pair. Multiple .gz files can be input.  Example with 3 gz files: --mpileup 'name=/path/vcf1.gz' --mpileup 'name=/path/vcf2.gz' --mpileup 'name=/path/vcf3.gz'
+
+=item B<--coverage-cutoff> [REQUIRED]
+
+The cutoff for coverage to include a reference base (default: 1)
+
+=item B<--min-mean-mapping> [REQUIRED]
+
+TODO: Description for min-mean-mapping
+
+=item B<--ao> [REQUIRED]
+
+TODO: Description for ao
+
+=item B<--numcpus> [REQUIRED]
+
+Desired number of CPUs
+
+=item B<--bcftools-path> [REQUIRED]
+
+Path to BCFTools
+
+=item B<-h>, B<--help>
+
+To displays help screen.
+
+=back
+
+=head1 DESCRIPTION
+
+Consolidates a given set of *.vcf files for use by vcf2pseudoalignmnet.
+
+=cut
