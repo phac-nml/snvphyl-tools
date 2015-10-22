@@ -28,7 +28,18 @@ sub run
 {
 	my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = prepare_inputs(@_);
 
-	combine_vcfs($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+	my $resulting_file = combine_vcfs($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+
+	my $result = move($resulting_file,$output);
+
+	if ($result)
+	{
+			print "Results successfully placed in specified Output location!"
+	}
+	else
+	{
+		die "An error occurred; results could not be moved to specified output location!"
+	}
 
 	### Return values here, script ends
 
@@ -53,7 +64,7 @@ sub combine_vcfs{
 
     my $file_name = "$tmp_dir/$mpileup" . "_combined.bcf.gz";
 
-    my ($dir) = "$tmp_dir/$mpileup" . '_answer';
+    my ($dir) = "$temp_dir/isec_dir"
 
     if ( not -d $dir) {
         mkdir $dir;
@@ -161,7 +172,7 @@ sub combine_vcfs{
 
     rmtree $dir;
 
-		move($tmp_dir,$output)
+		return $file_name;
 
 }
 
@@ -262,10 +273,12 @@ sub prepare_inputs {
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;
 
-			unless ( defined $freebayes and (length($freebayes) != 0 ) ) {
+			if(not defined $freebayes or not -e $freebayes)
+			{
 					print "Unable to find any input vcf files.\n\n";
 					pod2usage(1);
 			}
+
 		}
 		else
 		{
@@ -273,13 +286,14 @@ sub prepare_inputs {
 		}
 
 
-    if ( length($freebayes) == 0 or length($mpileup) ==0){
+    if (not defined $freebayes or not defined $mpileup or not -e $freebayes or not -e $mpileup)
+		{
         die "Was not able to find any vcf files from freebayes and/or mpileup.";
     }
 
-		if ( length($output) == 0)
+		if (not defined $output)
 		{
-				die "No output directories specified.";
+				die "No output specified.";
 		}
 
     if (not defined $bcftools or not -e $bcftools){
