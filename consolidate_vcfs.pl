@@ -32,13 +32,9 @@ sub run
 
 	my $result = move($resulting_file,$output);
 
-	if ($result)
+	if (not $result)
 	{
-			print "Results successfully placed in specified Output location!"
-	}
-	else
-	{
-			die "An error occurred; results could not be moved to specified output location!"
+			die "$!"
 	}
 
 	### Return values here, script ends
@@ -51,7 +47,8 @@ sub combine_vcfs{
     my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
 
 		#create temp working directory for combining the VCFs
-		my $tmp_dir = tempdir (CLEANUP => 1);
+		my $template = "convcfs_tests"
+		my $tmp_dir = tempdir ($template, CLEANUP => 1);
 
 
     #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
@@ -273,23 +270,22 @@ sub prepare_inputs {
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;
 
-			if(not defined $freebayes)
-			{
-					print "No freebayes file specified!\n\n";
-					pod2usage(1);
-			}
-			if(not -e $freebayes)
-			{
-					print "Unable to find freebayes file '$freebayes'\n\n";
-					pod2usage(1);
-			}
-
 		}
 		else
 		{
 				($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
 		}
 
+		if(not defined $freebayes)
+		{
+				print "No freebayes file specified!\n\n";
+				pod2usage(1);
+		}
+		if(not -e $freebayes)
+		{
+				print "Unable to find freebayes file '$freebayes'\n\n";
+				pod2usage(1);
+		}
 
     if (not defined $mpileup)
 		{
@@ -308,7 +304,7 @@ sub prepare_inputs {
 				pod2usage(1);
 		}
 
-    if (not defined $bcftools or not -e $bcftools){
+    if (not defined $bcftools){
 
         #check to see if bcftools is on the path
         #normally we always want to be passed the path to the tool but this is for Galaxy implementation
@@ -320,7 +316,6 @@ sub prepare_inputs {
             print "bcftools-path not defined and not found on the path.\n";
 						pod2usage(1);
         }
-
     }
 
     if(not defined $min_mean_mapping){
