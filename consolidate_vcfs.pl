@@ -38,7 +38,7 @@ sub run
 	}
 	else
 	{
-		die "An error occurred; results could not be moved to specified output location!"
+			die "An error occurred; results could not be moved to specified output location!"
 	}
 
 	### Return values here, script ends
@@ -64,7 +64,7 @@ sub combine_vcfs{
 
     my $file_name = "$tmp_dir/$mpileup" . "_combined.bcf.gz";
 
-    my ($dir) = "$temp_dir/isec_dir"
+    my ($dir) = "$tmp_dir/isec_dir";
 
     if ( not -d $dir) {
         mkdir $dir;
@@ -273,9 +273,14 @@ sub prepare_inputs {
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;
 
-			if(not defined $freebayes or not -e $freebayes)
+			if(not defined $freebayes)
 			{
-					print "Unable to find any input vcf files.\n\n";
+					print "No freebayes file specified!\n\n";
+					pod2usage(1);
+			}
+			if(not -e $freebayes)
+			{
+					print "Unable to find freebayes file '$freebayes'\n\n";
 					pod2usage(1);
 			}
 
@@ -286,14 +291,21 @@ sub prepare_inputs {
 		}
 
 
-    if (not defined $freebayes or not defined $mpileup or not -e $freebayes or not -e $mpileup)
+    if (not defined $mpileup)
 		{
-        die "Was not able to find any vcf files from freebayes and/or mpileup.";
+        print "No mpileup file specified!\n\n";
+				pod2usage(1);
     }
+		if (not -e $mpileup)
+		{
+				print "Unable to find mpileup file '$mpileup'\n\n";
+				pod2usage(1);
+		}
 
 		if (not defined $output)
 		{
-				die "No output specified.";
+				print "No output specified.";
+				pod2usage(1);
 		}
 
     if (not defined $bcftools or not -e $bcftools){
