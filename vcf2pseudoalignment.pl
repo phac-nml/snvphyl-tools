@@ -268,9 +268,6 @@ sub combine_vcfs{
         
         rmtree $dir;
         $pm->finish(0,{"$sample" =>$file_name});        
-
-    
-    
     }
     
     $pm->wait_all_children;
@@ -706,7 +703,7 @@ sub print_stats {
 sub prepare_inputs {
 
     my ($vcf_dir, $mpileup_dir, $output_base, @formats, $reference, $coverage_cutoff, $min_mean_mapping, $ao);
-    my ($help, $requested_cpus, $invalid,$fasta,$bcftools);
+    my ($help, $requested_cpus, $invalid,$fasta,$bcftools,$inc_list,$exc_list);
     my (%vcf_files, %mpileup_files);
 
 
@@ -725,13 +722,16 @@ sub prepare_inputs {
                     'ao=s' => \$ao,
                     'help|h' => \$help,
                     'numcpus=i' => \$requested_cpus,
-                    'b|bcftools-path=s' => \$bcftools,     
-                    'verbose|v' => \$verbose)){
+                    'b|bcftools-path=s' => \$bcftools,
+                    'verbose|v' => \$verbose,
+                    'include=s' => \$inc_list,
+                    'exclude=s' => \$exc_list)){
         die "Invalid option\n".usage;
     }
     
     print usage and exit(0) if (defined $help);
     $verbose = 0 if (not defined $verbose);
+
     
     if ( $vcf_dir and $mpileup_dir){
         die "vcf-dir does not exist\n".usage if (not -e $vcf_dir);
@@ -867,8 +867,67 @@ sub prepare_inputs {
         my $invalid_positions_parser = InvalidPositions->new;
         ($invalid_pos,$invalid_total) = $invalid_positions_parser->read_invalid_positions($invalid);
     }
+    if ( $inc_list && $exc_list) {
+        die "Cannot have both an include and exclude list. Only one please\n";
+    }
 
+    #copying reference to current hashes of vcf files
+    my ($vcf_files,$mpileup_files)= (\%vcf_files,\%mpileup_files);
 
-    return (\%vcf_files,\%mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
+    #if we have a including list, then use it
+    if ( $inc_list) {
+        ($vcf_files,$mpileup_files) = strain_selection($inc_list,1,\%vcf_files,\%mpileup_files);
+    }
+
+    #if we have a excluding list, then use it
+    if ( $exc_list) {
+        ($vcf_files,$mpileup_files) = strain_selection($exc_list,0,\%vcf_files,\%mpileup_files);
+    }
+    
+
+    return ($vcf_files,$mpileup_files,$coverage_cutoff,$bcftools,$requested_cpus,$output_base,\@formats,
             $refs_info,$invalid_pos,$invalid_total,$reference, $min_mean_mapping, $ao);
-}    
+}
+
+sub strain_selection {
+    my ($list,$keep,$vcf_files,$mpileup_files)=@_;
+
+    my $vcfs = $vcf_files;
+    my $mpileups = $mpileup_files;
+    my (%tokeep_vcf,%tokeep_mpileup);
+
+    open my $fh, '<',$list || die "Could not open file '$list'\n";
+    while (my $name = <$fh>) {
+        chomp $name;
+
+        #check to see if the name is in the list of keys
+        if ( exists $vcfs->{$name} && exists $mpileups->{$name}) {
+
+            #if we are doing a inclusion list, add it to the new hashes
+            #otherwise just delete from the hash coming in
+            if ( $keep) {
+                $tokeep_vcf{$name} = $vcf_files->{$name};
+                $tokeep_mpileup{$name} = $mpileup_files->{$name};
+            }
+            else {
+                delete $vcfs->{$name};
+                delete $mpileups->{$name};
+            }
+        }
+        else {
+            print STDERR "WARNING: Could not find strain '$name' in list of strains. Ignorning\n";
+        }
+    }
+    close $fh;
+
+    #if we are doing an eclusion list, then move return hashes
+    if (not $keep) {
+        return ($vcfs,$mpileups);
+    }
+    else {
+        return (\%tokeep_vcf,\%tokeep_mpileup);
+    }
+    
+
+}
+
