@@ -1,0 +1,17 @@
+Tests single nucleotide variant and where we are using including list of v1,v2. Ignorning v3
+
+v1 alignments:
+ref atgc
+    aagc
+    aagc
+    aagc
+    aagc
+    * **
+
+v2 alignments:
+ref atgc
+    aagc
+    aagc
+    aagc
+    aagc
+    * **

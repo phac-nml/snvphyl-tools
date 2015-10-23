@@ -1,0 +1,17 @@
+Tests single nucleotide and one non mutation and where user has a typo when attempting to v3. We print to STDERR that we could not find the strain and continue on 
+
+v1 alignments:
+ref atgc
+    aagc
+    aagc
+    aagc
+    aagc
+    * **
+
+v2 alignments:
+ref atgc
+    atgc
+    atgc
+    atgc
+    atgc
+    ****
