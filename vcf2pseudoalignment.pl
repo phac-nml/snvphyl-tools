@@ -920,7 +920,7 @@ sub strain_selection {
     }
     close $fh;
 
-    #if we are doing an eclusion list, then move return hashes
+    #if we are doing an exclusion list, then move return hashes
     if (not $keep) {
         return ($vcfs,$mpileups);
     }
