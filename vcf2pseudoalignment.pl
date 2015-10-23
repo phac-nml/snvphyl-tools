@@ -896,18 +896,24 @@ sub strain_selection {
     my $mpileups = $mpileup_files;
     my (%tokeep_vcf,%tokeep_mpileup);
 
+    #get list of all strains and make it lower case
+    #only need to check one of the two hashes because both should be the same by this point
+    my %strains = map { lc $_ => $_ } keys %{$vcf_files};
+    
+    
     open my $fh, '<',$list || die "Could not open file '$list'\n";
     while (my $name = <$fh>) {
         chomp $name;
+        $name = lc $name; #lc so we can do case insensitive lookup
 
         #check to see if the name is in the list of keys
-        if ( exists $vcfs->{$name} && exists $mpileups->{$name}) {
-
+        if ( exists $strains{$name}) {
             #if we are doing a inclusion list, add it to the new hashes
             #otherwise just delete from the hash coming in
+            my $org_name = $strains{$name};
             if ( $keep) {
-                $tokeep_vcf{$name} = $vcf_files->{$name};
-                $tokeep_mpileup{$name} = $mpileup_files->{$name};
+                $tokeep_vcf{$name} = $vcf_files->{$org_name};
+                $tokeep_mpileup{$name} = $mpileup_files->{$org_name};
             }
             else {
                 delete $vcfs->{$name};
