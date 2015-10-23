@@ -1,4 +1,3 @@
 before_script: "export PATH=/opt/bcftools-1.2:$PATH"
-	
 job1:
   script: "prove"
