@@ -912,12 +912,12 @@ sub strain_selection {
             #otherwise just delete from the hash coming in
             my $org_name = $strains{$name};
             if ( $keep) {
-                $tokeep_vcf{$name} = $vcf_files->{$org_name};
-                $tokeep_mpileup{$name} = $mpileup_files->{$org_name};
+                $tokeep_vcf{$org_name} = $vcf_files->{$org_name};
+                $tokeep_mpileup{$org_name} = $mpileup_files->{$org_name};
             }
             else {
-                delete $vcfs->{$name};
-                delete $mpileups->{$name};
+                delete $vcfs->{$org_name};
+                delete $mpileups->{$org_name};
             }
         }
         else {
