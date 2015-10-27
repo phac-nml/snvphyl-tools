@@ -1,0 +1,4 @@
+before_script: 
+  - "cd bcfplugins/bcftools-1.2/; make; export PATH=`pwd`/:$PATH;export LD_LIBRARY_PATH=`pwd`/htslib-1.2.1:$LD_LIBRARY_PATH;export BCFTOOLS_PLUGINS=`pwd`/plugins:$BCFTOOLS_PLUGINS; cd ../../"
+job1:
+  script: "prove"

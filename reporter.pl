@@ -173,8 +173,7 @@ sub bam_quality_data{
 sub record_filter_stats{
     
     my($json_daisy_chain, $pseudoalign_filepath) = @_;
-    my $file = $script_dir.$pseudoalign_filepath;
-    my $result = `perl $script_dir/filter-stats.pl -i $file`;
+    my $result = `perl $script_dir/filter-stats.pl -i $pseudoalign_filepath`;
     my %filter_stats;
     
     for(split /^/, $result){
@@ -215,8 +214,7 @@ sub record_reference_info{
     
     my ($json_daisy_chain, $reference_file, $sequencer, $source, $plasmid_presence, $genus, $species, $serotype) = @_;
     
-    my $file = $script_dir.'/'.$reference_file;
-    my $ref_stats = `perl $script_dir/ref_stats.pl -i 1000 $file`;
+    my $ref_stats = `perl $script_dir/ref_stats.pl -i 1000 $reference_file`;
             
     my %reference_data;
     $reference_data{'reference'}{'sequencer'} = $sequencer;
@@ -258,7 +256,7 @@ sub record_file_sizes{
     my %size_data;
  
     for(keys %files){
-        my $file = $script_dir.'/'.$files{$_};
+        my $file = $files{$_};
         my $output = `ls -l --block-size=M $file`;
         my $size = (split " ", $output)[4];
         push @fileSizes, $size;
@@ -401,7 +399,7 @@ sub run_plugin{
     
     my $command = $plugin_name;
     
-    for(keys in $script_variables){
+    foreach (keys  %{$script_variables}){
         #add each command line variable to the command string
         $command = $command.' $_ $script_variables{$_} ';
     }

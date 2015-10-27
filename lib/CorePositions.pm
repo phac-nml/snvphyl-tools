@@ -129,7 +129,7 @@ sub _remove_bad_pos
 
         # open bad positions file
 	my $bad_positions_parser = InvalidPositions->new;
-	my $bad_positions = $bad_positions_parser->read_invalid_positions($bad_pos_file);
+	my ($bad_positions,$total_bad_positions) = $bad_positions_parser->read_invalid_positions($bad_pos_file);
 	for my $chrom_pos (keys %$bad_positions)
         {
         	delete $core_pos->{$chrom_pos};
