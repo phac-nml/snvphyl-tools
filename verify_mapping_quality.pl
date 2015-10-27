@@ -16,7 +16,7 @@ __PACKAGE__->run unless caller;
 
 
 sub run {
-    my ( $size, $man, $help, $min_depth, $min_map, %bam_files, $cores );
+    my ( $size, $man, $help, $min_depth, $min_map, %bam_files, $cores ,$output);
 	
     GetOptions(
         "c|cores=i"   => \$cores,
@@ -24,6 +24,7 @@ sub run {
         "s|size=s"    => \$size,
         "min-map=f"	  => \$min_map,
         "min-depth=i" => \$min_depth,
+        'output=s'       => \$output,
         "h|help"      => \$help,
         "m|man"       => \$man
     );
@@ -31,7 +32,7 @@ sub run {
     pod2usage(-verbose => 2) if $man;
 	
     unless ( (scalar keys %bam_files != 0 ) ) {
-        print "Unable to find any input bam files.\n\n";
+        print STDERR "Unable to find any input bam files.\n\n";
         pod2usage(1);
     }
 
@@ -41,11 +42,21 @@ sub run {
     }
 			
     #set default number of cores
-	$cores = 1 if (not defined $cores);
-	#set default minimum percent mapping
-	$min_map=$MIN_MAP if (not defined $min_map);
-	
-	#retrieve all of the bam file locations from the hash
+    $cores = 1 if (not defined $cores);
+    #set default minimum percent mapping
+    $min_map=$MIN_MAP if (not defined $min_map);
+
+    #check to see if we are given a $out , if not we will write to STDOUT
+    my $out_fh;
+    if ( defined $output ) {
+        open( $out_fh, '>', $output );
+    }
+    else {
+        $out_fh = \*STDOUT;
+    }
+    
+    
+    #retrieve all of the bam file locations from the hash
     my @files = values %bam_files;
  
  	#ensure that bam files are properly input on the command line and that each file path exists
@@ -69,17 +80,18 @@ sub run {
 	my @results;
 
 	@results = verify_percent_coverage( \%bam_files, $size, $min_depth, $cores );
-	print "==========Reference Mapping Quality===========\n";
-	print "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
-	print "MINIMUM DEPTH: ".$min_depth."\n";
-	print "MINIMUM MAPPING: ".$min_map."\n";
+	print $out_fh "==========Reference Mapping Quality===========\n";
+	print $out_fh "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
+	print $out_fh "MINIMUM DEPTH: ".$min_depth."\n";
+	print $out_fh "MINIMUM MAPPING: ".$min_map."\n";
 	
     foreach my $result(@results){
     	my @split = split(',', $result);
     	my @double = split('%', $split[1]);
-    	print $split[0]." : ".$split[1]."\n" if $double[0] < $min_map; 
+    	print $out_fh $split[0]." : ".$split[1]."\n" if $double[0] < $min_map; 
     }
-	   	
+
+    return;
 }
 
 #----------------------------------------------------------#
