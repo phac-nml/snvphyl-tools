@@ -19,10 +19,12 @@ use Vcf;
 use File::Temp qw /tempdir/;
 use File::Path qw /rmtree /;
 use File::Copy;
+use File::Basename;
 
 __PACKAGE__->run unless caller;
 
 my $verbose;
+
 
 sub run
 {
@@ -47,8 +49,9 @@ sub combine_vcfs{
     my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
 
 		#create temp working directory for combining the VCFs
-		my $template = "convcfs_tests"
+		my $template = "convcfs_tests-XXXXX";
 		my $tmp_dir = tempdir ($template, CLEANUP => 1);
+		my $script_dir = $FindBin::Bin;
 
 
     #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
@@ -59,15 +62,17 @@ sub combine_vcfs{
 
     my $cmd;
 
-    my $file_name = "$tmp_dir/$mpileup" . "_combined.bcf.gz";
+		my $mpileup_name = basename($mpileup);
 
-    my ($dir) = "$tmp_dir/isec_dir";
+		$mpileup_name =~ s/\..*$//;
+
+    my $file_name = "$tmp_dir/$mpileup_name.bcf.gz";
+
+    my ($dir) = "$script_dir/$tmp_dir/isec_dir";
 
     if ( not -d $dir) {
         mkdir $dir;
     }
-
-
 
     #before running anything else
     #need to run filtered-coverage on original mpileup bcf file
@@ -141,7 +146,7 @@ sub combine_vcfs{
     my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002$ext","$dir/0003$ext",$dir,"$dir/filtered_freebayes$ext",$out_type);
 
     if ($mpileup_checked_bcf ) {
-        die "Could not corretly format intersection mpileup file\n";
+        die "Could not correctly format intersection mpileup file\n";
     }
 
 
@@ -275,6 +280,7 @@ sub prepare_inputs {
 		{
 				($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
 		}
+		print "BLAHBLAHBLAH@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
 
 		if(not defined $freebayes)
 		{

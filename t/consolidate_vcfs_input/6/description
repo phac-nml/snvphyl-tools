@@ -1,0 +1,17 @@
+Tests two SNPs, but with no coverage in a region for v2
+
+v1 alignments:
+ref atgc
+    aagt
+    aagt
+    aagt
+    aagt
+    * * 
+
+v2 alignments:
+ref atgc
+      gc
+      gc
+      gc
+      gc
+      **
