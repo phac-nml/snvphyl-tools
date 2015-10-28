@@ -33,15 +33,6 @@ sub usage
 
 sub compare_files
 {
-	my @problem_strings = (
-	"##bcftools_viewCommand=view -O v",
-	"##bcftools_isecCommand=isec -p",
-	"##bcftools_filterCommand=filter -m + -s mpileup -i",
-	"##bcftools_annotateCommand=annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL -O",
-	"##bcftools_mergeCommand=merge --print-header",
-	"##bcftools_viewCommand=view -h"
-	);
-
 	my ($expected,$actual) = @_;
 
 	my $success = 1;
