@@ -5,10 +5,11 @@ use strict;
 
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
-use Test::More tests => 68;
+use Test::More tests => 204;
 use File::Temp 'tempfile';
 use File::Temp qw /tempdir/;
 use Getopt::Long;
+use List::Compare;
 
 use CompareFiles;
 
@@ -32,6 +33,15 @@ sub usage
 
 sub compare_files
 {
+	my @problem_strings = (
+	"##bcftools_viewCommand=view -O v",
+	"##bcftools_isecCommand=isec -p",
+	"##bcftools_filterCommand=filter -m + -s mpileup -i",
+	"##bcftools_annotateCommand=annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL -O",
+	"##bcftools_mergeCommand=merge --print-header",
+	"##bcftools_viewCommand=view -h"
+	);
+
 	my ($expected,$actual) = @_;
 
 	my $success = 1;
@@ -41,10 +51,33 @@ sub compare_files
             return $success;
         }
 
-	my $result1 = `bcftools view -H $expected`;
-	my $result2 = `bcftools view -H $actual`;
+	my $expected_out = `bcftools view -H $expected`;
+	my $actual_out = `bcftools view -H $actual`;
 
-	is ($result2, $result1, 'Testing bcf body strings without headers.');
+	is ($actual_out, $expected_out, 'Testing bcf body strings without headers.');
+
+	$expected_out = `bcftools view -h $expected`;
+	$actual_out = `bcftools view -h $actual`;
+
+	my @expected_lines = split /\n/, $expected_out;
+	my @actual_lines = split /\n/, $actual_out;
+
+	is (scalar @expected_lines, scalar @actual_lines, 'Testing for equal header lengths.');
+
+	my $lc = List::Compare->new(\@expected_lines, \@actual_lines);
+	my @comparison_result = $lc->get_unique;
+
+	my $pass = 1;
+	foreach my $curr_line (@comparison_result)
+	{
+		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
+		{
+			$pass = 0;
+		}
+	}
+
+	ok ($pass == 1, 'Testing bcf header strings without body.');
+
 }
 
 sub run_command
