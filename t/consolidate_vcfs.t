@@ -5,7 +5,7 @@ use strict;
 
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
-use Test::More tests => 204;
+use Test::More tests => 272;
 use File::Temp 'tempfile';
 use File::Temp qw /tempdir/;
 use Getopt::Long;
@@ -42,28 +42,63 @@ sub compare_files
             return $success;
         }
 
+	### COMPARING BODY STRINGS ###
 	my $expected_out = `bcftools view -H $expected`;
 	my $actual_out = `bcftools view -H $actual`;
-
-	is ($actual_out, $expected_out, 'Testing bcf body strings without headers.');
-
-	$expected_out = `bcftools view -h $expected`;
-	$actual_out = `bcftools view -h $actual`;
 
 	my @expected_lines = split /\n/, $expected_out;
 	my @actual_lines = split /\n/, $actual_out;
 
-	is (scalar @expected_lines, scalar @actual_lines, 'Testing for equal header lengths.');
+	is (scalar @actual_lines, scalar @expected_lines, 'Testing for equal body lengths.');
 
 	my $lc = List::Compare->new(\@expected_lines, \@actual_lines);
-	my @comparison_result = $lc->get_unique;
+	my @comparison_result = $lc->get_symmetric_difference();
 
 	my $pass = 1;
-	foreach my $curr_line (@comparison_result)
+
+	for (my $i = 0; $i <= $#comparison_result; ++$i)
 	{
+		my $curr_line = $comparison_result[$i];
+
+		$pass = 0;
+
+		if ($verbose && ($i % 2 == 0))
+		{
+			my $next_line = $comparison_result[$i + 1];
+			print STDERR "\nMismatch in body: \n'$curr_line'\n!=\n'$next_line'\n\n";
+		}
+	}
+
+	ok ($pass == 1, 'Testing bcf body strings without header.');
+
+
+	### COMPARING HEADER STRINGS ###
+	$expected_out = `bcftools view -h $expected`;
+	$actual_out = `bcftools view -h $actual`;
+
+	@expected_lines = split /\n/, $expected_out;
+	@actual_lines = split /\n/, $actual_out;
+
+	is (scalar @expected_lines, scalar @actual_lines, 'Testing for equal header lengths.');
+
+	$lc = List::Compare->new(\@expected_lines, \@actual_lines);
+	@comparison_result = $lc->get_symmetric_difference();
+
+	$pass = 1;
+
+	for (my $i = 0; $i <= $#comparison_result; ++$i)
+	{
+		my $curr_line = $comparison_result[$i];
+
 		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
 		{
 			$pass = 0;
+
+			if ($verbose && ($i % 2 == 0))
+			{
+				my $next_line = $comparison_result[$i + 1];
+				print STDERR "\nMismatch in headers: \n'$curr_line'\n!=\n'$next_line'\n\n";
+			}
 		}
 	}
 
@@ -86,9 +121,8 @@ sub run_command
 		$command .= " 2>&1 1>/dev/null";
 	}
 
-	#my $command2="$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
 	print "## Running $command\n\n";
-	#pass("filter_freebayes accepts a double for --ao param") if(system($command2) == 0);
+
 	system($command) == 0 or die "Could not run command $command: $!";
 }
 
@@ -112,7 +146,7 @@ sub test_header
 
 	print "\n########################################\n";
 	print "### Testing $message ###\n";
-	print "########################################\n\n";
+	print "########################################\n";
 }
 
 
@@ -142,7 +176,7 @@ opendir(my $in_h,$input_dir) or die "Could not open $input_dir: $!";
 my @in_files = sort grep {$_ !~ /^\./} readdir($in_h);
 closedir($in_h);
 
-print "Testing all input variants in $input_dir\n";
+print "Testing all input variants in $input_dir\n\n";
 for my $dir (@in_files)
 {
 	my $curr_input = "$input_dir/$dir";
@@ -161,7 +195,7 @@ for my $dir (@in_files)
 	test_header($curr_input);
 	foreach my $curr_freebayes (keys %freebayes_files)
 	{
-		print "### Testing with $curr_freebayes.bcf.gz ###\n";
+		print "\n\n### Testing with $curr_freebayes.bcf.gz ###\n";
 		if (exists $mpileup_files{$curr_freebayes})
 		{
 			my $freebayes = "$freebayes_dir/$curr_freebayes.bcf.gz";
@@ -187,19 +221,9 @@ for my $dir (@in_files)
 
 	}
 
-
-
-
-
-
-	#print "### Description ###\n";
-	#print "$description\n";
-
 	my $done_testing = 0;
 
-	#print "### done ###\n";
-
-
+	print "### done ###\n";
 }
 
 done_testing();
