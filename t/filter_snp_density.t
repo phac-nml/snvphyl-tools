@@ -10,7 +10,6 @@ use File::Temp qw(tempdir);
 
 my $script_dir = $FindBin::Bin;
 my $density_dir = "$script_dir/snp_density";
-my $regions_output = "$density_dir/density_regions.tsv";
 my ($command);
 #=============================================================================
 #UNIT TESTS
