@@ -268,7 +268,8 @@ sub prepare_inputs {
 					"b|bcftools-path=s"   => \$bcftools,
           "o|output=s"          => \$output,
 					"h|help"              => \$help,
-					"m|man"               => \$man
+					"m|man"               => \$man,
+					"v|verbose"           => \$verbose
 			);
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;
@@ -278,6 +279,8 @@ sub prepare_inputs {
 		{
 				($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
 		}
+
+		$verbose = 0 if (not defined $verbose);
 
 		if(not defined $freebayes)
 		{
