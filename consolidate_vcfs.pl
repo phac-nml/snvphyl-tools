@@ -50,9 +50,7 @@ sub combine_vcfs{
 
 		#create temp working directory for combining the VCFs
 		my $template = "convcfs_tests-XXXXX";
-		my $tmp_dir = tempdir ($template, CLEANUP => 1);
-		my $script_dir = $FindBin::Bin;
-
+		my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
 
     #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
     #we need to switch to using vcf. Hence, will add ability to toggle between the two formats with a single commmenting one line
@@ -68,7 +66,7 @@ sub combine_vcfs{
 
     my $file_name = "$tmp_dir/$mpileup_name.bcf.gz";
 
-    my ($dir) = "$script_dir/$tmp_dir/isec_dir";
+    my ($dir) = "$tmp_dir/isec_dir";
 
     if ( not -d $dir) {
         mkdir $dir;
