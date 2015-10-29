@@ -340,7 +340,8 @@ sub prepare_inputs {
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
     my $usage_state = `$bcftools 2>&1 1>/dev/null`;
     if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
-        die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+        print STDERR "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+				pod2usage(1);
     }
 
     if (not defined $coverage_cutoff){
