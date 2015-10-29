@@ -90,10 +90,16 @@ sub compare_files
 	{
 		my $curr_line = $comparison_result[$i];
 
+		# A limitation of this implementation is that if we get mismatched command type and command, it
+		# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
 		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
 		{
 			$pass = 0;
 
+			# Since @comparison_result is going to be a list of pairs of differences, since we want to
+			# compare the first of the pair with the second of the pair in the output, we need to make sure
+			# that obj 1 is in the same pair as obj 2. We use the parity of the index to determine whether or not
+			# we are in a position to compare i and i + 1.
 			if ($verbose && ($i % 2 == 0))
 			{
 				my $next_line = $comparison_result[$i + 1];
@@ -220,8 +226,6 @@ for my $dir (@in_files)
 		}
 
 	}
-
-	my $done_testing = 0;
 
 	print "### done ###\n";
 }
