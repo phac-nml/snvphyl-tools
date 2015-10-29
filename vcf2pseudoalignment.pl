@@ -32,7 +32,7 @@ sub run
 	my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 
-	my (%consolidate_vcf,$bcftools,$requested_cpus,$output_base,@formats,$refs_info,$invalid_pos,$invalid_total,$reference) = prepare_inputs(@_);
+	my ($consolidate_vcf,$bcftools,$requested_cpus,$output_base,@formats,$refs_info,$invalid_pos,$invalid_total,$reference) = prepare_inputs(@_);
 
 	#create temp working directory for all combines vcf files
 	#in future make them stay around...
@@ -42,7 +42,7 @@ sub run
 
 
 	#create pseudo-positions.tsv file
-	my $stats = filter_positions(%consolidate_vcf,$refs_info,$invalid_pos,$valid_positions,$bcftools,$requested_cpus);
+	my $stats = filter_positions($consolidate_vcf,$refs_info,$invalid_pos,$valid_positions,$bcftools,$requested_cpus);
 
 	#create pseudo-stats.csv file
 	print_stats($stats,$invalid_total,$output_base . '-stats.csv');
@@ -62,7 +62,7 @@ sub run
 }
 
 sub filter_positions {
-    my (%consolidate_vcf,$refs,$invalid_pos,$valid_positions,$bcftools,$cpus) = @_;
+    my ($consolidate_vcf,$refs,$invalid_pos,$valid_positions,$bcftools,$cpus) = @_;
 
     my %results;
     my $pm;
@@ -105,7 +105,7 @@ sub filter_positions {
     #print header file
     open my $out, '>', "$tmp_dir/$job_id";
     print $out "#Chromosome\tPosition\tStatus\tReference\t";
-    my @samples_list = sort {$a cmp $b } keys %consolidate_vcf;
+    my @samples_list = sort {$a cmp $b } keys %{$consolidate_vcf};
     print $out join("\t",@samples_list);
     print $out "\n";
     close $out;
@@ -145,7 +145,7 @@ sub filter_positions {
             my $f_name = "$tmp_dir/$job_id";
             open my $out, '>',$f_name;
 
-            my $streamers = Streaming::create_streamers(%consolidate_vcf,$range,$job_id,$bcftools);
+            my $streamers = Streaming::create_streamers($consolidate_vcf,$range,$job_id,$bcftools);
             my $cur_pos = $start;
 
             my @data = $streamers->($chrom,$cur_pos);
@@ -432,12 +432,12 @@ sub prepare_inputs {
 		}
 		else
 		{
-			(%consolidate_vcf,$bcftools,$output_base,$formats,$refs_info,$invalid_pos,$invalid_total,$reference) = @_;
+			($consolidate_vcf,$bcftools,$output_base,$formats,$refs_info,$invalid_pos,$invalid_total,$reference) = @_;
 		}
 
     $verbose = 0 if (not defined $verbose);
 
-    if ( scalar keys %consolidate_vcf == 0){
+    if ( scalar keys %$consolidate_vcf == 0){
         print STDERR "Was not able to find any vcf files from consolidate_vcf.";
 				pod2usage(1);
     }
@@ -496,7 +496,7 @@ sub prepare_inputs {
         }
     }
 
-    my $total_samples = (keys %consolidate_vcf);
+    my $total_samples = (keys %$consolidate_vcf);
 
     if ( not -e $fasta) {
         die "Error: Was not given reference fasta file\n";
@@ -512,7 +512,7 @@ sub prepare_inputs {
     }
 
 
-    return (\%consolidate_vcf,$bcftools,$requested_cpus,$output_base,\@formats,
+    return ($consolidate_vcf,$bcftools,$requested_cpus,$output_base,\@formats,
             $refs_info,$invalid_pos,$invalid_total,$reference);
 }
 
