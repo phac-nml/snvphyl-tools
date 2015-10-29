@@ -280,7 +280,6 @@ sub prepare_inputs {
 		{
 				($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
 		}
-		print "BLAHBLAHBLAH@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
 
 		if(not defined $freebayes)
 		{
