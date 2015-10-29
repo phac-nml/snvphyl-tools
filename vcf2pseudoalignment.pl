@@ -22,7 +22,7 @@ use InvalidPositions;
 use List::MoreUtils qw/all any firstidx/;
 use File::Path qw /rmtree /;
 
-
+__PACKAGE__->run unless caller;
 
 my $verbose;
 
@@ -515,3 +515,5 @@ sub prepare_inputs {
     return (\%consolidate_vcf,$bcftools,$requested_cpus,$output_base,\@formats,
             $refs_info,$invalid_pos,$invalid_total,$reference);
 }
+
+1;
