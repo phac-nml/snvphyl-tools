@@ -49,7 +49,7 @@ sub combine_vcfs{
     my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
 
 		#create temp working directory for combining the VCFs
-		my $template = "convcfs_tests-XXXXX";
+		my $template = "consolidate_vcfs-XXXXXX";
 		my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
 
     #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
@@ -281,29 +281,29 @@ sub prepare_inputs {
 
 		if(not defined $freebayes)
 		{
-				print "No freebayes file specified!\n\n";
+				print STDERR "No freebayes file specified!\n\n";
 				pod2usage(1);
 		}
 		if(not -e $freebayes)
 		{
-				print "Unable to find freebayes file '$freebayes'\n\n";
+				print STDERR "Unable to find freebayes file '$freebayes'\n\n";
 				pod2usage(1);
 		}
 
     if (not defined $mpileup)
 		{
-        print "No mpileup file specified!\n\n";
+        print STDERR "No mpileup file specified!\n\n";
 				pod2usage(1);
     }
 		if (not -e $mpileup)
 		{
-				print "Unable to find mpileup file '$mpileup'\n\n";
+				print STDERR "Unable to find mpileup file '$mpileup'\n\n";
 				pod2usage(1);
 		}
 
 		if (not defined $output)
 		{
-				print "No output specified.";
+				print STDERR "No output specified.";
 				pod2usage(1);
 		}
 
@@ -316,7 +316,7 @@ sub prepare_inputs {
             $bcftools="bcftools";
         }
         else {
-            print "bcftools-path not defined and not found on the path.\n";
+            print STDERR "bcftools-path not defined and not found on the path.\n";
 						pod2usage(1);
         }
     }
@@ -345,7 +345,7 @@ sub prepare_inputs {
         $coverage_cutoff = 1;
     }
     elsif ($coverage_cutoff !~ /^\d+$/){
-        print "coverage-cutoff=$coverage_cutoff is invalid\n";
+        print STDERR "coverage-cutoff=$coverage_cutoff is invalid\n";
 				pod2usage(1);
     }
 
