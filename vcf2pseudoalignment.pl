@@ -465,7 +465,8 @@ sub prepare_inputs {
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
 		my $usage_state = `$bcftools 2>&1 1>/dev/null`;
     if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
-        die "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+        print STDERR "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
+				pod2usage(1);
     }
 
     if (not defined $reference){
@@ -480,7 +481,7 @@ sub prepare_inputs {
         }
     }
     else{
-        print STDERR "invalid position file not defined, Will ignore step\n";
+        print "invalid position file not defined, Will ignore step\n";
     }
 
 		$requested_cpus = 1 if (not defined $requested_cpus);
@@ -499,7 +500,8 @@ sub prepare_inputs {
     my $total_samples = (keys %$consolidate_vcf);
 
     if ( not -e $fasta) {
-        die "Error: Was not given reference fasta file\n";
+        print STDERR "Error: Was not given reference fasta file\n";
+				pod2usage(1);
     }
 
     my $refs_info = refs_info($fasta);
