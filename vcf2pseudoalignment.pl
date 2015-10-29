@@ -84,7 +84,7 @@ my $tmp_dir = tempdir (CLEANUP => 1);
     
 #combine the mpileup and freebayes vcf files together
 #in the future, might be taken out to it's own script
-my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping,$ao, $density_threhsold);
+my $files = combine_vcfs($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$requested_cpus,$min_mean_mapping,$ao);
 
 
 my $valid_positions = $output_base . "-positions.tsv";
@@ -111,10 +111,8 @@ for my $format (@{$formats})
 
 exit;
 
-
 sub combine_vcfs{
-
-    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping,$ao,$density_threshold) = @_;
+    my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping,$ao) = @_;
 
     my %files;
 
@@ -720,7 +718,6 @@ sub prepare_inputs {
                     'reference|r=s' => \$reference,
                     'fasta=s' => \$fasta,
                     'coverage-cutoff|c=i' => \$coverage_cutoff,
-                    'density-threshold|d=i' => \$density_threshold,
                     'invalid-pos=s' => \$invalid,
                     'min-mean-mapping=i'=> \$min_mean_mapping,
                     'ao=s' => \$ao,
