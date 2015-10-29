@@ -39,7 +39,6 @@ sub usage
 	"\t-r|--reference:  The name of the reference to use in the alignment (default: reference)\n".
 	"\t-f|--format:  The format to output the alignment to, one of the Bio::AlignIO supported formats (default: fasta)\n".
 	"\t-c|--coverage-cutoff:  The cutoff for coverage to include a reference base (default: 1)\n".
-	"\t-d|--density-threhsold: The cutoff in bp's defining dense vs non-dense SNP spacing".
 	"\t--invalid-pos: A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\\tEND_POS\\n".
 	"\t--verbose:  More information printed\n".
 	"\t-h|--help:  Help\n";
@@ -258,7 +257,6 @@ sub combine_vcfs{
         #need to have mpileup header otherwise bcftools index has issues
         #reason being is that freebayes does not report ##contig which is needed for bcftools index/query. Issue arise with some edge cases
         $cmd = "$bcftools merge --print-header  $dir/filtered_mpileup$ext $dir/filtered_freebayes2$ext > $dir/header";
-
         system($cmd) == 0 or die "Could not run $cmd";
 
         $cmd = "$bcftools  merge -O b --use-header $dir/header $dir/filtered_freebayes2$ext $dir/filtered_mpileup$ext > $file_name";
