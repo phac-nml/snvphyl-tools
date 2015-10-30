@@ -104,7 +104,7 @@ sub run_command
 		}
 	}
 
-	my $vcf_cmd = "--consolidate_vcf" . join (" --consolidate_vcf" , map { " $_=" . %vcf_files->{$_} } keys %vcf_files);
+	my $vcf_cmd = "--consolidate_vcf" . join (" --consolidate_vcf" , map { " $_=" . $vcf_files{$_} } keys %vcf_files);
 
 
 	my $command = "$vcf_align_bin $vcf_cmd --reference $reference $format --output-base $actual_out_base $extra_params";
