@@ -103,7 +103,9 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
 bcf1_t *process(bcf1_t *hts){
 
    if(bcf_read(htsAhead, htsAheadHdr, bcf_ahead) == -1){
-      printf("Unable to read look ahead bcf record for analysis OR we have reached the end of the bcf file.\n");
+      if(eof){
+         printf("Unable to read look ahead bcf record for analysis.\n");
+      }
       eof = 1;    	   
    }
       
