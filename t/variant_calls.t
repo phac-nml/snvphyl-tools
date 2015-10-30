@@ -29,7 +29,6 @@ sub usage
 	"\t-v|--verbose\n";
 }
 
-
 sub compare_files
 {
 	my ($expected_out_file,$actual_out_file) = @_;
