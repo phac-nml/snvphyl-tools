@@ -14,7 +14,7 @@ const char *usage(void);
 int mark_density_snp(bcf1_t *bcf_current, bcf_hdr_t *header, int flag_density);
 int check_density(bcf1_t *current, bcf1_t *next, int density_threshold);
 bcf1_t *process(bcf1_t *rec);
-void print_density_region(int start, int end, int chromosome);
+void print_density_region(int start, int end, const char *chromosome);
 void destroy(void);
 
 //define the script variables
@@ -151,7 +151,7 @@ int check_density(bcf1_t *current, bcf1_t *next, int density_threshold){
     if(in_density_region){
         density_end_position = current_position;
         //print the newly discovered density region to a tab seperated file:
-        print_density_region(density_start_position, density_end_position, current->rid);
+        print_density_region(density_start_position, density_end_position, in_hdr->id[BCF_DT_CTG][current->rid].key);
         //if we have come to the end of a density region, we still must ensure the last snv
         //in the region is marked as filtered-density.
         in_density_region = 0;
@@ -167,13 +167,13 @@ int check_density(bcf1_t *current, bcf1_t *next, int density_threshold){
 * @end The end position of the high density region
 * @chromosome The name of the chromosome containing the region
 */
-void print_density_region(int start, int end, int chromosome){
+void print_density_region(int start, int end, const char *chromosome){
    //we need to add 1 position as the output appears to start counting from 0, but this
    //will create an off by one error in the tab seperated regions file.
    start = start +1;
    end = end +1;
    regionsFile = fopen(regionFilepath, "a");
-   fprintf(regionsFile, "%d\t%d\t%d\n", chromosome, start, end);
+   fprintf(regionsFile, "%s\t%d\t%d\n", chromosome, start, end);
    fclose(regionsFile);
 }
 
