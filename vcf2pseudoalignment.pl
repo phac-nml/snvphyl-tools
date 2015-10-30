@@ -408,6 +408,7 @@ sub prepare_inputs {
 
     my (%consolidate_vcf, @formats, $output_base, $reference, $fasta, $invalid, $requested_cpus, $bcftools);
 		my ($refs_info, $invalid_pos, $invalid_total, $help, $verbose);
+		my ($consolidate_vcf,$formats);
 
 
     if( @_ && $_[0] eq __PACKAGE__ )
@@ -429,7 +430,7 @@ sub prepare_inputs {
 		}
 		else
 		{
-			my ($consolidate_vcf,$formats,$output_base,$reference,$fasta,$invalid,$requested_cpus,$bcftools) = @_;
+			($consolidate_vcf,$formats,$output_base,$reference,$fasta,$invalid,$requested_cpus,$bcftools) = @_;
 		}
 
     $verbose = 0 if (not defined $verbose);
@@ -520,10 +521,6 @@ sub prepare_inputs {
 
 vcf2pseudoalignment.pl
 
-=head1 VERSION
-
-This documentation refers to vcf2pseudoalignment.pl version 0.0.1.
-
 =head1 SYNOPSIS
 
 vcf2pseudoalignment.pl --consolidate_vcf [hash containing combined files] --format [output format] --output-base [the output base name] --reference [reference file] --fasta [fasta file] --invalid-pos [invalid positions TSV file] --numcpus [number of requested CPUs for the job] --bcftools-path [path to bcftools]
@@ -536,7 +533,7 @@ vcf2pseudoalignment.pl --consolidate_vcf [hash containing combined files] --form
 
 Hash containing combined vcf files from consolidate_vcfs.
 
-=item B<--format> [REQUIRED]
+=item B<--format> [OPTIONAL]
 
 The format to output the alignment to, one of the Bio::AlignIO supported formats (default: fasta).
 
@@ -544,7 +541,7 @@ The format to output the alignment to, one of the Bio::AlignIO supported formats
 
 The output base name for the alignment file(s).
 
-=item B<--reference> [REQUIRED]
+=item B<--reference> [OPTIONAL]
 
 The name of the reference to use in the alignment (default: reference).
 
@@ -552,7 +549,7 @@ The name of the reference to use in the alignment (default: reference).
 
 Fasta file.
 
-=item B<--invalid-pos> [REQUIRED]
+=item B<--invalid-pos> [OPTIONAL]
 
 A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\\tEND_POS\\n".
 
@@ -560,7 +557,7 @@ A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\
 
 Desired number of CPUs for the job.
 
-=item B<--bcftools-path> [REQUIRED]
+=item B<--bcftools-path> [OPTIONAL]
 
 Path to BCFTools.
 
