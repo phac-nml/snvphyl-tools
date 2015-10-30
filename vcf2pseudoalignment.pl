@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
-# vcf2pseudoalignmnet
-# Purpose:  Given a set of *.vcf files, examines all called SNPs and generates a 'pseudoalignment'
+# vcf2pseudoalignment
+# Purpose:  Given a set of combined freebayes and mpileup files, examines all called SNPs and generates a 'pseudoalignment'
 #  of all the high quality SNPs/base calls (to be used for further phylogenetic analysis).
 
 use warnings;
@@ -8,6 +8,7 @@ use strict;
 use FindBin;
 use lib $FindBin::Bin.'/lib';
 use lib $FindBin::Bin;
+use Pod::Usage;
 use Getopt::Long;
 use File::Basename;
 use Parallel::ForkManager;
@@ -25,14 +26,13 @@ use File::Path qw /rmtree /;
 __PACKAGE__->run unless caller;
 
 my $verbose;
+my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 sub run
 {
 	# maps format name to format file extension
-	my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
-
-	my ($consolidate_vcf,$bcftools,$requested_cpus,$output_base,@formats,$refs_info,$invalid_pos,$invalid_total,$reference) = prepare_inputs(@_);
+	my ($consolidate_vcf,$formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info) = prepare_inputs(@_);
 
 	#create temp working directory for all combines vcf files
 	#in future make them stay around...
@@ -406,8 +406,9 @@ sub print_stats {
 
 sub prepare_inputs {
 
-    my (%consolidate_vcf, $output_base, @formats, $reference, $coverage_cutoff, $min_mean_mapping, $ao);
-    my ($help, $invalid, $fasta, $bcftools);
+    my (%consolidate_vcf, @formats, $output_base, $reference, $fasta, $invalid, $requested_cpus, $bcftools);
+		my ($refs_info, $invalid_pos, $invalid_total, $help, $verbose);
+
 
     if( @_ && $_[0] eq __PACKAGE__ )
 		{
@@ -417,28 +418,24 @@ sub prepare_inputs {
 					 'output-base|o=s'       => \$output_base,
 					 'reference|r=s'         => \$reference,
 					 'fasta=s'               => \$fasta,
-					 'coverage-cutoff|c=i'   => \$coverage_cutoff,
 					 'invalid-pos=s'         => \$invalid,
-					 'min-mean-mapping=i'    => \$min_mean_mapping,
-					 'ao=s'                  => \$ao,
-					 'help|h'                => \$help,
 					 'numcpus=i'             => \$requested_cpus,
 					 'b|bcftools-path=s'     => \$bcftools,
+					 'help|h'                => \$help,
 					 'verbose|v'             => \$verbose
 			);
 			pod2usage(1) if $help;
-			pod2usage(-verbose => 2) if $man;
 
 		}
 		else
 		{
-			($consolidate_vcf,$bcftools,$output_base,$formats,$refs_info,$invalid_pos,$invalid_total,$reference) = @_;
+			my ($consolidate_vcf,$formats,$output_base,$reference,$fasta,$invalid,$requested_cpus,$bcftools) = @_;
 		}
 
     $verbose = 0 if (not defined $verbose);
 
-    if ( scalar keys %$consolidate_vcf == 0){
-        print STDERR "Was not able to find any vcf files from consolidate_vcf.";
+    if ( scalar keys %consolidate_vcf == 0){
+        print STDERR "Was not able to find any vcf files from consolidate_vcf.\n\n";
 				pod2usage(1);
     }
 
@@ -497,25 +494,84 @@ sub prepare_inputs {
         }
     }
 
-    my $total_samples = (keys %$consolidate_vcf);
+    my $total_samples = (keys %consolidate_vcf);
 
     if ( not -e $fasta) {
         print STDERR "Error: Was not given reference fasta file\n";
 				pod2usage(1);
     }
 
-    my $refs_info = refs_info($fasta);
+  	$refs_info = refs_info($fasta);
 
-    my ($invalid_pos,$invalid_total);
 
     if ($invalid){
         my $invalid_positions_parser = InvalidPositions->new;
         ($invalid_pos,$invalid_total) = $invalid_positions_parser->read_invalid_positions($invalid);
     }
 
-
-    return ($consolidate_vcf,$bcftools,$requested_cpus,$output_base,\@formats,
-            $refs_info,$invalid_pos,$invalid_total,$reference);
+    return (\%consolidate_vcf,\@formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info);
 }
 
 1;
+
+=pod
+
+=head1 NAME
+
+vcf2pseudoalignment.pl
+
+=head1 VERSION
+
+This documentation refers to vcf2pseudoalignment.pl version 0.0.1.
+
+=head1 SYNOPSIS
+
+vcf2pseudoalignment.pl --consolidate_vcf [hash containing combined files] --format [output format] --output-base [the output base name] --reference [reference file] --fasta [fasta file] --invalid-pos [invalid positions TSV file] --numcpus [number of requested CPUs for the job] --bcftools-path [path to bcftools]
+
+=head1 OPTIONS
+
+=over
+
+=item B<--consolidate_vcf> [REQUIRED]
+
+Hash containing combined vcf files from consolidate_vcfs.
+
+=item B<--format> [REQUIRED]
+
+The format to output the alignment to, one of the Bio::AlignIO supported formats (default: fasta).
+
+=item B<--output-base> [REQUIRED]
+
+The output base name for the alignment file(s).
+
+=item B<--reference> [REQUIRED]
+
+The name of the reference to use in the alignment (default: reference).
+
+=item B<--fasta> [REQUIRED]
+
+Fasta file.
+
+=item B<--invalid-pos> [REQUIRED]
+
+A TSV file that contains a list of range(s) (one per line) of CHROM\\tSTART_POS\\tEND_POS\\n".
+
+=item B<--numcpus> [REQUIRED]
+
+Desired number of CPUs for the job.
+
+=item B<--bcftools-path> [REQUIRED]
+
+Path to BCFTools.
+
+=item B<-h>, B<--help>
+
+Displays the help screen.
+
+=back
+
+=head1 DESCRIPTION
+
+Given a hash of consolidated vcfs, examines all called SNPs and generates a 'pseudoalignment' of all the high quality SNPs/base calls (to be used for further phylogenetic analysis).
+
+=cut

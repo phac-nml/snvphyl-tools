@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
-# vcf2pseudoalignmnet
-# Purpose:  Given a set of *.vcf files, examines all called SNPs and generates a 'pseudoalignment'
-#  of all the high quality SNPs/base calls (to be used for further phylogenetic analysis).
+# consolidate_vcfs
+# Purpose:  Given a pair of *.vcf files, consolidates them into one file.
 
 use warnings;
 use strict;
@@ -10,10 +9,6 @@ use lib $FindBin::Bin.'/lib';
 use lib $FindBin::Bin;
 use Pod::Usage;
 use Getopt::Long;
-use Parallel::ForkManager;
-use Bio::AlignIO;
-use Bio::SeqIO;
-use Bio::SimpleAlign;
 # VCF module from vcftools: http://vcftools.sourceforge.net/index.html
 use Vcf;
 use File::Temp qw /tempdir/;
@@ -377,40 +372,40 @@ consolidate_vcfs.pl --vcfsplit [key/value pair file] --mpileup [key/value pair f
 
 =item B<--vcfsplit> [REQUIRED]
 
-Multiple list of key/value pair. Multiple .gz files can be input.  Example with 3 gz files: --vcfsplit 'name=/path/vcf1.gz' --vcfsplit 'name=/path/vcf2.gz' --vcfsplit 'name=/path/vcf3.gz'
+Multiple list of key/value pair. Multiple .gz files can be input.  Example with 3 gz files: --vcfsplit 'name=/path/vcf1.gz' --vcfsplit 'name=/path/vcf2.gz' --vcfsplit 'name=/path/vcf3.gz'.
 
 =item B<--mpileup> [REQUIRED]
 
-Multiple list of key/value pair. Multiple .gz files can be input.  Example with 3 gz files: --mpileup 'name=/path/vcf1.gz' --mpileup 'name=/path/vcf2.gz' --mpileup 'name=/path/vcf3.gz'
+Multiple list of key/value pair. Multiple .gz files can be input.  Example with 3 gz files: --mpileup 'name=/path/vcf1.gz' --mpileup 'name=/path/vcf2.gz' --mpileup 'name=/path/vcf3.gz'.
 
 =item B<--coverage-cutoff> [REQUIRED]
 
-The cutoff for coverage to include a reference base (default: 1)
+The cutoff for coverage to include a reference base (default: 1).
 
 =item B<--min-mean-mapping> [REQUIRED]
 
-TODO: Description for min-mean-mapping
+TODO: Description for min-mean-mapping.
 
 =item B<--ao> [REQUIRED]
 
-TODO: Description for ao
+TODO: Description for ao.
 
 =item B<--numcpus> [REQUIRED]
 
-Desired number of CPUs
+Desired number of CPUs for the job.
 
 =item B<--bcftools-path> [REQUIRED]
 
-Path to BCFTools
+Path to BCFTools.
 
 =item B<-h>, B<--help>
 
-To displays help screen.
+Displays the help screen.
 
 =back
 
 =head1 DESCRIPTION
 
-Consolidates a given set of *.vcf files for use by vcf2pseudoalignmnet.
+Consolidates a given set of *.vcf files for use by vcf2pseudoalignment.
 
 =cut
