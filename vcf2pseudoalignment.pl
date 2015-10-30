@@ -26,10 +26,10 @@ use File::Path qw /rmtree /;
 __PACKAGE__->run unless caller;
 
 my $verbose;
-my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
 sub run
 {
+	my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 	# maps format name to format file extension
 
 	my ($consolidate_vcf,$formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info) = prepare_inputs(@_);
@@ -405,6 +405,7 @@ sub print_stats {
 
 
 sub prepare_inputs {
+		my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
     my (%consolidate_vcf, @formats, $output_base, $reference, $fasta, $invalid, $requested_cpus, $bcftools);
 		my ($refs_info, $invalid_pos, $invalid_total, $help, $verbose);
@@ -488,10 +489,14 @@ sub prepare_inputs {
 			print STDERR "warning: format not defined, assuming fasta\n";
 			@formats = ("fasta");
     }
+
     else{
         for my $format (@formats){
-            print STDERR "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n" if (not defined $valid_formats{$format});
-						pod2usage(1);
+						if(not defined $valid_formats{$format})
+						{
+							print STDERR "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n";
+							pod2usage(1);
+						}
         }
     }
 

@@ -78,7 +78,9 @@ sub compare_files
 
 sub run_command
 {
-	my (%vcf_files,$reference,$formats, $extra_params) = @_;
+	my ($vcf_hash, $reference, $formats, $extra_params) = @_;
+
+	my %vcf_files = %$vcf_hash;
 
 	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 	close($fh);
@@ -101,7 +103,11 @@ sub run_command
 			die "Invalid format $f for testing";
 		}
 	}
-	my $command = "$vcf_align_bin --consolidate_vcf %vcf_files --reference $reference $format --output-base $actual_out_base $extra_params";
+
+	my $vcf_cmd = "--consolidate_vcf" . join (" --consolidate_vcf" , map { " $_=" . %vcf_files->{$_} } keys %vcf_files);
+
+
+	my $command = "$vcf_align_bin $vcf_cmd --reference $reference $format --output-base $actual_out_base $extra_params";
 
 
 	if ($verbose)
@@ -188,6 +194,8 @@ for my $dir (@in_files)
 	my $vcf_dir = "$curr_input/consolidate_vcf";
   my %vcf_files = %{get_bcfs($vcf_dir)};
 
+
+
 	test_header($curr_input);
 	print "### Description ###\n";
 	print "$description\n";
@@ -198,7 +206,7 @@ for my $dir (@in_files)
 
 	my $done_testing = 0;
 
-	my ($actual_base,$actual_out_file) = run_command(%vcf_files,'ref',['fasta'], $extra_params);
+	my ($actual_base,$actual_out_file) = run_command(\%vcf_files,'ref',['fasta'], $extra_params);
 	my $actual_positions_file = "$actual_base-positions.tsv";
         my $actual_core_file = "$actual_base-stats.csv";
 	my $got = -e $actual_out_file ? `cat $actual_out_file` : 'empty file';
