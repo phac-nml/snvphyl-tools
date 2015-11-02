@@ -266,7 +266,7 @@ sub prepare_inputs {
           "o|output=s"          => \$output,
 					"h|help"              => \$help,
 					"m|man"               => \$man,
-					"v|verbose"           => \$verbose,
+					"v|verbose"           => \$verbose
 			);
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;

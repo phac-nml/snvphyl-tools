@@ -105,7 +105,7 @@ sub run_command
 
 	my %vcf_files = %$vcf_hash;
 
-	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1, CLEAN => 0);
+	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 	close($fh);
 	my $format = '';
 	$extra_params = '' if (not defined $extra_params);
