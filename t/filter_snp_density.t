@@ -32,4 +32,9 @@ ok($output =~ '##FILTER=<ID=filtered-density,Description="Set true if spacing is
 
 ok(`bcftools view $create_dir/temp2.bcf | grep 'filtered-density' | wc -l` == 15, "The correct number of density positions are being filtered.");
 ok(`grep '20\t80' $regions_output | wc -l` > 0, "The bcftools plugin is assigning the correct chromosome id to positions.");
+
+ok(system("bcftools plugin filter_snp_density $density_dir/input/1.vcf -O b -o $create_dir/temp1.bcf -- --filename --region_file $regions_output  --threshold 10") != 0, "Density filtering does not allow for the filename input to be blank.");
+
+ok(system("bcftools plugin filter_snp_density -O b -o $create_dir/temp1.bcf -- --filename $density_dir/input/1.vcf --region_file  --threshold 10") != 0, "Density filtering does not allow for the region_file input to be blank.");
+
 done_testing();
