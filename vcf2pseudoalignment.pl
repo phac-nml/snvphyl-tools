@@ -34,10 +34,6 @@ sub run
 
 	my ($consolidate_vcf,$formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info) = prepare_inputs(@_);
 
-	#create temp working directory for all combines vcf files
-	#in future make them stay around...
-	my $tmp_dir = tempdir (CLEANUP => 1);
-
 	my $valid_positions = $output_base . "-positions.tsv";
 
 
@@ -500,8 +496,6 @@ sub prepare_inputs {
         }
     }
 
-    my $total_samples = (keys %consolidate_vcf);
-
     if ( not -e $fasta) {
         print STDERR "Error: Was not given reference fasta file\n";
 				pod2usage(1);
@@ -528,7 +522,7 @@ vcf2pseudoalignment.pl
 
 =head1 SYNOPSIS
 
-vcf2pseudoalignment.pl --consolidate_vcf [hash containing combined files] --format [output format] --output-base [the output base name] --reference [reference file] --fasta [fasta file] --invalid-pos [invalid positions TSV file] --numcpus [number of requested CPUs for the job] --bcftools-path [path to bcftools]
+vcf2pseudoalignment.pl --consolidate_vcf v1=files/dataset1.dat --consolidate_vcf v2=files/dataset2.dat --consolidate_vcf v3=files/dataset3.dat --format fasta --format phylip --output-base /tmp/results --reference strain_24 --fasta /files/reference.fasta --invalid-pos [invalid positions TSV file] --numcpus 5 --bcftools-path /opt/bcftools/bcftools
 
 =head1 OPTIONS
 

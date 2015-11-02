@@ -54,22 +54,25 @@ sub compare_files
 	my $lc = List::Compare->new(\@expected_lines, \@actual_lines);
 	my @comparison_result = $lc->get_symmetric_difference();
 
-	my $pass = 1;
+	is(scalar @comparison_result, 0, 'Testing bcf body strings without header.');
 
-	for (my $i = 0; $i <= $#comparison_result; ++$i)
+	if (@comparison_result)
 	{
-		my $curr_line = $comparison_result[$i];
-
-		$pass = 0;
-
-		if ($verbose && ($i % 2 == 0))
+		for (my $i = 0; $i <= $#comparison_result; ++$i)
 		{
-			my $next_line = $comparison_result[$i + 1];
-			print STDERR "\nMismatch in body: \n'$curr_line'\n!=\n'$next_line'\n\n";
+			my $curr_line = $comparison_result[$i];
+
+			# Since @comparison_result is going to be a list of pairs of differences, since we want to
+			# compare the first of the pair with the second of the pair in the output, we need to make sure
+			# that obj 1 is in the same pair as obj 2. We use the parity of the index to determine whether or not
+			# we are in a position to compare i and i + 1.
+			if ($verbose && ($i % 2 == 0))
+			{
+				my $next_line = $comparison_result[$i + 1];
+				print STDERR "\nMismatch in body: \n'$curr_line'\n!=\n'$next_line'\n\n";
+			}
 		}
 	}
-
-	ok ($pass == 1, 'Testing bcf body strings without header.');
 
 
 	### COMPARING HEADER STRINGS ###
@@ -84,7 +87,7 @@ sub compare_files
 	$lc = List::Compare->new(\@expected_lines, \@actual_lines);
 	@comparison_result = $lc->get_symmetric_difference();
 
-	$pass = 1;
+	my $pass = 1;
 
 	for (my $i = 0; $i <= $#comparison_result; ++$i)
 	{

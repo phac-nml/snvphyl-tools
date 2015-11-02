@@ -36,7 +36,7 @@ sub run
 
 	### Return values here, script ends
 
-	exit;
+	return $resulting_file;
 }
 
 
@@ -55,11 +55,11 @@ sub combine_vcfs{
 
     my $cmd;
 
-		my $mpileup_name = basename($mpileup);
+		my $temp_name = basename($mpileup);
 
-		$mpileup_name =~ s/\..*$//;
+		$temp_name =~ s/\..*$//;
 
-    my $file_name = "$tmp_dir/$mpileup_name.bcf.gz";
+    my $file_name = "$tmp_dir/$temp_name.bcf.gz";
 
     my ($dir) = "$tmp_dir/isec_dir";
 
@@ -165,7 +165,7 @@ sub combine_vcfs{
     $cmd = "$bcftools index -f $file_name";
     system($cmd) == 0 or die "Could not run $cmd";
 
-    rmtree $dir;
+    rmtree $dir == 0 or print STDERR "$1";
 
 		return $file_name;
 
@@ -358,13 +358,9 @@ sub prepare_inputs {
 
 consolidate_vcfs.pl
 
-=head1 VERSION
-
-This documentation refers to consolidate_vcfs.pl version 0.0.1.
-
 =head1 SYNOPSIS
 
-consolidate_vcfs.pl --vcfsplit [key/value pair file] --mpileup [key/value pair file] --coverage-cutoff [cutoff for coverage go include a reference base] --min-mean-mapping [TODO: something here] --ao [TODO:something here] --requested_cpus [Number of desired CPUs for the job] --bcftools-path [path to bcftools]
+consolidate_vcfs.pl --vcfsplit v1=files/dataset1.dat --mpileup v1=files/dataset2.dat --coverage-cutoff 15 --min-mean-mapping 30 --ao 0.75 --bcftools-path /opt/bcftools/bcftools
 
 =head1 OPTIONS
 
@@ -384,19 +380,15 @@ The cutoff for coverage to include a reference base (default: 1).
 
 =item B<--min-mean-mapping> [REQUIRED]
 
-TODO: Description for min-mean-mapping.
+Mean mapping quality of observed alternate alleles.
 
 =item B<--ao> [REQUIRED]
 
-TODO: Description for ao.
-
-=item B<--numcpus> [REQUIRED]
-
-Desired number of CPUs for the job.
+Percentage in decimal format number of reads that alternative alleles present compare to reference. i.e : 0.75.
 
 =item B<--bcftools-path> [REQUIRED]
 
-Path to BCFTools.
+Full path to BCFTools.
 
 =item B<-h>, B<--help>
 
