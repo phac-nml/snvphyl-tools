@@ -54,7 +54,7 @@ sub run
 	    system($cmd) == 0 or die "Could not run $cmd";
 	}
 
-	exit;
+	return;
 }
 
 sub filter_positions {

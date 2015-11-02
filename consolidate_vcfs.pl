@@ -36,7 +36,7 @@ sub run
 
 	### Return values here, script ends
 
-	return $resulting_file;
+	return;
 }
 
 
