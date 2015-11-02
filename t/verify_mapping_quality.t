@@ -8,7 +8,7 @@ use FindBin;
 use Test::More;
 use Test::Exception;
 use File::Compare;
-use File::Temp qw(tempdir);
+use File::Temp qw(tempfile);
 
 my $script_dir = $FindBin::Bin;
 
@@ -56,6 +56,15 @@ ok($result, "Script runs when draft genomes are used.");
 #8 => Using designed output, ensure that with min-mpa at 80 and min depth at 2, 7.29% of the positions map
 $result = `$mapping_bin --bam bam1=$mapping_dir/input/sample5.bam --min-depth 2 --min-map 80 2>&1`;
 ok($result =~ '7.29%', "The script generates the correct mapping percentage with designed data.");
- 
+
+
+#9 => Using designed output, ensure that with min-mpa at 80 and min depth at 2, 7.29% of the positions map and using ---output option
+my (undef,$output) = tempfile();
+my $expected_out = "$mapping_dir/output/output_9.txt";
+
+$command = "$mapping_bin --bam bam1=$mapping_dir/input/sample5.bam --min-depth 2 --min-map 80 --output $output 2>&1";
+$return_code = system($command);
+ok($return_code == 0, "Script ran successfully");
+ok(compare($output,$expected_out) == 0, "Bam1 had 7.29% core with 2x on 80% of the genome");
 done_testing();
 

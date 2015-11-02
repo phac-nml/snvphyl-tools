@@ -165,7 +165,9 @@ sub combine_vcfs{
     $cmd = "$bcftools index -f $file_name";
     system($cmd) == 0 or die "Could not run $cmd";
 
-    rmtree $dir == 0 or print STDERR "$1";
+    rmtree $dir;
+
+		print STDERR "$1" if ($1);
 
 		return $file_name;
 
@@ -264,7 +266,7 @@ sub prepare_inputs {
           "o|output=s"          => \$output,
 					"h|help"              => \$help,
 					"m|man"               => \$man,
-					"v|verbose"           => \$verbose
+					"v|verbose"           => \$verbose,
 			);
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;
@@ -350,6 +352,7 @@ sub prepare_inputs {
 
     return ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
 }
+
 1;
 
 =pod

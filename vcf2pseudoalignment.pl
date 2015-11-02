@@ -404,7 +404,7 @@ sub prepare_inputs {
 		my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 
     my (%consolidate_vcf, @formats, $output_base, $reference, $fasta, $invalid, $requested_cpus, $bcftools);
-		my ($refs_info, $invalid_pos, $invalid_total, $help, $verbose);
+		my ($refs_info, $invalid_pos, $invalid_total, $help, $verbose, $inc_list, $exc_list);
 		my ($consolidate_vcf,$formats);
 
 
@@ -420,7 +420,9 @@ sub prepare_inputs {
 					 'numcpus=i'             => \$requested_cpus,
 					 'b|bcftools-path=s'     => \$bcftools,
 					 'help|h'                => \$help,
-					 'verbose|v'             => \$verbose
+					 'verbose|v'             => \$verbose,
+					 'include=s'             => \$inc_list,
+ 					 'exclude=s'             => \$exc_list
 			);
 			pod2usage(1) if $help;
 
@@ -509,7 +511,68 @@ sub prepare_inputs {
         ($invalid_pos,$invalid_total) = $invalid_positions_parser->read_invalid_positions($invalid);
     }
 
-    return (\%consolidate_vcf,\@formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info);
+		if ($inc_list && $exc_list) {
+        die "Cannot have both an include and exclude list. Please specify only one!\n";
+    }
+
+		my $consolidate_vcf_cp = \%consolidate_vcf;
+
+    #if we have a including list, then use it
+    if ($inc_list) {
+        ($consolidate_vcf_cp) = strain_selection($inc_list,1,\%consolidate_vcf);
+    }
+
+		#if we have a excluding list, then use it
+    if ($exc_list) {
+        ($consolidate_vcf_cp) = strain_selection($exc_list,0,\%consolidate_vcf);
+    }
+
+    return ($consolidate_vcf_cp,\@formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info);
+}
+
+sub strain_selection {
+		my ($list,$keep,$consolidate_vcf)=@_;
+
+		my $vcfs = $consolidate_vcf;
+		my %tokeep_vcf;
+
+		#get list of all strains and make it lower case
+		#only need to check one of the two hashes because both should be the same by this point
+		my %strains = map { lc $_ => $_ } keys %{$consolidate_vcf};
+
+
+		open my $fh, '<',$list || die "Could not open file '$list'\n";
+		while (my $name = <$fh>) {
+				chomp $name;
+				$name = lc $name; #lc so we can do case insensitive lookup
+
+				#check to see if the name is in the list of keys
+				if ( exists $strains{$name}) {
+						#if we are doing a inclusion list, add it to the new hashes
+						#otherwise just delete from the hash coming in
+						my $org_name = $strains{$name};
+						if ($keep) {
+								$tokeep_vcf{$org_name} = $consolidate_vcf->{$org_name};
+						}
+						else {
+								delete $vcfs->{$org_name};
+						}
+				}
+				else {
+						print STDERR "WARNING: Could not find strain '$name' in list of strains. Ignorning\n";
+				}
+		}
+		close $fh;
+
+		#if we are doing an exclusion list, then move return hashes
+		if (not $keep) {
+				return $vcfs;
+		}
+		else {
+				return \%tokeep_vcf;
+		}
+
+
 }
 
 1;

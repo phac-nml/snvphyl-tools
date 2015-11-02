@@ -29,9 +29,32 @@ sub usage
 	"\t-v|--verbose\n";
 }
 
+
+sub get_selecting_file{
+    my ($curr_input) = @_;
+
+    my $selecting_args;
+
+    #check to see if we have excluding or including
+    if ( -e "$curr_input/including") {
+        $selecting_args=" --include $curr_input/including"
+    }
+    elsif (-e "$curr_input/excluding" ) {
+        $selecting_args=" --exclude $curr_input/excluding"
+    }
+    else {
+        die "Could not find either including or excluding files\n";
+    }
+
+    return ($selecting_args);
+}
+
+
 sub compare_files
 {
 	my ($expected_out_file,$actual_out_file) = @_;
+
+	print "EXPECTED vs ACTUAL:\n$expected_out_file\n$actual_out_file\n";
 
 	my $success = 1;
 
@@ -106,9 +129,7 @@ sub run_command
 
 	my $vcf_cmd = "--consolidate_vcf" . join (" --consolidate_vcf" , map { " $_=" . $vcf_files{$_} } keys %vcf_files);
 
-
 	my $command = "$vcf_align_bin $vcf_cmd --reference $reference $format --output-base $actual_out_base $extra_params";
-
 
 	if ($verbose)
 	{
@@ -120,6 +141,7 @@ sub run_command
 	}
 
 	print "## Running $command\n\n";
+
 	system($command) == 0 or die "Could not run command $command: $!";
 	return ($actual_out_base,@out_files);
 }
@@ -148,7 +170,7 @@ sub test_header
 }
 
 my $cases_dir = "$script_dir";
-my $input_dir = "$cases_dir/input";
+my $input_dir = "$cases_dir/selecting_strains";
 
 ### MAIN ###
 
@@ -173,7 +195,6 @@ print "Testing all input variants in $input_dir\n";
 for my $dir (@in_files)
 {
 	my $curr_input = "$input_dir/$dir";
-	# curr_input = snvphyl-tools/t/input/1,2,etc.
 	next if (not -d $curr_input);
 	my $invalid_positions = "$curr_input/invalid-positions.tsv";
 
@@ -189,12 +210,13 @@ for my $dir (@in_files)
 	my $expected = `cat $curr_input/expected.fasta`;
 	my $expected_out_file = "$curr_input/expected.fasta";
 	my $expected_positions_file = "$curr_input/expected.positions.tsv";
-        my $expected_core_file = "$curr_input/expected_core.csv";
+  my $expected_core_file = "$curr_input/expected_core.csv";
 
 	my $vcf_dir = "$curr_input/consolidate_vcf";
-  my %vcf_files = %{get_bcfs($vcf_dir)};
+	my %vcf_files = %{get_bcfs($vcf_dir)};
 
-
+	#check to see if we have excluding or including
+	$extra_params.=get_selecting_file($curr_input);
 
 	test_header($curr_input);
 	print "### Description ###\n";
