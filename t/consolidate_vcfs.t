@@ -9,7 +9,7 @@ use Test::More tests => 272;
 use File::Temp 'tempfile';
 use File::Temp qw /tempdir/;
 use Getopt::Long;
-use List::Compare;
+use Text::Diff;
 
 use CompareFiles;
 
@@ -35,7 +35,10 @@ sub compare_files
 {
 	my ($expected,$actual) = @_;
 
-	my $success = 1;
+	my $success = 1; # final result of comparison
+	my $output; # string holding the diff output
+	my @output; # array holding the split output string (split by \n)
+	my @filtered_output; # array containing @output but without the diff fluff
 
         #check to see if both files are empty, if so, they are the same.
         if ( (not -e $actual) && -s $expected ==0 ) {
@@ -51,25 +54,40 @@ sub compare_files
 
 	is (scalar @actual_lines, scalar @expected_lines, 'Testing for equal body lengths.');
 
-	my $lc = List::Compare->new(\@expected_lines, \@actual_lines);
-	my @comparison_result = $lc->get_symmetric_difference();
+	diff \$expected_out, \$actual_out, {OUTPUT => \$output, STYLE => "OldStyle"};
 
-	is(scalar @comparison_result, 0, 'Testing bcf body strings without header.');
-
-	if (@comparison_result)
+	if ($output)
 	{
-		for (my $i = 0; $i <= $#comparison_result; ++$i)
-		{
-			my $curr_line = $comparison_result[$i];
+		@output = split /\n/, $output;
+	}
+	is(scalar @output, 0, 'Testing bcf body strings without header.');
 
-			# Since @comparison_result is going to be a list of pairs of differences, since we want to
-			# compare the first of the pair with the second of the pair in the output, we need to make sure
-			# that obj 1 is in the same pair as obj 2. We use the parity of the index to determine whether or not
-			# we are in a position to compare i and i + 1.
-			if ($verbose && ($i % 2 == 0))
+	# if differences were found, list them
+	if (@output)
+	{
+		## Filtering output (removing diff formatting fluff)
+		@filtered_output = ();
+		foreach my $curr_line (@output)	{
+			if ($curr_line =~ /ref/)
 			{
-				my $next_line = $comparison_result[$i + 1];
-				print STDERR "\nMismatch in body: \n'$curr_line'\n!=\n'$next_line'\n\n";
+				push (@filtered_output, substr $curr_line, 2);
+			}
+		}
+
+		foreach my $curr_line (@filtered_output)
+		{
+			# A limitation of this implementation is that if we get mismatched command type and command, it
+			# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
+			if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
+			{
+				# Since @comparison_result is going to be a list of pairs of differences, since we want to
+				# compare the first of the pair with the second of the pair in the output, we need to make sure
+				# that obj 1 is in the same pair as obj 2. We use the parity of the index to determine whether or not
+				# we are in a position to compare i and i + 1.
+				if ($verbose)
+				{
+					print STDERR "Mismatch!\n'$curr_line' absent from expected output!\n\n";
+				}
 			}
 		}
 	}
@@ -84,15 +102,22 @@ sub compare_files
 
 	is (scalar @expected_lines, scalar @actual_lines, 'Testing for equal header lengths.');
 
-	$lc = List::Compare->new(\@expected_lines, \@actual_lines);
-	@comparison_result = $lc->get_symmetric_difference();
+	diff \$expected_out, \$actual_out, {OUTPUT => \$output, STYLE => "OldStyle"};
+	@output = split /\n/, $output;
+
+	## Filtering output (removing diff formatting fluff)
+	@filtered_output = ();
+	foreach my $curr_line (@output)	{
+		if ($curr_line =~ /##/)
+		{
+			push (@filtered_output, substr $curr_line, 2);
+		}
+	}
 
 	my $pass = 1;
 
-	for (my $i = 0; $i <= $#comparison_result; ++$i)
+	foreach my $curr_line (@filtered_output)
 	{
-		my $curr_line = $comparison_result[$i];
-
 		# A limitation of this implementation is that if we get mismatched command type and command, it
 		# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
 		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
@@ -103,16 +128,14 @@ sub compare_files
 			# compare the first of the pair with the second of the pair in the output, we need to make sure
 			# that obj 1 is in the same pair as obj 2. We use the parity of the index to determine whether or not
 			# we are in a position to compare i and i + 1.
-			if ($verbose && ($i % 2 == 0))
+			if ($verbose)
 			{
-				my $next_line = $comparison_result[$i + 1];
-				print STDERR "\nMismatch in headers: \n'$curr_line'\n!=\n'$next_line'\n\n";
+				print STDERR "Mismatch!\n'$curr_line' absent from expected output!\n\n";
 			}
 		}
 	}
 
 	ok ($pass == 1, 'Testing bcf header strings without body.');
-
 }
 
 sub run_command
@@ -212,7 +235,7 @@ for my $dir (@in_files)
 			my $expected = "$expected_output_dir/$curr_freebayes.bcf.gz";
 
 
-			my $output= tempdir (CLEANUP => 1);
+			my $output= tempdir (CLEANUP => 0);
 			$output .= "/$curr_freebayes.bcf.gz";
 
 

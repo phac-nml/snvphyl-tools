@@ -54,8 +54,6 @@ sub compare_files
 {
 	my ($expected_out_file,$actual_out_file) = @_;
 
-	print "EXPECTED vs ACTUAL:\n$expected_out_file\n$actual_out_file\n";
-
 	my $success = 1;
 
         #check to see if both files are empty, if so, they are the same.
@@ -143,6 +141,7 @@ sub run_command
 	print "## Running $command\n\n";
 
 	system($command) == 0 or die "Could not run command $command: $!";
+
 	return ($actual_out_base,@out_files);
 }
 
@@ -225,8 +224,6 @@ for my $dir (@in_files)
 	print "$expected\n";
 
 	die "$expected_out_file does not exist" if (not -e $expected_out_file);
-
-	my $done_testing = 0;
 
 	my ($actual_base,$actual_out_file) = run_command(\%vcf_files,'ref',['fasta'], $extra_params);
 	my $actual_positions_file = "$actual_base-positions.tsv";

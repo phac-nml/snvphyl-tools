@@ -23,15 +23,12 @@ use InvalidPositions;
 use List::MoreUtils qw/all any firstidx/;
 use File::Path qw /rmtree /;
 
-__PACKAGE__->run unless caller;
-
+my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
 my $verbose;
+__PACKAGE__->run unless caller;
 
 sub run
 {
-	my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
-	# maps format name to format file extension
-
 	my ($consolidate_vcf,$formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info) = prepare_inputs(@_);
 
 	my $valid_positions = $output_base . "-positions.tsv";
@@ -401,12 +398,8 @@ sub print_stats {
 
 
 sub prepare_inputs {
-		my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
-
     my (%consolidate_vcf, @formats, $output_base, $reference, $fasta, $invalid, $requested_cpus, $bcftools);
-		my ($refs_info, $invalid_pos, $invalid_total, $help, $verbose, $inc_list, $exc_list);
-		my ($consolidate_vcf,$formats);
-
+		my ($refs_info, $invalid_pos, $invalid_total, $help, $verbose, $inc_list, $exc_list, $formats);
 
     if( @_ && $_[0] eq __PACKAGE__ )
 		{
@@ -425,11 +418,12 @@ sub prepare_inputs {
  					 'exclude=s'             => \$exc_list
 			);
 			pod2usage(1) if $help;
-
 		}
 		else
 		{
-			($consolidate_vcf,$formats,$output_base,$reference,$fasta,$invalid,$requested_cpus,$bcftools) = @_;
+			my $vcfs;
+			($vcfs,$formats,$output_base,$reference,$fasta,$invalid,$requested_cpus,$bcftools,$inc_list,$exc_list) = @_;
+			%consolidate_vcf = %{$vcfs};
 		}
 
     $verbose = 0 if (not defined $verbose);
@@ -515,19 +509,18 @@ sub prepare_inputs {
         die "Cannot have both an include and exclude list. Please specify only one!\n";
     }
 
-		my $consolidate_vcf_cp = \%consolidate_vcf;
-
     #if we have a including list, then use it
     if ($inc_list) {
-        ($consolidate_vcf_cp) = strain_selection($inc_list,1,\%consolidate_vcf);
+        %consolidate_vcf = %{strain_selection($inc_list,1,\%consolidate_vcf)};
     }
 
 		#if we have a excluding list, then use it
     if ($exc_list) {
-        ($consolidate_vcf_cp) = strain_selection($exc_list,0,\%consolidate_vcf);
+        %consolidate_vcf = %{strain_selection($exc_list,0,\%consolidate_vcf)};
     }
 
-    return ($consolidate_vcf_cp,\@formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info);
+
+		return (\%consolidate_vcf,\@formats,$output_base,$reference,$invalid_pos,$invalid_total,$requested_cpus,$bcftools,$refs_info);
 }
 
 sub strain_selection {
@@ -571,8 +564,6 @@ sub strain_selection {
 		else {
 				return \%tokeep_vcf;
 		}
-
-
 }
 
 1;
