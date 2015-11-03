@@ -27,8 +27,8 @@ my $lines1 = `bcftools view $density_dir/input/1.vcf | wc -l 2>&1`;
 my $lines2 = `bcftools view $create_dir/temp2.bcf | wc -l 2>&1`;
 my $output = `bcftools view $create_dir/temp2.bcf`;
 ok( $lines1 == ($lines2 - 3), "The correct number of isolates are logged when default values are used.");
-ok($output =~ 'filtered-density', "SNP's are correctly being filtered for density.");
-ok($output =~ '##FILTER=<ID=filtered-density,Description="Set true if spacing is < 5 bp">', "Filter descripition is added to header.");
+ok($output =~ 'filtered-density-5', "SNP's are correctly being filtered for density.");
+ok($output =~ '##FILTER=<ID=filtered-density-5,Description="Set true if spacing is < 5 bp">', "Filter descripition is added to header.");
 
 ok(`bcftools view $create_dir/temp2.bcf | grep 'filtered-density' | wc -l` == 15, "The correct number of density positions are being filtered.");
 ok(`grep '20\t80' $regions_output | wc -l` > 0, "The bcftools plugin is assigning the correct chromosome id to positions.");

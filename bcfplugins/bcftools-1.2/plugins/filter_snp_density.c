@@ -93,10 +93,11 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
    
    //generate the new filter value
    char info[100];
-   sprintf(info, "##FILTER=<ID=filtered-density,Description=\"Set true if spacing is < %d bp\">", density_threshold);
+   sprintf(info, "##FILTER=<ID=filtered-density-%d,Description=\"Set true if spacing is < %d bp\">", density_threshold, density_threshold);
    bcf_hdr_append(out_hdr, info);
-   flag_density = bcf_hdr_id2int(out_hdr,BCF_DT_ID,"filtered-density");
-   
+   char filter_string[100];
+   sprintf(filter_string, "filtered-density-%d", density_threshold);
+   flag_density = bcf_hdr_id2int(out_hdr,BCF_DT_ID,filter_string);
    return 0;
 }
 
