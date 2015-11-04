@@ -110,7 +110,6 @@ for my $format (@{$formats})
 
 exit;
 
-
 sub combine_vcfs{
     my ($vcf_files,$mpileup_files, $coverage_cutoff,$bcftools,$tmp_dir,$cpus,$min_mean_mapping,$ao) = @_;
 
@@ -155,7 +154,7 @@ sub combine_vcfs{
         my $cmd;
         
         my $file_name = "$tmp_dir/$sample" . "_combined.bcf.gz";
-
+		
         my ($dir) = "$tmp_dir/$sample" . '_answer';
 
         if ( not -d $dir) {
@@ -936,4 +935,3 @@ sub strain_selection {
     
 
 }
-
