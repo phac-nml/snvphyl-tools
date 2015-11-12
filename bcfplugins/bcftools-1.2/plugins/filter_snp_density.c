@@ -21,8 +21,6 @@ void refresh_density();
 void output_density_region();
 void print_density_region(int start, int end, const char *chromosome);
 
-
-
 //define the script variables
 char *filename = NULL;
 int density_threshold = 10;
@@ -177,7 +175,7 @@ void update_window(){
 *
 */
 void refresh_density(){
-   if(queue_size > density_threshold){
+   if(queue_size >= density_threshold){
       density_flag = 1;
       density_start_position = head.tqh_first->position;
       density_end_position = TAILQ_LAST(&head, tailhead)->position;
