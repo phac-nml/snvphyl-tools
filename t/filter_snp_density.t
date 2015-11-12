@@ -18,7 +18,7 @@ my ($command);
 #1 => verify that the plugin is creating the expected output
 my $create_dir = tempdir(TEMPLATE => 'tempXXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
 my $regions_output = "$create_dir/density_regions.tsv";
-system("bcftools plugin filter_snp_density $density_dir/input/1.vcf -O b -o $create_dir/temp1.bcf -- --filename $density_dir/input/1.vcf --region_file $regions_output  --threshold 10");
+my $result = `bcftools plugin filter_snp_density_window $density_dir/input/1.vcf -O b -o $create_dir/temp1.bcf -- --filename $density_dir/input/1.vcf --region_file $regions_output --window_size 150 --threshold 2`;
 ok(-e $create_dir."/temp1.bcf", "Output bcf file is in the correct location.");
 ok(-e $regions_output, "The output density regions txt file is being created." );
 #2 => verify that negative threshold values are set to the default threshold value
