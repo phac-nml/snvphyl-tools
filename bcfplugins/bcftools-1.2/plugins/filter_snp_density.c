@@ -8,34 +8,45 @@
 #include <htslib/regidx.h>
 #include <htslib/synced_bcf_reader.h>
 #include <htslib/vcfutils.h>
+#include <sys/queue.h>
 #include "bcftools.h"
 
 const char *usage(void);
-int mark_density_snp(bcf1_t *bcf_current, bcf_hdr_t *header, int flag_density);
-int check_density(bcf1_t *current, bcf1_t *next, int density_threshold);
 bcf1_t *process(bcf1_t *rec);
-void print_density_region(int start, int end, const char *chromosome);
 void destroy(void);
+struct entry *initializeStruct(bcf1_t *record);
+void update_window();
+void update_density();
+void refresh_density();
+void output_density_region();
+void print_density_region(int start, int end, const char *chromosome);
 
 //define the script variables
 char *filename = NULL;
 int density_threshold = 10;
-int flag_density = -1;
-int verbose = -1;
-int eof = 0;
-bcf_hdr_t *in_hdr = NULL;
-bcf_hdr_t *out_hdr = NULL;
-int in_density_region = 0;
+int window_size = 100;
+//output regions file
 char *regionFilepath=NULL;
 FILE *regionsFile;
-//for look ahead functionality
-htsFile *htsAhead=NULL; 
-bcf_hdr_t *htsAheadHdr = NULL;
-bcf1_t *bcf_ahead = NULL;
 
-//track the density regions
+//htslib requirements:
+bcf_hdr_t *in_hdr = NULL;
+bcf_hdr_t *out_hdr = NULL;
+
+//tracking variables:
+int queue_size = 0;
+int density_flag = 0;
 int density_start_position = 0;
 int density_end_position = 0;
+
+//define the tail queue:
+TAILQ_HEAD(tailhead, entry) head;
+struct tailhead *headp;
+struct entry{
+   TAILQ_ENTRY(entry) entries;
+   char *contig;
+   int position;   
+};
 
 const char *about(void)
 {
@@ -50,10 +61,11 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
        {"filename",1,0,'f'},
        {"region_file",1,0,'r'},	   
        {"threshold",1,0,'t'},
+       {"window_size", 1, 0, 'w'},
        {0,0,0,0}
    };
    char c, *tmp;
-   while((c = getopt_long(argc, argv, "f:r:t", loptions, NULL)) >= 0)
+   while((c = getopt_long(argc, argv, "f:r:w:t", loptions, NULL)) >= 0)
    {
        switch (c)
       {  
@@ -63,105 +75,128 @@ int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)
          case 'r':
                regionFilepath = optarg;
                break;
+         case 'w':
+               window_size = strtol(optarg, &tmp, 10);
          case 't':	 
-           density_threshold = strtol(optarg, &tmp, 10);
-           break;
+               density_threshold = strtol(optarg, &tmp, 10);
+               break;
            if (*tmp) error("Unexpected argument to -t: %s\n", optarg); break;
          case '?':
          default: error("%s", usage()); break;
       }
    }
-   
+  
    //perform some validation of input parameters
    if(density_threshold <= 0){
 	   density_threshold = 10;
 	   printf("Negative density_threshold value found, setting to default value of %d.", density_threshold);
    }
-   
-   in_hdr = in;
-   out_hdr = out;
-
-   //input the bcf file in order to "look ahead" when iterating over the records
-   htsAhead = hts_open(filename, "r");
-   htsAheadHdr = bcf_hdr_read(htsAhead);
-   bcf_ahead = bcf_init();
-   //skip the first record so that we are always looking ahead when the 
-   //process function is called
-   if(bcf_read(htsAhead, htsAheadHdr, bcf_ahead) == -1){
-       printf("Unable to read look ahead bcf record for analysis.\n");    	   
+  
+   if(window_size <= 0){
+      window_size = 100;
+      printf("Invalid window_size value found, setting to the default value of %d.", window_size);
    }
-   
-   //generate the new filter value
-   char info[100];
-   sprintf(info, "##FILTER=<ID=filtered-density-%d,Description=\"Set true if spacing is < %d bp\">", density_threshold, density_threshold);
-   bcf_hdr_append(out_hdr, info);
-   char filter_string[100];
-   sprintf(filter_string, "filtered-density-%d", density_threshold);
-   flag_density = bcf_hdr_id2int(out_hdr,BCF_DT_ID,filter_string);
+
+   in_hdr = in;
+
+   //initialize the queue:
+   TAILQ_INIT(&head);
+
    return 0;
 }
 
 bcf1_t *process(bcf1_t *hts){
 
-   if(bcf_read(htsAhead, htsAheadHdr, bcf_ahead) == -1){
-      if(eof){
-         printf("Unable to read look ahead bcf record for analysis.\n");
-      }
-      eof = 1;    	   
+   //create the new struct for this variant:
+   struct entry *tempStruct = initializeStruct(hts);
+
+   //for the first record, add the record to the head of the queue:
+   if(queue_size == 0){
+      TAILQ_INSERT_HEAD(&head, tempStruct, entries);
+      queue_size++;
    }
-      
-   if(check_density(hts, bcf_ahead, density_threshold)){
-       mark_density_snp(hts, out_hdr, flag_density);
-   }
+   //otherwise, add to the tail of the queue and conduct density analysis:
+   else{
+      TAILQ_INSERT_TAIL(&head, tempStruct, entries);
+      queue_size++;
+      update_density(); 
+   }   
+  
    //return the bcf record
    return hts;
 }
 
 /*
- * Method to mark the input bcf records as filtered-density
- * @return int 1 for success, 0 for error
- */
-int mark_density_snp(bcf1_t *bcf_current, bcf_hdr_t *header, int flag_density){
-	if(bcf_add_filter(header, bcf_current, flag_density)){
-		return 1;
-	}
-	else{
-            printf("Unable to add density flag to vcf record.");       
-	    return 0;
-	}
+* Method to allocate memory for the variant struct and assign the correct
+*position and contig values. 
+*/
+struct entry *initializeStruct(bcf1_t *record){
+   struct entry *tempStruct = malloc(sizeof(struct entry));
+   tempStruct->contig = in_hdr->id[BCF_DT_CTG][record->rid].key;
+   tempStruct->position = record->pos;
+   return tempStruct;
 }
 
 /*
- * Method to determine if a particular position is within a high density
- * region, based on the density threshold value.
- * @return int 1 if it is a high density position, 0 if not
- */
-int check_density(bcf1_t *current, bcf1_t *next, int density_threshold){
-    int current_position = current->pos;
-    int next_position = next->pos;
-    
-    //check the absolute difference between snv's to determine if it is within a dense region 
-    if(((next_position - current_position) <= density_threshold) && ((current_position - next_position) <= density_threshold) && (current->rid == next->rid) && (!eof)){
-        //track the start and end positions for the density regions appropriately:
-        //if not previously in a denisty region, mark the start of density region:
-        if(!in_density_region){
-           density_start_position = current_position;
-        }
-    	in_density_region = 1;
-	return 1;
-    }
+* Method to update the density calculations for the new variant entry.
+*/
+void update_density(){
+   //update queue to ensure all of the entries are within the window size:
+   update_window();
+   //check the density for the updated window:
+   refresh_density();
+}
 
-    if(in_density_region){
-        density_end_position = current_position;
-        //print the newly discovered density region to a tab seperated file:
-        print_density_region(density_start_position, density_end_position, in_hdr->id[BCF_DT_CTG][current->rid].key);
-        //if we have come to the end of a density region, we still must ensure the last snv
-        //in the region is marked as filtered-density.
-        in_density_region = 0;
-        return 1;
-    }
-    in_density_region = 0;
-    return 0;
+/*
+* Deletes entries from the head of the list that are no longer
+* within the window of interest.
+*/
+void update_window(){
+   //update the window when a contig change occurs and remove all but tail:
+   if(strcmp(TAILQ_LAST(&head, tailhead)->contig, head.tqh_first->contig)!=0){
+      //if currently in density region, output:
+      output_density_region();
+      while(strcmp(head.tqh_first->contig, TAILQ_LAST(&head, tailhead)->contig)!=0){
+          TAILQ_REMOVE(&head, head.tqh_first, entries);
+          queue_size--;
+      }
+   }
+   else{
+      //if no contig change, do a regular window update:
+      while((TAILQ_LAST(&head, tailhead)->position - head.tqh_first->position) > window_size){
+         output_density_region();
+         TAILQ_REMOVE(&head, head.tqh_first, entries);
+         queue_size--;
+      }   
+   }
+}
+
+/*
+*
+*/
+void refresh_density(){
+   if(queue_size >= density_threshold){
+      density_flag = 1;
+      density_start_position = head.tqh_first->position;
+      density_end_position = TAILQ_LAST(&head, tailhead)->position;
+   }
+   else{
+      output_density_region();
+      density_end_position = TAILQ_LAST(&head, tailhead)->position; 
+   }
+}
+
+
+/*
+* Outputs a new density region to the output file, if applicable. Resets the start and end positions for a new analysis. 
+*/
+void output_density_region(){   
+   //check if the density flag is set:
+   if(density_flag){
+      //there is something to output:
+      print_density_region(density_start_position, density_end_position, head.tqh_first->contig);
+      density_flag = 0;
+   }
 }
 
 /**
@@ -190,6 +225,6 @@ const char *usage(void)
 */
 void destroy(void)
 {
-   hts_close(htsAhead);
+   
 }
 
