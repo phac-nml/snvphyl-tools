@@ -284,7 +284,7 @@ sub prepare_inputs {
 					"f|filtered-density-out=s" =>	\$filtered_density_out,
 					"s|skip-density-filter"    => \$skip_density_filter,
 					"w|window-size=i"          => \$window_size,
-					"d|density_threshold"      => \$density_threshold,
+					"d|density_threshold=i"      => \$density_threshold,
 					"h|help"                   => \$help,
 					"m|man"                    => \$man,
 					"v|verbose"                => \$verbose

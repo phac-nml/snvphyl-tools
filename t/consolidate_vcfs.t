@@ -143,7 +143,7 @@ sub run_command
 {
 	my ($freebayes,$mpileup,$coverage_cutoff,$output) = @_;
 
-	my $filtered_density_out = dirname($output);
+	my $filtered_density_out = dirname($output)."/density_filtered_positions.tsv";
 
 	my $command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out";
 
@@ -244,10 +244,7 @@ for my $dir (@in_files)
 
 			run_command($freebayes,$mpileup,$coverage_cutoff,$output);
 
-
-
 			compare_files($expected,$output);
-
 		}
 		else
 		{
@@ -258,5 +255,6 @@ for my $dir (@in_files)
 
 	print "### done ###\n";
 }
+
 
 done_testing();
