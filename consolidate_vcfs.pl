@@ -23,9 +23,9 @@ my $verbose;
 
 sub run
 {
-	my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = prepare_inputs(@_);
+	my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold) = prepare_inputs(@_);
 
-	my $resulting_file = combine_vcfs($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+	my $resulting_file = combine_vcfs($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold);
 
 	my $result = move($resulting_file,$output);
 
@@ -41,7 +41,7 @@ sub run
 
 
 sub combine_vcfs{
-    my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
+    my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold) = @_;
 
 		#create temp working directory for combining the VCFs
 		my $template = "consolidate_vcfs-XXXXXX";
@@ -165,6 +165,23 @@ sub combine_vcfs{
     $cmd = "$bcftools index -f $file_name";
     system($cmd) == 0 or die "Could not run $cmd";
 
+		if(not defined $skip_density_filter)
+		{
+			$cmd = "$bcftools plugin filter_snp_density $file_name -O b -o $file_name -- --filename $file_name --region_file $filtered_density_out";
+
+			if(defined $window_size)
+			{
+				$cmd .= " --window_size $window_size";
+			}
+
+			if(defined $density_threshold)
+			{
+				$cmd .= " --threshold $density_threshold";
+			}
+
+			system($cmd) == 0 or die "Could not run $cmd";
+		}
+
     rmtree $dir;
 
 		print STDERR "$1" if ($1);
@@ -252,21 +269,25 @@ sub check_reference {
 
 sub prepare_inputs {
 
-		my ( $man, $help, $freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+		my ( $man, $help, $freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold);
 
 		if( @_ && $_[0] eq __PACKAGE__ )
 		{
 			GetOptions(
-					"vcfsplit=s"          => \$freebayes,
-					"mpileup=s"           => \$mpileup,
-					"coverage-cutoff|c=i" => \$coverage_cutoff,
-					"min-mean-mapping=i"  => \$min_mean_mapping,
-					"ao=s"                => \$ao,
-					"b|bcftools-path=s"   => \$bcftools,
-          "o|output=s"          => \$output,
-					"h|help"              => \$help,
-					"m|man"               => \$man,
-					"v|verbose"           => \$verbose
+					"vcfsplit=s"               => \$freebayes,
+					"mpileup=s"                => \$mpileup,
+					"coverage-cutoff|c=i"      => \$coverage_cutoff,
+					"min-mean-mapping=i"       => \$min_mean_mapping,
+					"ao=s"                     => \$ao,
+					"b|bcftools-path=s"        => \$bcftools,
+          "o|output=s"               => \$output,
+					"f|filtered-density-out=s" =>	\$filtered_density_out,
+					"s|skip-density-filter"    => \$skip_density_filter,
+					"w|window-size=i"          => \$window_size,
+					"d|density_threshold"      => \$density_threshold,
+					"h|help"                   => \$help,
+					"m|man"                    => \$man,
+					"v|verbose"                => \$verbose
 			);
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;
@@ -274,7 +295,7 @@ sub prepare_inputs {
 		}
 		else
 		{
-				($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
+				($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold) = @_;
 		}
 
 		$verbose = 0 if (not defined $verbose);
@@ -350,7 +371,28 @@ sub prepare_inputs {
 				pod2usage(1);
     }
 
-    return ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+		if (defined $skip_density_filter)
+		{
+			print "Skipping density filter";
+		}
+		else
+		{
+			if (not defined $filtered_density_out)
+			{
+				print STDERR "Filtered density output not specified!\n";
+				pod2usage(1);
+			}
+			if (not defined $window_size)
+			{
+				print "Window size not specified. Using default value...";
+			}
+			if (not defined $density_threshold)
+			{
+				print "Density threshold not specified. Using default value...";
+			}
+		}
+
+    return ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold);
 }
 
 1;

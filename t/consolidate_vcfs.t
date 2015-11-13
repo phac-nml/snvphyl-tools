@@ -10,6 +10,7 @@ use File::Temp 'tempfile';
 use File::Temp qw /tempdir/;
 use Getopt::Long;
 use Text::Diff;
+use File::Basename;
 
 use CompareFiles;
 
@@ -78,7 +79,7 @@ sub compare_files
 		{
 			# A limitation of this implementation is that if we get mismatched command type and command, it
 			# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
-			if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
+			if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)Command=(view|isec|filter|annotate|merge|plugin .+)/)
 			{
 				# Since @comparison_result is going to be a list of pairs of differences, since we want to
 				# compare the first of the pair with the second of the pair in the output, we need to make sure
@@ -120,7 +121,7 @@ sub compare_files
 	{
 		# A limitation of this implementation is that if we get mismatched command type and command, it
 		# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
-		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
+		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)Command=(view|isec|filter|annotate|merge|plugin .+)/)
 		{
 			$pass = 0;
 
@@ -142,7 +143,9 @@ sub run_command
 {
 	my ($freebayes,$mpileup,$coverage_cutoff,$output) = @_;
 
-	my $command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output";
+	my $filtered_density_out = dirname($output);
+
+	my $command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out";
 
 	if ($verbose)
 	{
@@ -235,7 +238,7 @@ for my $dir (@in_files)
 			my $expected = "$expected_output_dir/$curr_freebayes.bcf.gz";
 
 
-			my $output= tempdir (CLEANUP => 1);
+			my $output= tempdir (CLEANUP => 0);
 			$output .= "/$curr_freebayes.bcf.gz";
 
 
