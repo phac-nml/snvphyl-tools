@@ -1,0 +1,29 @@
+Tests single nucleotide variant, multiple reference sequences
+
+v1 alignments:
+ref1 atgc
+     aagc
+     aagc
+     aagc
+     aagc
+     * **
+ref2 gcat
+     gctt
+     gctt
+     gctt
+     gctt
+     ** *
+
+v2 alignments:
+ref1 atgc
+     aagc
+     aagc
+     aagc
+     aagc
+     * **
+ref2 gcat
+     gctt
+     gctt
+     gctt
+     gctt
+     ** *

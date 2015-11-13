@@ -78,7 +78,9 @@ sub compare_files
 
 sub run_command
 {
-	my ($vcf_dir,$pileup_dir,$reference,$coverage_cutoff,$formats, $extra_params,$dirs_vcfs,$pileup_vcfs) = @_;
+	my ($vcf_hash, $reference, $formats, $extra_params) = @_;
+
+	my %vcf_files = %$vcf_hash;
 
 	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 	close($fh);
@@ -101,16 +103,13 @@ sub run_command
 			die "Invalid format $f for testing";
 		}
 	}
-	my $command;
-        if ( $dirs_vcfs && $pileup_vcfs) {
-            my $singles = "--vcfsplit " . join (" --vcfsplit " , map { " $_=" . $dirs_vcfs->{$_} } keys %$dirs_vcfs);
-            $singles .= " --mpileup " . join (" --mpileup " , map { " $_=" . $pileup_vcfs->{$_} } keys %$pileup_vcfs);
-            $command = "$vcf_align_bin $singles --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
-        }
-        else {
-            $command = "$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
-        }
-	
+
+	my $vcf_cmd = "--consolidate_vcf" . join (" --consolidate_vcf" , map { " $_=" . $vcf_files{$_} } keys %vcf_files);
+
+
+	my $command = "$vcf_align_bin $vcf_cmd --reference $reference $format --output-base $actual_out_base $extra_params";
+
+
 	if ($verbose)
 	{
 		$command .= " -v";
@@ -119,10 +118,8 @@ sub run_command
 	{
 		$command .= " 2>&1 1>/dev/null";
 	}
-	
-	#my $command2="$vcf_align_bin --vcf-dir $vcf_dir --mpileup-dir $pileup_dir --reference $reference $format --output-base $actual_out_base --coverage-cutoff $coverage_cutoff $extra_params --min-mean-mapping 30 --ao 0.75";
+
 	print "## Running $command\n\n";
-	#pass("filter_freebayes accepts a double for --ao param") if(system($command2) == 0);
 	system($command) == 0 or die "Could not run command $command: $!";
 	return ($actual_out_base,@out_files);
 }
@@ -132,7 +129,7 @@ sub get_bcfs
     my ($in_dir) = @_;
     my %bcf;
     my $dh;
-    
+
     opendir($dh, $in_dir) or die "error opening directory $in_dir: $!";
     %bcf = map { /^(.*)\.bcf\.gz$/; $1 => "$in_dir/$_"} grep { /\.bcf\.gz$/ } readdir($dh);
     closedir($dh);
@@ -152,8 +149,6 @@ sub test_header
 
 my $cases_dir = "$script_dir";
 my $input_dir = "$cases_dir/regression";
-
-my $coverage_cutoff = 4;
 
 ### MAIN ###
 
@@ -178,6 +173,7 @@ print "Testing all input variants in $input_dir\n";
 for my $dir (@in_files)
 {
 	my $curr_input = "$input_dir/$dir";
+	# curr_input = snvphyl-tools/t/input/1,2,etc.
 	next if (not -d $curr_input);
 	my $invalid_positions = "$curr_input/invalid-positions.tsv";
 
@@ -194,15 +190,12 @@ for my $dir (@in_files)
 	my $expected_out_file = "$curr_input/expected.fasta";
 	my $expected_positions_file = "$curr_input/expected.positions.tsv";
         my $expected_core_file = "$curr_input/expected_core.csv";
-        
-	my $vcf_dir = $curr_input;
-        my %dirs_vcfs = %{get_bcfs($vcf_dir)};
-        
-	my $pileup_dir = "$curr_input/pileup";
-        my %pileup_vcfs = %{get_bcfs($pileup_dir)};
-        
 
-        
+	my $vcf_dir = "$curr_input/consolidate_vcf";
+  my %vcf_files = %{get_bcfs($vcf_dir)};
+
+
+
 	test_header($curr_input);
 	print "### Description ###\n";
 	print "$description\n";
@@ -213,14 +206,13 @@ for my $dir (@in_files)
 
 	my $done_testing = 0;
 
-
-        my ($actual_base,$actual_out_file) = run_command($vcf_dir,$pileup_dir,'ref',$coverage_cutoff,['fasta'], $extra_params,\%dirs_vcfs,\%pileup_vcfs);
-        my $actual_positions_file = "$actual_base-positions.tsv";
+	my ($actual_base,$actual_out_file) = run_command(\%vcf_files,'ref',['fasta'], $extra_params);
+	my $actual_positions_file = "$actual_base-positions.tsv";
         my $actual_core_file = "$actual_base-stats.csv";
-        my $got = -e $actual_out_file ? `cat $actual_out_file` : 'empty file';
+	my $got = -e $actual_out_file ? `cat $actual_out_file` : 'empty file';
 	print "### Got ###\n";
 	print "$got\n";
-        my $success = compare_files($expected_out_file,$actual_out_file);
+	my $success = compare_files($expected_out_file,$actual_out_file);
 	if ($success) #pass
 	{
 		pass("pseudoalignment generated from data in $curr_input is valid");
@@ -230,15 +222,15 @@ for my $dir (@in_files)
 	{
 		pass("positions file generated from data in $curr_input is valid");
 	}
+
 	$success = compare_files($expected_core_file,$actual_core_file);
 	if ($success)
 	{
 		pass("core file generated from data in $curr_input is valid");
 	}
-        
+
+
 	print "### done ###\n";
-        
-        
 }
 
 done_testing();
