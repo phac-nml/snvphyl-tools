@@ -238,7 +238,7 @@ for my $dir (@in_files)
 			my $expected = "$expected_output_dir/$curr_freebayes.bcf.gz";
 
 
-			my $output= tempdir (CLEANUP => 0);
+			my $output= tempdir (CLEANUP => 1);
 			$output .= "/$curr_freebayes.bcf.gz";
 
 
