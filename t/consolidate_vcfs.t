@@ -145,7 +145,7 @@ sub run_command
 
 	my $filtered_density_out = dirname($output)."/density_filtered_positions.tsv";
 
-	my $command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out";
+	my $command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 500 --density-threshold 2";
 
 	if ($verbose)
 	{

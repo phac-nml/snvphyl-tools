@@ -167,7 +167,8 @@ sub combine_vcfs{
 
 		if(not defined $skip_density_filter)
 		{
-			$cmd = "$bcftools plugin filter_snp_density $file_name -O b -o $file_name -- --filename $file_name --region_file $filtered_density_out";
+			$cmd = "$bcftools plugin filter_snp_density $file_name -O b -o $file_name -- --filename $file_name --region_file $filtered_density_out --window_size $window_size --threshold $density_threshold";
+
 
 			if(defined $window_size)
 			{
@@ -284,7 +285,7 @@ sub prepare_inputs {
 					"f|filtered-density-out=s" =>	\$filtered_density_out,
 					"s|skip-density-filter"    => \$skip_density_filter,
 					"w|window-size=i"          => \$window_size,
-					"d|density_threshold=i"      => \$density_threshold,
+					"d|density-threshold=i"    => \$density_threshold,
 					"h|help"                   => \$help,
 					"m|man"                    => \$man,
 					"v|verbose"                => \$verbose
