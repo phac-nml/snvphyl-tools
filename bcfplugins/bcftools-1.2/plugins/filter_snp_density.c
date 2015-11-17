@@ -225,6 +225,8 @@ const char *usage(void)
 */
 void destroy(void)
 {
-   
+   regionsFile = fopen(regionFilepath, "a");
+   fprintf(regionsFile, "#Calculation and writing of high density regions has completed.\n");
+   fclose(regionsFile);   
 }
 
