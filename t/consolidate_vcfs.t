@@ -5,11 +5,12 @@ use strict;
 
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
-use Test::More tests => 272;
+use Test::More tests => 274;
 use File::Temp 'tempfile';
 use File::Temp qw /tempdir/;
 use Getopt::Long;
 use Text::Diff;
+use File::Basename;
 
 use CompareFiles;
 
@@ -31,7 +32,55 @@ sub usage
 	"\t-v|--verbose\n";
 }
 
-sub compare_files
+sub compare_positions
+{
+	my ($expected,$actual) = @_;
+	my $output; # string holding the diff output
+	my @output; # array holding the split output string (split by \n)
+	my @filtered_output; # array containing @output but without the diff fluff
+
+	open (FH, "< $expected") or die "Can't open $expected for read: $!";
+	my @expected = <FH>;
+	close FH or die "Cannot close $expected: $!";
+
+	open (XH, "< $actual") or die "Can't open $actual for read: $!";
+	my @actual = <XH>;
+	close XH or die "Cannot close $actual: $!";
+
+	is (scalar @actual, scalar @expected, 'Testing for equal size density-filtered positions files.');
+
+	diff \@expected, \@actual, {OUTPUT => \$output, STYLE => "OldStyle"};
+
+	if ($output)
+	{
+		@output = split /\n/, $output;
+	}
+	is(scalar @output, 0, 'Testing that actual density-filtered position file has no diff from expected.');
+
+	# if differences were found, list them
+	if ($verbose)
+	{
+		if (@output)
+		{
+			## Filtering output (removing diff formatting fluff)
+			@filtered_output = ();
+			foreach my $curr_line (@output)
+			{
+				if ($curr_line =~ /ref/)
+				{
+					push (@filtered_output, substr $curr_line, 2);
+				}
+			}
+
+			foreach my $curr_line (@filtered_output)
+			{
+					print STDERR "Mismatch!\n'$curr_line' absent from expected output!\n\n";
+			}
+		}
+	}
+}
+
+sub compare_bcfs
 {
 	my ($expected,$actual) = @_;
 
@@ -63,34 +112,35 @@ sub compare_files
 	is(scalar @output, 0, 'Testing bcf body strings without header.');
 
 	# if differences were found, list them
-	if (@output)
+	if ($verbose)
 	{
-		## Filtering output (removing diff formatting fluff)
-		@filtered_output = ();
-		foreach my $curr_line (@output)	{
-			if ($curr_line =~ /ref/)
-			{
-				push (@filtered_output, substr $curr_line, 2);
-			}
-		}
-
-		foreach my $curr_line (@filtered_output)
+		if (@output)
 		{
-			# A limitation of this implementation is that if we get mismatched command type and command, it
-			# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
-			if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
-			{
-				# Since @comparison_result is going to be a list of pairs of differences, since we want to
-				# compare the first of the pair with the second of the pair in the output, we need to make sure
-				# that obj 1 is in the same pair as obj 2. We use the parity of the index to determine whether or not
-				# we are in a position to compare i and i + 1.
-				if ($verbose)
+			## Filtering output (removing diff formatting fluff)
+			@filtered_output = ();
+			foreach my $curr_line (@output)	{
+				if ($curr_line =~ /ref/)
 				{
+					push (@filtered_output, substr $curr_line, 2);
+				}
+			}
+
+			foreach my $curr_line (@filtered_output)
+			{
+				# A limitation of this implementation is that if we get mismatched command type and command, it
+				# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
+				if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)Command=(view|isec|filter|annotate|merge|plugin .+)/)
+				{
+					# Since @comparison_result is going to be a list of pairs of differences, since we want to
+					# compare the first of the pair with the second of the pair in the output, we need to make sure
+					# that obj 1 is in the same pair as obj 2. We use the parity of the index to determine whether or not
+					# we are in a position to compare i and i + 1.
 					print STDERR "Mismatch!\n'$curr_line' absent from expected output!\n\n";
 				}
 			}
 		}
 	}
+
 
 
 	### COMPARING HEADER STRINGS ###
@@ -120,7 +170,7 @@ sub compare_files
 	{
 		# A limitation of this implementation is that if we get mismatched command type and command, it
 		# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
-		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge)Command=(view|isec|filter|annotate|merge .+)/)
+		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)Command=(view|isec|filter|annotate|merge|plugin .+)/)
 		{
 			$pass = 0;
 
@@ -140,9 +190,19 @@ sub compare_files
 
 sub run_command
 {
-	my ($freebayes,$mpileup,$coverage_cutoff,$output) = @_;
+	my ($freebayes,$mpileup,$coverage_cutoff,$output,$test_type) = @_;
 
-	my $command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output";
+	my $filtered_density_out = dirname($output)."/density_filtered_positions.tsv";
+	my $command;
+
+	if ($test_type == 1) #simple test
+	{
+		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 500 --density-threshold 2";
+	}
+	if ($test_type == 2) #snp_density-specific test
+	{
+		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 200 --density-threshold 4";
+	}
 
 	if ($verbose)
 	{
@@ -188,6 +248,8 @@ my $cases_dir = "$script_dir";
 my $input_dir = "$cases_dir/consolidate_vcfs_input";
 
 my $coverage_cutoff = 4;
+my $regular_test = 1;
+my $snp_test = 2;
 
 ### MAIN ###
 
@@ -212,7 +274,8 @@ print "Testing all input variants in $input_dir\n\n";
 for my $dir (@in_files)
 {
 	my $curr_input = "$input_dir/$dir";
-	next if (not -d $curr_input);
+	next if ($dir eq "snp-specific" || not -d $curr_input);
+	my $basename = basename($curr_input);
 
 	my $description = `cat $curr_input/description`;
 
@@ -239,12 +302,58 @@ for my $dir (@in_files)
 			$output .= "/$curr_freebayes.bcf.gz";
 
 
-			run_command($freebayes,$mpileup,$coverage_cutoff,$output);
+			run_command($freebayes,$mpileup,$coverage_cutoff,$output, $regular_test);
 
+			compare_bcfs($expected,$output);
+		}
+		else
+		{
+			die "Freebayes file $curr_freebayes.bcf.gz does not have mpileup counterpart!";
+		}
 
+	}
 
-			compare_files($expected,$output);
+	print "### done ###\n";
+}
 
+$input_dir = "$cases_dir/consolidate_vcfs_input/snp-specific";
+
+opendir($in_h,$input_dir) or die "Could not open $input_dir: $!";
+@in_files = sort grep {$_ !~ /^\./} readdir($in_h);
+closedir($in_h);
+
+print "Testing all input variants in $input_dir\n\n";
+for my $dir (@in_files)
+{
+	my $curr_input = "$input_dir/$dir";
+	next if (not -d $curr_input);
+
+	my $freebayes_dir = "$curr_input/input/freebayes";
+	my $mpileup_dir = "$curr_input/input/mpileup";
+
+	my $expected_output_dir = "$curr_input/output";
+
+	my %freebayes_files = %{get_bcfs($freebayes_dir)};
+	my %mpileup_files = %{get_bcfs($mpileup_dir)};
+
+	test_header($curr_input);
+	foreach my $curr_freebayes (keys %freebayes_files)
+	{
+		print "\n\n### Testing with $curr_freebayes.bcf.gz ###\n";
+		if (exists $mpileup_files{$curr_freebayes})
+		{
+			my $freebayes = "$freebayes_dir/$curr_freebayes.bcf.gz";
+			my $mpileup = "$mpileup_dir/$curr_freebayes.bcf.gz";
+			my $expected = "$expected_output_dir/expected_density_filtered_positions.tsv";
+
+			my $output= tempdir (CLEANUP => 1);
+			$output .= "/$curr_freebayes.bcf.gz";
+
+			run_command($freebayes,$mpileup,$coverage_cutoff,$output, $snp_test);
+
+			my $actual = dirname($output)."/density_filtered_positions.tsv";
+
+			compare_positions($expected,$actual);
 		}
 		else
 		{

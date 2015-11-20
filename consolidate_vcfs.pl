@@ -23,15 +23,15 @@ my $verbose;
 
 sub run
 {
-	my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = prepare_inputs(@_);
+	my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold) = prepare_inputs(@_);
 
-	my $resulting_file = combine_vcfs($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+	my $resulting_file = combine_vcfs($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold);
 
 	my $result = move($resulting_file,$output);
 
 	if (not $result)
 	{
-			die "$!"
+		die "$!"
 	}
 
 	### Return values here, script ends
@@ -41,29 +41,30 @@ sub run
 
 
 sub combine_vcfs{
-    my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
+    my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold) = @_;
 
-		#create temp working directory for combining the VCFs
-		my $template = "consolidate_vcfs-XXXXXX";
-		my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
+	#create temp working directory for combining the VCFs
+	my $template = "consolidate_vcfs-XXXXXX";
+	my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
 
     #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
     #we need to switch to using vcf. Hence, will add ability to toggle between the two formats with a single commmenting one line
     #issue has been reported on github bcftools as issue # 317
-#   my ($ext,$out_type) = ('.bcf','-O b');
+    #my ($ext,$out_type) = ('.bcf','-O b');
     my ($ext,$out_type) = ('.vcf.gz','-O z');
 
     my $cmd;
 
-		my $temp_name = basename($mpileup);
+	my $temp_name = basename($mpileup);
 
-		$temp_name =~ s/\..*$//;
+	$temp_name =~ s/\..*$//;
 
     my $file_name = "$tmp_dir/$temp_name.bcf.gz";
 
     my ($dir) = "$tmp_dir/isec_dir";
 
-    if ( not -d $dir) {
+    if ( not -d $dir) 
+    {
         mkdir $dir;
     }
 
@@ -71,7 +72,8 @@ sub combine_vcfs{
     #need to run filtered-coverage on original mpileup bcf file
     #going to use the default one provided from bcftools filter instead of a custom one.
     #if we are using vcf files, need to convert first to vcf before applying the filter. The reason is bug with bcftools where SOME files will put the wrong FLAG in....
-    if ( $ext eq '.vcf.gz') {
+    if ( $ext eq '.vcf.gz') 
+    {
         $cmd = "$bcftools view $mpileup -O v | $bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff'  $out_type > $dir/coverage_mpileup$ext";
     }
     else {
@@ -95,12 +97,12 @@ sub combine_vcfs{
     $cmd = "$bcftools  isec $freebayes $dir/coverage_mpileup$ext -p $dir -c some $out_type";
     system($cmd) == 0 or die "Could not run $cmd";
 
-		#result from bcftools isec is a directory that contains multiple *$ext files
-		#ignoring: 0000$ext is for unique position just for vcf-split aka freebayes (we do not use at all since should be empty because mpileup report ALL positions)
-		#use: 0001$ext is for unique position only found in mpileup
-		#use: 0002$ext is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
-		      #VCF line that is kept is the one from freebayes and NOT mpileup
-		#use: 0003$ext same as 0002$ext but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002$ext)
+	#result from bcftools isec is a directory that contains multiple *$ext files
+	#ignoring: 0000$ext is for unique position just for vcf-split aka freebayes (we do not use at all since should be empty because mpileup report ALL positions)
+	#use: 0001$ext is for unique position only found in mpileup
+	#use: 0002$ext is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
+	#VCF line that is kept is the one from freebayes and NOT mpileup
+	#use: 0003$ext same as 0002$ext but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002$ext)
 
 
     #filter out SNPs that were only found in mpileup but NOT in freebayes
@@ -108,21 +110,24 @@ sub combine_vcfs{
 
     system($cmd) == 0 or die "Could not run $cmd";
 
-		#need to get rid of the stupid format information since they cannot be merge later downstream
-		$cmd ="$bcftools  view -h $dir/1-0001$ext";
-	        my $result = `$cmd`;
-		if ($result =~ /##FORMAT=\<ID=GL/){
-		    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/1-0001$ext $out_type > $dir/filtered_mpileup$ext";
-		}
-	        elsif ( $result eq '') {
-	            die "Failed to retrieve header of '1-0001$ext' for strain '$mpileup'\n";
-	        }
-		else{
-		    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/1-0001$ext $out_type > $dir/filtered_mpileup$ext";
-		}
-	        system($cmd) == 0 or die "Could not run $cmd";
+	#need to get rid of the stupid format information since they cannot be merge later downstream
+	$cmd ="$bcftools  view -h $dir/1-0001$ext";
+	my $result = `$cmd`;
+	if ($result =~ /##FORMAT=\<ID=GL/)
+	{
+	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/1-0001$ext $out_type > $dir/filtered_mpileup$ext";
+	}
+	elsif ( $result eq '') 
+	{
+	    die "Failed to retrieve header of '1-0001$ext' for strain '$mpileup'\n";
+	}
+	else
+	{
+		$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT $dir/1-0001$ext $out_type > $dir/filtered_mpileup$ext";
+	}
+	system($cmd) == 0 or die "Could not run $cmd";
 
-		######################################################################################################
+	######################################################################################################
 
 
     #Doing two level of filtering here
@@ -138,18 +143,17 @@ sub combine_vcfs{
 
     my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002$ext","$dir/0003$ext",$dir,"$dir/filtered_freebayes$ext",$out_type);
 
-    if ($mpileup_checked_bcf ) {
+    if ($mpileup_checked_bcf ) 
+    {
         die "Could not correctly format intersection mpileup file\n";
     }
 
 
-		$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/filtered_freebayes$ext $out_type > $dir/filtered_freebayes2$ext";
+	$cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/filtered_freebayes$ext $out_type > $dir/filtered_freebayes2$ext";
     system($cmd) == 0 or die "Could not run $cmd";
-
 
     $cmd = "$bcftools index  $dir/filtered_freebayes2$ext";
     system($cmd) == 0 or die "Could not run $cmd";
-
 
     $cmd = "$bcftools index  $dir/filtered_mpileup$ext";
     system($cmd) == 0 or die "Could not run $cmd";
@@ -165,84 +169,114 @@ sub combine_vcfs{
     $cmd = "$bcftools index -f $file_name";
     system($cmd) == 0 or die "Could not run $cmd";
 
+	if(not defined $skip_density_filter)
+	{
+		$cmd = "$bcftools plugin filter_snp_density $file_name -O b -o $file_name -- --filename $file_name --region_file $filtered_density_out --window_size $window_size --threshold $density_threshold";
+
+
+		if(defined $window_size)
+		{
+			$cmd .= " --window_size $window_size";
+		}
+
+		if(defined $density_threshold)
+		{
+			$cmd .= " --threshold $density_threshold";
+		}
+
+			system($cmd) == 0 or die "Could not run $cmd";
+		}
+
     rmtree $dir;
 
-		print STDERR "$1" if ($1);
+	print STDERR "$1" if ($1);
 
-		return $file_name;
+	return $file_name;
 
 }
 
 
-sub check_reference {
+sub check_reference 
+{
     my ($bcftools,$freebayes,$mpileup,$basedir,$output,$out_type) = @_;
     my $cmd;
 
-        #check to see if we have any records to run again
-        my $stats = `$bcftools  stats  $freebayes`;
-        if ( $stats =~ /number of records:\s+(\d+)/) {
-            if ($1) {
-                #check to ensure that there is no reference in the header that does NOT at least one have record. It there is no record for a reference
-                #bcftools will simply freeze up
-                #get header line and parse out the ##contig=
+    #check to see if we have any records to run again
+    my $stats = `$bcftools  stats  $freebayes`;
+    if ( $stats =~ /number of records:\s+(\d+)/) 
+    {
+        if ($1) 
+        {
+            #check to ensure that there is no reference in the header that does NOT at least one have record. It there is no record for a reference
+            #bcftools will simply freeze up
+            #get header line and parse out the ##contig=
 
-                my $out = `$bcftools view -h $mpileup | grep "##contig" | sed -e 's/^##contig=<ID=//' -e 's/,length=[0-9][0-9]*>//'`;
-                die "Error: no ##contig entries in '$out'" if ($out =~ //); #assume that we have at least one reference
+            my $out = `$bcftools view -h $mpileup | grep "##contig" | sed -e 's/^##contig=<ID=//' -e 's/,length=[0-9][0-9]*>//'`;
+            die "Error: no ##contig entries in '$out'" if ($out =~ //); #assume that we have at least one reference
 
-                my %refs;
+            my %refs;
 
-                foreach ( split /\n/,$out) {
-                    $refs{$_}++;
+            foreach ( split /\n/,$out) 
+            {
+                $refs{$_}++;
+            }
+
+            $out = `$bcftools index -s  $mpileup`;
+            die "Error: no entry found using bcftools index  in '$out'" if ($out =~ //); #assume that we have at least one reference coming back from bcftools index
+            foreach my $line( split/\n/,$out) 
+            {
+                my @data=split/\t/,$line;
+                if (exists $refs{$data[0]}) 
+                {
+                    delete $refs{$data[0]};
                 }
+            }
 
-                $out = `$bcftools index -s  $mpileup`;
-                die "Error: no entry found using bcftools index  in '$out'" if ($out =~ //); #assume that we have at least one reference coming back from bcftools index
-                foreach my $line( split/\n/,$out) {
-                    my @data=split/\t/,$line;
-                    if (exists $refs{$data[0]}) {
-                        delete $refs{$data[0]};
+            #if any reference still in %refs, means there is NO position in the vcf and need to be removed!
+            if ( keys %refs) 
+            {
+                my $old_header = `$bcftools view -h $mpileup`;
+                open my $out, ">$basedir/newheader";
+
+                foreach my $line( split/\n/,$old_header) 
+                {
+                    my $filter_in=1;
+                    foreach my $ref( keys %refs) 
+                    {
+                        if ( (index $line,$ref) !=-1) 
+                        {
+                            $filter_in=0;
+                            last;
+                        }
+                    }
+                    if ( $filter_in) 
+                    {
+                        print $out "$line\n";
                     }
                 }
-
-                #if any reference still in %refs, means there is NO position in the vcf and need to be removed!
-                if ( keys %refs) {
-                    my $old_header = `$bcftools view -h $mpileup`;
-                    open my $out, ">$basedir/newheader";
-
-                    foreach my $line( split/\n/,$old_header) {
-                        my $filter_in=1;
-                        foreach my $ref( keys %refs) {
-                            if ( (index $line,$ref) !=-1) {
-                                $filter_in=0;
-                                last;
-                            }
-                        }
-                        if ( $filter_in) {
-                            print $out "$line\n";
-                        }
-
-                    }
-                    close $out;
-                    #put new header on the file
-                    $cmd = "$bcftools view -H  $mpileup > $basedir/beer";
-                    system($cmd) == 0 or die "Could not run $cmd";
-                    $cmd = "cat $basedir/newheader $basedir/beer > $basedir/beer2";
-                    system($cmd) == 0 or die "Could not run $cmd";
-                    $cmd = "$bcftools view $basedir/beer2 $out_type > $mpileup";
-                    system($cmd) == 0 or die "Could not run $cmd";
-                    $cmd = "$bcftools index -f $mpileup";
-                    system($cmd) == 0 or die "Could not run $cmd";
-                }
-
-                $cmd = "$bcftools  annotate  $freebayes -a $mpileup $out_type -c FILTER     > $output";
+                close $out;
+                #put new header on the file
+                $cmd = "$bcftools view -H  $mpileup > $basedir/beer";
+                system($cmd) == 0 or die "Could not run $cmd";
+                $cmd = "cat $basedir/newheader $basedir/beer > $basedir/beer2";
+                system($cmd) == 0 or die "Could not run $cmd";
+                $cmd = "$bcftools view $basedir/beer2 $out_type > $mpileup";
+                system($cmd) == 0 or die "Could not run $cmd";
+                $cmd = "$bcftools index -f $mpileup";
                 system($cmd) == 0 or die "Could not run $cmd";
             }
-            else {
-                $cmd = "ln -s $freebayes  $output";
-                system($cmd) == 0 or die "Could not run $cmd";
-            }
+
+            $cmd = "$bcftools  annotate  $freebayes -a $mpileup $out_type -c FILTER     > $output";
+            system($cmd) == 0 or die "Could not run $cmd";
+        }
+        else 
+        {
+            $cmd = "ln -s $freebayes  $output";
+            system($cmd) == 0 or die "Could not run $cmd";
+        }
     }
-    else {
+    else 
+    {
         die "Could not run bcftools stats on file '$freebayes'\n";
     }
 
@@ -250,107 +284,139 @@ sub check_reference {
 }
 
 
-sub prepare_inputs {
-
-		my ( $man, $help, $freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+sub prepare_inputs 
+{
+		my ( $man, $help, $freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold);
 
 		if( @_ && $_[0] eq __PACKAGE__ )
 		{
 			GetOptions(
-					"vcfsplit=s"          => \$freebayes,
-					"mpileup=s"           => \$mpileup,
-					"coverage-cutoff|c=i" => \$coverage_cutoff,
-					"min-mean-mapping=i"  => \$min_mean_mapping,
-					"ao=s"                => \$ao,
-					"b|bcftools-path=s"   => \$bcftools,
-          "o|output=s"          => \$output,
-					"h|help"              => \$help,
-					"m|man"               => \$man,
-					"v|verbose"           => \$verbose
+				"vcfsplit=s"               => \$freebayes,
+				"mpileup=s"                => \$mpileup,
+				"coverage-cutoff|c=i"      => \$coverage_cutoff,
+				"min-mean-mapping=i"       => \$min_mean_mapping,
+				"ao=s"                     => \$ao,
+				"b|bcftools-path=s"        => \$bcftools,
+                "o|output=s"               => \$output,
+				"f|filtered-density-out=s" => \$filtered_density_out,
+				"s|skip-density-filter"    => \$skip_density_filter,
+				"w|window-size=i"          => \$window_size,
+				"d|density-threshold=i"    => \$density_threshold,
+				"h|help"                   => \$help,
+				"m|an"                     => \$man,
+				"v|verbose"                => \$verbose
 			);
 			pod2usage(1) if $help;
 			pod2usage(-verbose => 2) if $man;
-
 		}
 		else
 		{
-				($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output) = @_;
+			($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold) = @_;
 		}
 
 		$verbose = 0 if (not defined $verbose);
 
 		if(not defined $freebayes)
 		{
-				print STDERR "No freebayes file specified!\n\n";
-				pod2usage(1);
+			print STDERR "No freebayes file specified!\n\n";
+			pod2usage(1);
 		}
 		if(not -e $freebayes)
 		{
-				print STDERR "Unable to find freebayes file '$freebayes'\n\n";
-				pod2usage(1);
+			print STDERR "Unable to find freebayes file '$freebayes'\n\n";
+			pod2usage(1);
 		}
 
-    if (not defined $mpileup)
-		{
-        print STDERR "No mpileup file specified!\n\n";
-				pod2usage(1);
-    }
-		if (not -e $mpileup)
-		{
-				print STDERR "Unable to find mpileup file '$mpileup'\n\n";
-				pod2usage(1);
-		}
+        if (not defined $mpileup)
+	    {
+            print STDERR "No mpileup file specified!\n\n";
+		    pod2usage(1);
+        }
+	    if (not -e $mpileup)
+	    {
+		    print STDERR "Unable to find mpileup file '$mpileup'\n\n";
+		    pod2usage(1);
+	    }
 
 		if (not defined $output)
 		{
-				print STDERR "No output specified.";
-				pod2usage(1);
+			print STDERR "No output specified.";
+			pod2usage(1);
 		}
 
-    if (not defined $bcftools){
-
-        #check to see if bcftools is on the path
-        #normally we always want to be passed the path to the tool but this is for Galaxy implementation
-        my $alive=`bcftools 2>&1 1>/dev/null`;
-        if ( $alive && $alive =~ /Program: bcftools/) {
-            $bcftools="bcftools";
-        }
-        else {
+        if (not defined $bcftools)
+        {
+            #check to see if bcftools is on the path
+            #normally we always want to be passed the path to the tool but this is for Galaxy implementation
+            my $alive=`bcftools 2>&1 1>/dev/null`;
+            if ( $alive && $alive =~ /Program: bcftools/) 
+            {
+                $bcftools="bcftools";
+            }
+        else 
+        {
             print STDERR "bcftools-path not defined and not found on the path.\n";
-						pod2usage(1);
+			pod2usage(1);
         }
     }
 
-    if(not defined $min_mean_mapping){
+    if(not defined $min_mean_mapping)
+    {
     	$min_mean_mapping = 30;
     }
 
     #need to have ratio/percentage in double format i.e 75% = 0.75
-    if(not defined $ao){
+    if(not defined $ao)
+    {
        $ao = 0.75;
     }
-    elsif ( $ao > 1) {
+    elsif ( $ao > 1) 
+    {
         print "Assuming that '$ao' is given as percentage for alternative allele. Changing to a decimal\n";
         $ao = $ao/100;
     }
 
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
     my $usage_state = `$bcftools 2>&1 1>/dev/null`;
-    if ( not $usage_state =~ /Version: .* \(using htslib/ ) {
+    if ( not $usage_state =~ /Version: .* \(using htslib/ ) 
+    {
         print STDERR "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
 				pod2usage(1);
     }
 
-    if (not defined $coverage_cutoff){
+    if (not defined $coverage_cutoff)
+    {
         print STDERR "warning: coverage-cutoff not set, assuming it is 1\n";
         $coverage_cutoff = 1;
     }
-    elsif ($coverage_cutoff !~ /^\d+$/){
+    elsif ($coverage_cutoff !~ /^\d+$/)
+    {
         print STDERR "coverage-cutoff=$coverage_cutoff is invalid\n";
 				pod2usage(1);
     }
 
-    return ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output);
+	if (defined $skip_density_filter)
+	{
+		print "Skipping density filter";
+	}
+	else
+	{
+		if (not defined $filtered_density_out)
+		{
+			print STDERR "Filtered density output not specified!\n";
+			pod2usage(1);
+		}
+		if (not defined $window_size)
+		{
+			print "Window size not specified. Using default value...";
+		}
+		if (not defined $density_threshold)
+		{
+			print "Density threshold not specified. Using default value...";
+		}
+	}
+
+    return ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold);
 }
 
 1;
