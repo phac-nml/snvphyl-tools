@@ -63,7 +63,7 @@ sub combine_vcfs{
 
     my ($dir) = "$tmp_dir/isec_dir";
 
-    if ( not -d $dir) 
+    if ( not -d $dir)
     {
         mkdir $dir;
     }
@@ -72,7 +72,7 @@ sub combine_vcfs{
     #need to run filtered-coverage on original mpileup bcf file
     #going to use the default one provided from bcftools filter instead of a custom one.
     #if we are using vcf files, need to convert first to vcf before applying the filter. The reason is bug with bcftools where SOME files will put the wrong FLAG in....
-    if ( $ext eq '.vcf.gz') 
+    if ( $ext eq '.vcf.gz')
     {
         $cmd = "$bcftools view $mpileup -O v | $bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff'  $out_type > $dir/coverage_mpileup$ext";
     }
@@ -117,7 +117,7 @@ sub combine_vcfs{
 	{
 	    $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GT -x FORMAT/GL  $dir/1-0001$ext $out_type > $dir/filtered_mpileup$ext";
 	}
-	elsif ( $result eq '') 
+	elsif ( $result eq '')
 	{
 	    die "Failed to retrieve header of '1-0001$ext' for strain '$mpileup'\n";
 	}
@@ -143,7 +143,7 @@ sub combine_vcfs{
 
     my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002$ext","$dir/0003$ext",$dir,"$dir/filtered_freebayes$ext",$out_type);
 
-    if ($mpileup_checked_bcf ) 
+    if ($mpileup_checked_bcf )
     {
         die "Could not correctly format intersection mpileup file\n";
     }
@@ -171,7 +171,7 @@ sub combine_vcfs{
 
 	if(not defined $skip_density_filter)
 	{
-		$cmd = "$bcftools plugin filter_snp_density $file_name -O b -o $file_name -- --filename $file_name --region_file $filtered_density_out --window_size $window_size --threshold $density_threshold";
+		$cmd = "$bcftools plugin filter_snp_density $file_name -O b -o $file_name -- --filename $file_name --region_file $filtered_density_out";
 
 
 		if(defined $window_size)
@@ -196,16 +196,16 @@ sub combine_vcfs{
 }
 
 
-sub check_reference 
+sub check_reference
 {
     my ($bcftools,$freebayes,$mpileup,$basedir,$output,$out_type) = @_;
     my $cmd;
 
     #check to see if we have any records to run again
     my $stats = `$bcftools  stats  $freebayes`;
-    if ( $stats =~ /number of records:\s+(\d+)/) 
+    if ( $stats =~ /number of records:\s+(\d+)/)
     {
-        if ($1) 
+        if ($1)
         {
             #check to ensure that there is no reference in the header that does NOT at least one have record. It there is no record for a reference
             #bcftools will simply freeze up
@@ -216,40 +216,40 @@ sub check_reference
 
             my %refs;
 
-            foreach ( split /\n/,$out) 
+            foreach ( split /\n/,$out)
             {
                 $refs{$_}++;
             }
 
             $out = `$bcftools index -s  $mpileup`;
             die "Error: no entry found using bcftools index  in '$out'" if ($out =~ //); #assume that we have at least one reference coming back from bcftools index
-            foreach my $line( split/\n/,$out) 
+            foreach my $line( split/\n/,$out)
             {
                 my @data=split/\t/,$line;
-                if (exists $refs{$data[0]}) 
+                if (exists $refs{$data[0]})
                 {
                     delete $refs{$data[0]};
                 }
             }
 
             #if any reference still in %refs, means there is NO position in the vcf and need to be removed!
-            if ( keys %refs) 
+            if ( keys %refs)
             {
                 my $old_header = `$bcftools view -h $mpileup`;
                 open my $out, ">$basedir/newheader";
 
-                foreach my $line( split/\n/,$old_header) 
+                foreach my $line( split/\n/,$old_header)
                 {
                     my $filter_in=1;
-                    foreach my $ref( keys %refs) 
+                    foreach my $ref( keys %refs)
                     {
-                        if ( (index $line,$ref) !=-1) 
+                        if ( (index $line,$ref) !=-1)
                         {
                             $filter_in=0;
                             last;
                         }
                     }
-                    if ( $filter_in) 
+                    if ( $filter_in)
                     {
                         print $out "$line\n";
                     }
@@ -269,13 +269,13 @@ sub check_reference
             $cmd = "$bcftools  annotate  $freebayes -a $mpileup $out_type -c FILTER     > $output";
             system($cmd) == 0 or die "Could not run $cmd";
         }
-        else 
+        else
         {
             $cmd = "ln -s $freebayes  $output";
             system($cmd) == 0 or die "Could not run $cmd";
         }
     }
-    else 
+    else
     {
         die "Could not run bcftools stats on file '$freebayes'\n";
     }
@@ -284,7 +284,7 @@ sub check_reference
 }
 
 
-sub prepare_inputs 
+sub prepare_inputs
 {
 		my ( $man, $help, $freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold);
 
@@ -349,11 +349,11 @@ sub prepare_inputs
             #check to see if bcftools is on the path
             #normally we always want to be passed the path to the tool but this is for Galaxy implementation
             my $alive=`bcftools 2>&1 1>/dev/null`;
-            if ( $alive && $alive =~ /Program: bcftools/) 
+            if ( $alive && $alive =~ /Program: bcftools/)
             {
                 $bcftools="bcftools";
             }
-        else 
+        else
         {
             print STDERR "bcftools-path not defined and not found on the path.\n";
 			pod2usage(1);
@@ -370,7 +370,7 @@ sub prepare_inputs
     {
        $ao = 0.75;
     }
-    elsif ( $ao > 1) 
+    elsif ( $ao > 1)
     {
         print "Assuming that '$ao' is given as percentage for alternative allele. Changing to a decimal\n";
         $ao = $ao/100;
@@ -378,7 +378,7 @@ sub prepare_inputs
 
     #need check to see if bcftools was complied with htslib and also has the correct plugin installed
     my $usage_state = `$bcftools 2>&1 1>/dev/null`;
-    if ( not $usage_state =~ /Version: .* \(using htslib/ ) 
+    if ( not $usage_state =~ /Version: .* \(using htslib/ )
     {
         print STDERR "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
 				pod2usage(1);
