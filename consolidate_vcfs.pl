@@ -42,10 +42,10 @@ sub run
 
 sub combine_vcfs{
     my ($freebayes, $mpileup, $coverage_cutoff, $min_mean_mapping, $ao, $bcftools, $output, $filtered_density_out, $skip_density_filter, $window_size, $density_threshold) = @_;
-
-	#create temp working directory for combining the VCFs
-	my $template = "consolidate_vcfs-XXXXXX";
-	my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
+    
+    #create temp working directory for combining the VCFs
+    my $template = "consolidate_vcfs-XXXXXX";
+    my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
 
     #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
     #we need to switch to using vcf. Hence, will add ability to toggle between the two formats with a single commmenting one line
@@ -55,11 +55,7 @@ sub combine_vcfs{
 
     my $cmd;
 
-	my $temp_name = basename($mpileup);
-
-	$temp_name =~ s/\..*$//;
-
-    my $file_name = "$tmp_dir/$temp_name.bcf.gz";
+    my $file_name = "$tmp_dir/strain.bcf.gz";
 
     my ($dir) = "$tmp_dir/isec_dir";
 
