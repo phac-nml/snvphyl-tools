@@ -11,7 +11,7 @@ use Template;
 use File::Basename;
 
 my $script_dir = $FindBin::Bin;
-my $compare_snps_bin = "$script_dir/../compare_pseudoalign_nucmer.pl";
+my $compare_snps_bin = "$script_dir/../compare_snv_align_nucmer.pl";
 my $delete_temp = 1;
 my $verbose = 0;
 my $tt = Template->new({ABSOLUTE => 1});
@@ -57,7 +57,7 @@ sub compare_files
 
 sub run_case
 {
-	my ($name, $reference, $fasta, $pseudoalign, $core_positions_file, $bad_positions_file, $expected_out, $expected_detailed_out) = @_;
+	my ($name, $reference, $fasta, $snv_align, $core_positions_file, $bad_positions_file, $expected_out, $expected_detailed_out) = @_;
 
 	my ($afh, $actual_out_file) = tempfile("compare_nucmer.actual_out.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
 	close($afh);
@@ -67,7 +67,7 @@ sub run_case
 	close($dfh);
 	print STDERR "Detailed Out: $detailed_out_file\n" if ($verbose);
 	
-	my $command = "$compare_snps_bin -i $pseudoalign -r $reference -g $fasta -c $core_positions_file -b $bad_positions_file -o $detailed_out_file 1> $actual_out_file";
+	my $command = "$compare_snps_bin -i $snv_align -r $reference -g $fasta -c $core_positions_file -b $bad_positions_file -o $detailed_out_file 1> $actual_out_file";
 	$command .= " 2> /dev/null" if (not $verbose);
 	print STDERR "$command\n" if ($verbose);
 	system($command) == 0 or die "Could not execute command $command: $!";
@@ -77,7 +77,7 @@ sub run_case
 
 sub build_expected_out
 {
-	my ($summary_template, $detailed_template, $reference, $query, $core_positions, $bad_positions, $pseudoalign) = @_;
+	my ($summary_template, $detailed_template, $reference, $query, $core_positions, $bad_positions, $snv_align) = @_;
 
 	my $reference_base = basename($reference);
 	my $query_base = basename($query);
@@ -93,10 +93,10 @@ sub build_expected_out
 		'bad_positions_base' => $bad_positions_base,
 		'core_positions' => $core_positions,
 		'core_positions_base' => $core_positions_base,
-		'pseudoalign' => $pseudoalign
+		'snv_align' => $snv_align
 		};
 
-	my ($efh, $expected_summary) = tempfile("compare_pseudoalign.summary.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
+	my ($efh, $expected_summary) = tempfile("compare_snv_align.summary.XXXXXX", TMPDIR => 1, UNLINK => $delete_temp);
 	close($efh);
 	$tt->process($summary_template, $vars, $expected_summary) || die $tt->error(),"\n";
 
@@ -110,7 +110,7 @@ sub build_expected_out
 ### MAIN ###
 my ($help);
 my $usage = "Usage: $0 [-h|--help] [-v|--verbose]\n";
-my $tests_dir = "$script_dir/compare_pseudoalign_data";
+my $tests_dir = "$script_dir/compare_snv_align_data";
 
 if (!GetOptions('v|verbose' => \$verbose,
                 'h|help' => \$help))
@@ -145,7 +145,7 @@ for my $dir (@tests)
 
 	my $reference_file = "$dir/input/reference.fasta";
 	my $query_file = "$dir/input/query.fasta";
-	my $pseudoalign_file = "$dir/input/pseudoalign.tsv";
+	my $snv_align_file = "$dir/input/snv_align.tsv";
 	my $bad_positions_file = "$dir/input/bad_positions.tsv";
 	my $core_positions_file = "$dir/input/core_positions.tsv";
 
@@ -154,9 +154,9 @@ for my $dir (@tests)
 
 	my ($expected_summary_file,$expected_detailed_file) = 
 		build_expected_out($expected_summary_template, $expected_detailed_template,
-			$reference_file, $query_file, $core_positions_file, $bad_positions_file, $pseudoalign_file);
+			$reference_file, $query_file, $core_positions_file, $bad_positions_file, $snv_align_file);
 
-	run_case("$dir: $info", $reference_file, $query_file, $pseudoalign_file, $core_positions_file, $bad_positions_file, $expected_summary_file,$expected_detailed_file);
+	run_case("$dir: $info", $reference_file, $query_file, $snv_align_file, $core_positions_file, $bad_positions_file, $expected_summary_file,$expected_detailed_file);
 }
 
 done_testing();

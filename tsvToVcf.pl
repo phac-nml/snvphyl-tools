@@ -148,7 +148,7 @@ tsvToVcf.pl -t pseaudoalignment_tsv_file -v freebayes_vcf_directory -d destinati
 
 Options:
 -t
-	The tsv file containing the pseudoalignment
+	The tsv file containing the snv_alignment
 
 -v
 	The directory containing vcf files from freebayes

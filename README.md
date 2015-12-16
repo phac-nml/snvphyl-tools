@@ -28,10 +28,10 @@ In addition, this software requires the Perl modules from vcftools someplace wit
 
 	$ export PERL5LIB=/path/to/vcftools/lib/perl5/site_perl/:$PERL5LIB
 
-Or, you can simply link up the appropriate perl modules within the **vcf2pseudoalign/lib** directory.  For example:
+Or, you can simply link up the appropriate perl modules within the **vcf2snv_align/lib** directory.  For example:
 
-	$ ln -s /path/to/vcftools/lib/perl5/site_perl/*.pm /path/to/vcf2pseudoalign/lib
-	$ ls /path/to/vcf2pseudoalign/lib
+	$ ln -s /path/to/vcftools/lib/perl5/site_perl/*.pm /path/to/vcf2snv_align/lib
+	$ ls /path/to/vcf2snv_align/lib
 	Align  CorePositions.pm  FaSlice.pm  InvalidPositions.pm  NucmerPositionsChecker.pm  PositionsTable.pm  Vcf.pm  VcfStats.pm
 
 Need to compile custom bcftools plugin and modify a few ENV variables
@@ -48,7 +48,7 @@ Step 3: Run Tests
 In order to run the tests, please run the command:
 
 	$ prove
-	t/compare_pseudoalign_nucmer.t .. ok    
+	t/compare_snv_align_nucmer.t .. ok    
 	t/extract_snps_metaalign.t ...... ok   
 	t/find-positions-used.t ......... ok   
 	t/nucmer_align.t ................ ok    

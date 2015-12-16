@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
-# vcf2pseudoalignment
-# Purpose:  Given a set of combined freebayes and mpileup files, examines all called SNPs and generates a 'pseudoalignment'
+# vcf2snv_alignment
+# Purpose:  Given a set of combined freebayes and mpileup files, examines all called SNPs and generates a 'snv_alignment'
 #  of all the high quality SNPs/base calls (to be used for further phylogenetic analysis).
 
 use warnings;
@@ -46,7 +46,7 @@ sub run
 	{
 	    my $output_file = $output_base . ".".$valid_formats{$format};
 	    print STDERR "Alignment written to $output_file\n";
-	    my $cmd = "$FindBin::Bin/positions2pseudoalignment.pl -i $valid_positions -f $format --reference-name $reference -o $output_file";
+	    my $cmd = "$FindBin::Bin/positions2snv_alignment.pl -i $valid_positions -f $format --reference-name $reference -o $output_file";
 	    print "$cmd\n";
 	    system($cmd) == 0 or die "Could not run $cmd";
 	}
@@ -628,11 +628,11 @@ sub strain_selection
 
 =head1 NAME
 
-vcf2pseudoalignment.pl
+vcf2snv_alignment.pl
 
 =head1 SYNOPSIS
 
-vcf2pseudoalignment.pl --consolidate_vcf v1=files/dataset1.dat --consolidate_vcf v2=files/dataset2.dat --consolidate_vcf v3=files/dataset3.dat --format fasta --format phylip --output-base /tmp/results --reference strain_24 --fasta /files/reference.fasta --invalid-pos [invalid positions TSV file] --numcpus 5 --bcftools-path /opt/bcftools/bcftools
+vcf2snv_alignment.pl --consolidate_vcf v1=files/dataset1.dat --consolidate_vcf v2=files/dataset2.dat --consolidate_vcf v3=files/dataset3.dat --format fasta --format phylip --output-base /tmp/results --reference strain_24 --fasta /files/reference.fasta --invalid-pos [invalid positions TSV file] --numcpus 5 --bcftools-path /opt/bcftools/bcftools
 
 =head1 OPTIONS
 
@@ -678,6 +678,6 @@ Displays the help screen.
 
 =head1 DESCRIPTION
 
-Given a hash of consolidated vcfs, examines all called SNPs and generates a 'pseudoalignment' of all the high quality SNPs/base calls (to be used for further phylogenetic analysis).
+Given a hash of consolidated vcfs, examines all called SNPs and generates a 'snv_alignment' of all the high quality SNPs/base calls (to be used for further phylogenetic analysis).
 
 =cut

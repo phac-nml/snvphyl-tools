@@ -463,6 +463,6 @@ Displays the help screen.
 
 =head1 DESCRIPTION
 
-Consolidates a given set of *.vcf files for use by vcf2pseudoalignment.
+Consolidates a given set of *.vcf files for use by vcf2snv_alignment.
 
 =cut

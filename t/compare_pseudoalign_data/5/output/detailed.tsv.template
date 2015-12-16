@@ -1,4 +1,4 @@
-Working on [% pseudoalign %]
+Working on [% snv_align %]
 Working with core positions [% core_positions %]
 Working with bad positions [% bad_positions %]
 Working with genome [% query %]
