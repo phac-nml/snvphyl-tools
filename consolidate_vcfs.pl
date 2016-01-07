@@ -47,12 +47,7 @@ sub combine_vcfs{
     my $template = "consolidate_vcfs-XXXXXX";
     my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
 
-    #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
-    #we need to switch to using vcf. Hence, will add ability to toggle between the two formats with a single commmenting one line
-    #issue has been reported on github bcftools as issue # 317
-    #my ($ext,$out_type) = ('.bcf','-O b');
-    my ($ext,$out_type) = ('.vcf.gz','-O z');
-
+    my ($ext,$out_type) = ('.bcf','-O b'); # intermediate files will be in binary format for speed ups (bcf.gz)
     my $cmd;
 
     my $file_name = "$tmp_dir/strain.bcf.gz";
