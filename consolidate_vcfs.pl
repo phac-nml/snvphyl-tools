@@ -162,7 +162,7 @@ sub combine_vcfs{
 
     if(not defined $skip_density_filter)
     {
-        $cmd = "$bcftools plugin filter_snp_density $file_name  --  --region_file $filtered_density_out";
+        $cmd = "$bcftools plugin filter_snp_density $dir/filtered_freebayes2$ext  --  --region_file $filtered_density_out";
             
         
         if(defined $window_size)
