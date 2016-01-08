@@ -35,13 +35,14 @@ Or, you can simply link up the appropriate perl modules within the **vcf2pseudoa
 	Align  CorePositions.pm  FaSlice.pm  InvalidPositions.pm  NucmerPositionsChecker.pm  PositionsTable.pm  Vcf.pm  VcfStats.pm
 
 Need to compile custom bcftools plugin and modify a few ENV variables
-	$ cd bcfplugins/bcftools-1.2
-	$ make
-	$ export PATH=`pwd`:$PATH
-	$ export LD_LIBRARY_PATH=`pwd`/htslib-1.2.1:$LD_LIBRARY_PATH
-	$ export BCFTOOLS_PLUGINS=`pwd`/plugins:$BCFTOOLS_PLUGINS
+```
+	cd bcfplugins/bcftools-1.3
+	make
+	export PATH=`pwd`:$PATH
+	export LD_LIBRARY_PATH=`pwd`/htslib-1.3:$LD_LIBRARY_PATH
+	export BCFTOOLS_PLUGINS=`pwd`/plugins:$BCFTOOLS_PLUGINS
+```
 
-	
 Step 3: Run Tests
 -----------------
 
@@ -57,4 +58,3 @@ In order to run the tests, please run the command:
 	All tests successful.
 	Files=6, Tests=232, 41 wallclock secs ( 0.28 usr  0.02 sys + 30.71 cusr  7.60 csys = 38.61 CPU)
 	Result: PASS
-
