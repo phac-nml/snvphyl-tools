@@ -47,12 +47,7 @@ sub combine_vcfs{
     my $template = "consolidate_vcfs-XXXXXX";
     my $tmp_dir = tempdir ($template, TMPDIR=> 1, CLEANUP => 1);
 
-    #intermediate files will be in vcf or bcf format. Adding the ability to hardcode the switch because would like to keep using bcf because of space and speed but having soooo much trouble with issues that
-    #we need to switch to using vcf. Hence, will add ability to toggle between the two formats with a single commmenting one line
-    #issue has been reported on github bcftools as issue # 317
-    #my ($ext,$out_type) = ('.bcf','-O b');
-    my ($ext,$out_type) = ('.vcf.gz','-O z');
-
+    my ($ext,$out_type) = ('.bcf','-O b'); # intermediate files will be in binary format for speed ups (bcf.gz)
     my $cmd;
 
     my $file_name = "$tmp_dir/strain.bcf.gz";
@@ -165,29 +160,29 @@ sub combine_vcfs{
     $cmd = "$bcftools index -f $file_name";
     system($cmd) == 0 or die "Could not run $cmd";
 
-	if(not defined $skip_density_filter)
-	{
-		$cmd = "$bcftools plugin filter_snp_density $file_name -O b -o $file_name -- --filename $file_name --region_file $filtered_density_out";
-
-
-		if(defined $window_size)
-		{
-			$cmd .= " --window_size $window_size";
-		}
-
-		if(defined $density_threshold)
-		{
-			$cmd .= " --threshold $density_threshold";
-		}
-
-			system($cmd) == 0 or die "Could not run $cmd";
-		}
-
+    if(not defined $skip_density_filter)
+    {
+        $cmd = "$bcftools plugin filter_snp_density $dir/filtered_freebayes2$ext  --  --region_file $filtered_density_out";
+            
+        
+        if(defined $window_size)
+        {
+            $cmd .= " --window_size $window_size";
+        }
+            
+        if(defined $density_threshold)
+        {
+            $cmd .= " --threshold $density_threshold";
+        }
+            
+        system($cmd) == 0 or die "Could not run $cmd";
+    }
+    
     rmtree $dir;
 
-	print STDERR "$1" if ($1);
+    print STDERR "$1" if ($1);
 
-	return $file_name;
+    return $file_name;
 
 }
 

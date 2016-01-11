@@ -156,8 +156,10 @@ Number of sites filtered: $total_filtered
 Percentage of sites filtered: %.2f
 Coverage filtered: $total_coverage
 mpileup filtered: $total_mpileup
-Density filtered: $total_density
 Invalid filtered: $total_invalid", $percent_filtered;
+
+#TODO: Add the density filter stat after the vcf files are actually changed:
+#Density filtered: $total_density
 
 sub detailed_filter_stats{
 	my($filter_type)= @_;
