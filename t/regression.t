@@ -116,7 +116,7 @@ sub run_command
 	}
 	else
 	{
-		$command .= " 2>&1 1>/dev/null";
+		#$command .= " 2>&1 1>/dev/null";
 	}
 
 	print "## Running $command\n\n";
