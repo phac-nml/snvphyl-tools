@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+
 # vcf2snv_alignment
 # Purpose:  Given a set of combined freebayes and mpileup files, examines all called SNPs and generates a 'snv_alignment'
 #  of all the high quality SNPs/base calls (to be used for further phylogenetic analysis).
