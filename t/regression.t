@@ -7,6 +7,7 @@ use FindBin;
 use lib $FindBin::Bin.'/../lib';
 use Test::More;
 use File::Temp 'tempfile';
+use File::Temp 'tempdir'; 
 use Getopt::Long;
 
 use CompareFiles;
