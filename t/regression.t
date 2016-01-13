@@ -81,8 +81,8 @@ sub run_command
 	my ($vcf_hash, $reference, $formats, $extra_params) = @_;
 
 	my %vcf_files = %$vcf_hash;
-
-	my ($fh,$actual_out_base) = tempfile('vcf2snv_alignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
+        my $create_dir = tempdir(TEMPLATE => 'tempXXXXX', CLEANUP => 1) or die "Unable to create tempdir";
+	my ($fh,$actual_out_base) = tempfile('vcf2snv_alignment.test.XXXXXXXX', DIR => $create_dir, UNLINK => 1);
 	close($fh);
 	my $format = '';
 	$extra_params = '' if (not defined $extra_params);
