@@ -6,8 +6,7 @@ use strict;
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
 use Test::More;
-use File::Temp 'tempfile';
-use File::Temp 'tempdir'; 
+use File::Temp 'tempfile'; 
 use Getopt::Long;
 
 use CompareFiles;
@@ -82,9 +81,10 @@ sub run_command
 	my ($vcf_hash, $reference, $formats, $extra_params) = @_;
 
 	my %vcf_files = %$vcf_hash;
-        my $create_dir = tempdir(TEMPLATE => 'tempXXXXX', CLEANUP => 1) or die "Unable to create tempdir";
-	my ($fh,$actual_out_base) = tempfile('vcf2snv_alignment.test.XXXXXXXX', DIR => $create_dir, UNLINK => 1);
-	close($fh);
+        
+	my ($fh,$actual_out_base) = tempfile('vcf2snv_alignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
+
+        close($fh);
 	my $format = '';
 	$extra_params = '' if (not defined $extra_params);
 	my @out_files = ();
