@@ -18,7 +18,7 @@ sub run{
    my ( $step, $output_json, $json_input, %bam_files, $snv_align_filepath, $reference_filepath, $ref_sequencer, $ref_source, 
         $plasmids, $genus, $species, $serotype, $file_type, %file_sizes, $drmaa_general, $drmaa_trimClean, 
         $drmaa_vcf2core, $drmaa_vcf2snv_align, $freebayes_params, $max_coverage, $min_coverage,
-        $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id, $masked_positions, 
+        $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $vcf2snvalign_cpus, $id, $masked_positions, 
         %read_files, $vcf2core_stats);
  
    GetOptions(
@@ -26,7 +26,7 @@ sub run{
       "json=s" => \$json_input,
       "output=s" => \$output_json,
       "bam=s" => \%bam_files,
-      "pseudo=s" => \$snv_align_filepath,
+      "snvalign=s" => \$snv_align_filepath,
       "ref-file=s" => \$reference_filepath,
       "ref-sequencer=s" => \$ref_sequencer,
       "ref-source=s" => \$ref_source,
@@ -298,7 +298,7 @@ sub record_file_sizes{
 #   $smalt_map: The parameter string for smalt_map.
 #   $trim_clean: The parameter string for trim_clean.
 #   $vcf2core_cpus: The number of cpus used for the vcf2core stage.
-#   $vcf2pseudo_cpus: The number of cpus used for the vcf2pseudo stage.
+#   $vcf2snvalign_cpus: The number of cpus used for the vcf2snvalign stage.
 #   $id: The run id.
 #   $masked_positions: The file path to the masked positions file.
 #   @read_files: A list of file paths to the fastq files used in the run.

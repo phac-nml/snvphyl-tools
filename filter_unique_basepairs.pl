@@ -68,10 +68,10 @@ sub map_strains
     my ($tsv, $tree_in) = @_;
     my @strains;
 
-	open( my $pseudo_align, '<', $tsv ) or die "could not open file";
+	open( my $snv_align, '<', $tsv ) or die "could not open file";
 
     #grab the strain names from the top of the tsv file
-    my $line = <$pseudo_align>;
+    my $line = <$snv_align>;
     chomp $line;
 
     @strains = split( /\s/, $line );
@@ -100,13 +100,13 @@ sub get_all_positions
     my $posn = 0;
     my @tsv_array;
 
-    open( my $pseudo_align, '<', $tsv ) or die "could not open file";
+    open( my $snv_align, '<', $tsv ) or die "could not open file";
 
     #grab the file headers
-    my $line = <$pseudo_align>;
+    my $line = <$snv_align>;
     chomp $line;
 
-    while($line = <$pseudo_align>)
+    while($line = <$snv_align>)
     {
         chomp $line;
         my @bps = split( /\s/, $line );

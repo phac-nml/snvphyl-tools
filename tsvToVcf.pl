@@ -15,8 +15,8 @@ sub print_to_file
 	my $dest = $_[2];
 
 	#grab the headers from the tsv to get the genome names
-	open(my $pseudo_align, '<', $tsv) or die ("Cannot open file $tsv");
-	my $headers = <$pseudo_align>;
+	open(my $snv_align, '<', $tsv) or die ("Cannot open file $tsv");
+	my $headers = <$snv_align>;
 	my @header_cols = split(/\s/, $headers);
 
 	my %all_bps;
@@ -28,7 +28,7 @@ sub print_to_file
 	}
 
 	#go through tsv file and build hash of hash table
-	while (my $line = <$pseudo_align>)
+	while (my $line = <$snv_align>)
 	{
 		chomp $line;
 		my @base_pairs = split (/\s/, $line);
@@ -54,7 +54,7 @@ sub print_to_file
 			}
 		}
 	}
-	close ($pseudo_align);
+	close ($snv_align);
 
 	#go through each genome's vcf file, look for position matches and steal the base pair sequences for the new vcf
 	foreach my $genome (keys %all_bps)
@@ -144,7 +144,7 @@ Version 1.0
 
 =head1 SYNOPSIS
 
-tsvToVcf.pl -t pseaudoalignment_tsv_file -v freebayes_vcf_directory -d destination directory
+tsvToVcf.pl -t snvalignment_tsv_file -v freebayes_vcf_directory -d destination directory
 
 Options:
 -t

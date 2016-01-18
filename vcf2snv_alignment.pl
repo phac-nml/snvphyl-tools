@@ -35,10 +35,10 @@ sub run
 	my $valid_positions = $output_base . "-positions.tsv";
 
 
-	#create pseudo-positions.tsv file
+	#create snvalign-positions.tsv file
 	my $stats = filter_positions($consolidate_vcf,$refs_info,$invalid_pos,$valid_positions,$bcftools,$requested_cpus);
 
-	#create pseudo-stats.csv file
+	#create snvalign-stats.csv file
 	print_stats($stats,$invalid_total,$output_base . '-stats.csv');
 
 
