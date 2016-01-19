@@ -117,24 +117,24 @@ sub updateMatrixCsv
 
 #==============================================================================
 #Purpose:
-#    Converts the branch lengths to an estimate of the total number of SNP 
+#    Converts the branch lengths to an estimate of the total number of SNV 
 #differences 
 #Input:
 #    $input_taxa_tree -> Bio::Phylo::Forest::Tree phylogenetic tree to re-root
 #    $inputPhyFile -> The location of the input snv_align.phy file.
 #    $logger->reference to the Logger object.
 #==============================================================================
-sub branchLengthToSNP
+sub branchLengthToSNV
 {
     my ($input_taxa_tree, $inputPhyFile, $logger) = @_;
         
-    #parse the total SNP's in the tree from the input .phy file:
+    #parse the total SNV's in the tree from the input .phy file:
     open(my $inputPhy, "<", $inputPhyFile) or die "ERROR: Could not open input phylogeny.phy file.";
     my $input = <$inputPhy>;
     my @line = split(/\s/x, $input);    
     
-    #extract the total number of SNP's found in the third column of the first line of the phylogeny.phy file.
-    my $treeTotalSNP = $line[2];
+    #extract the total number of SNV's found in the third column of the first line of the phylogeny.phy file.
+    my $treeTotalSNV = $line[2];
     
     my $internalNumber = 1;
     foreach my $node ( $input_taxa_tree->get_nodes ){
@@ -143,21 +143,21 @@ sub branchLengthToSNP
          $nodeBranchLength = 0;
          warn "Undefined node branch length set to 0.";
       }
-      my $lengthToSNP = $nodeBranchLength*$treeTotalSNP;
-      $lengthToSNP = sprintf "%.2f", $lengthToSNP;
+      my $lengthToSNV = $nodeBranchLength*$treeTotalSNV;
+      $lengthToSNV = sprintf "%.2f", $lengthToSNV;
       my $nodeName = $node->id();
       
-      if($lengthToSNP<0.5){
+      if($lengthToSNV<0.5){
           $node->branch_length(0);
       }
       else{
           #round the number printed to the closest integer value
-          $node->branch_length(round($lengthToSNP));
+          $node->branch_length(round($lengthToSNV));
       }
       $internalNumber++ if !$node->is_Leaf;
     }
     close($inputPhy);
-    print $logger "Branch lengths have been successfully converted to total SNP's\n";
+    print $logger "Branch lengths have been successfully converted to total SNV's\n";
     return;
 }
 
@@ -196,7 +196,7 @@ sub resizeTree
 #==============================================================================
 #Purpose:
 #    Script to re-root a phylogenetic tree, order the tree in increasing/
-#    decreasing order, convert branch lengths to total SNP's, and output a 
+#    decreasing order, convert branch lengths to total SNV's, and output a 
 #    revised matrix.csv to match the phylogenetic tree.
 #==============================================================================
 
@@ -261,8 +261,8 @@ if(defined $tree_order){
 }
 #create a matrix.csv file to reflect the changes made to the phylogenetic tree
 if ((defined $root_strain) || (defined $tree_order)) { updateMatrixCsv($tree, $matrix_input, $output_dir, $logger) };
-#convert branch lengths to total SNP estimate
-if (defined $convert){ branchLengthToSNP($tree, $input_phy, $logger) };
+#convert branch lengths to total SNV estimate
+if (defined $convert){ branchLengthToSNV($tree, $input_phy, $logger) };
      
 #print the final newick formatted tree to a file that can be opened by any tree viewing program
 open(my $treeout, '>', $output_dir.'/phylogeneticTree.txt') or croak "Could not open output file: $!";
@@ -277,11 +277,11 @@ close($treeout);
 exit;
 =head1 NAME
 
-rearrange_snp_matrix.pl - Script to re-root a phylogenetic tree, order the tree in increasing/decreasing order, convert branch lengths to total SNP's, and output a revised matrix.csv to match the phylogenetic tree. 
+rearrange_snv_matrix.pl - Script to re-root a phylogenetic tree, order the tree in increasing/decreasing order, convert branch lengths to total SNV's, and output a revised matrix.csv to match the phylogenetic tree. 
 
 =head1 SYNOPSIS
 
- rearrange_snp_matrix.pl -t input_tree -o output_dir -m matrix.csv -p snv_align.phy
+ rearrange_snv_matrix.pl -t input_tree -o output_dir -m matrix.csv -p snv_align.phy
 
 =head1 OPTIONS
 
@@ -309,7 +309,7 @@ Keep the temp log upon exiting the script.
 
 =item B<-c>, B<--convert> [optional]
 
-Convert the branch lengths to an estimate of the total SNP number.
+Convert the branch lengths to an estimate of the total SNV number.
 
 =item B<-r>, B<--root> [optional] 
 
@@ -327,9 +327,9 @@ To display help message
 
 =head1 DESCRIPTION
 
-rearrange_snp_matrix steps:
+rearrange_snv_matrix steps:
 
-1.  Takes a newick formatted phylogenetic tree and reroots the tree on the strain indicated by --root.  The tree can then be sorted in increasing or decreasing order and branch lengths are converted and displayed as the total number of SNP's.  The new phylogenetic tree is output in newick format as a text file named phylogeneticTree.txt.
+1.  Takes a newick formatted phylogenetic tree and reroots the tree on the strain indicated by --root.  The tree can then be sorted in increasing or decreasing order and branch lengths are converted and displayed as the total number of SNV's.  The new phylogenetic tree is output in newick format as a text file named phylogeneticTree.txt.
 
 2.  A new matrix.csv file is generated that matches the ordering of the phylogenetic tree done in step 1 above.
 

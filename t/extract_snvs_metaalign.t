@@ -9,7 +9,7 @@ use File::Temp 'tempfile';
 use Getopt::Long;
 
 my $script_dir = $FindBin::Bin;
-my $extract_snps_bin = "$script_dir/../extract_snps_metaalign.pl";
+my $extract_snvs_bin = "$script_dir/../extract_snvs_metaalign.pl";
 my $delete_temp = 1;
 
 sub compare_files
@@ -50,14 +50,14 @@ sub run_case
 {
 	my ($name, $example_file, $case_text, $command_line) = @_;
 
-	my ($cfh,$case_expected) = tempfile('extract_snps_metaalign.test.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
+	my ($cfh,$case_expected) = tempfile('extract_snvs_metaalign.test.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
 	print $cfh $case_text;
 	close($cfh);
 	
-	my ($cfha, $case_actual) = tempfile('extract_snps_metaalign.test.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
+	my ($cfha, $case_actual) = tempfile('extract_snvs_metaalign.test.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
 	close($cfha);
 	
-	my $command = "$extract_snps_bin -i $example_file -o $case_actual $command_line > /dev/null 2> /dev/null";
+	my $command = "$extract_snvs_bin -i $example_file -o $case_actual $command_line > /dev/null 2> /dev/null";
 	#print "$command\n";
 	system($command) == 0 or die "Could not execute command $command: $!";
 	pass("pass $name") if (compare_files($case_expected, $case_actual));
@@ -103,10 +103,10 @@ my $case6 =
 
 ### MAIN ###
 
-print "Testing $extract_snps_bin\n";
+print "Testing $extract_snvs_bin\n";
 
 # writing temp file
-my ($tfh,$example_file) = tempfile('extract_snps_metaalign.test.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
+my ($tfh,$example_file) = tempfile('extract_snvs_metaalign.test.XXXXXX', TMPDIR => 1, UNLINK => $delete_temp);
 print $tfh $example;
 close($tfh);
 

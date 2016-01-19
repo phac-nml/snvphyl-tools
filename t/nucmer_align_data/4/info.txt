@@ -1,1 +1,1 @@
-Testing two basic alignments with duplicate region except for a single SNP.  Should align region without SNP properly
+Testing two basic alignments with duplicate region except for a single SNV.  Should align region without SNV properly

@@ -1,1 +1,1 @@
-Test multiple SNP, one in bad position
+Test multiple SNV, one in bad position

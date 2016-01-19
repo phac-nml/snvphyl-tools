@@ -62,7 +62,7 @@ sub filterVcf{
       next;
     }
 
-    # grab other info about the snp call
+    # grab other info about the snv call
     my @info=split(/;/,$F[7]);
     my %info;
     for(@info){
@@ -75,7 +75,7 @@ sub filterVcf{
     $info{CIGAR}||=""; # make sure CIGAR is defined before testing it
     next if(!$$settings{indels} && $info{CIGAR}=~/[ID]/);
 
-    # multibase snps are printed to a line per position, but this works for single base calls too
+    # multibase snvs are printed to a line per position, but this works for single base calls too
     my @alt=split(//,$F[4]);
     my @ref=split(//,$F[3]);
     my $numBases=max(scalar(@alt),scalar(@ref));

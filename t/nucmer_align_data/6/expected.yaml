@@ -573,4 +573,4 @@ all:
 		95:
 			ref: T
 			alt: T
-snps:
+snvs:

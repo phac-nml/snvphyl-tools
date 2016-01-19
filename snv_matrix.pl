@@ -12,7 +12,7 @@ my $script_name = $0;
 sub usage
 {
 	"Usage: ".basename($script_name)." [snv_align.phy]\n".
-	"Constructs a snp matrix from the snv_alignment file of the pipeline\n".
+	"Constructs a snv matrix from the snv_alignment file of the pipeline\n".
 	"Options:\n".
 	"\t-v:  Print more information (to stderr)\n".
 	"\t-o:  Prints matrix to passed file\n";
@@ -76,10 +76,10 @@ column: for my $column (@columns) {
 	
     }
     if (scalar (keys %strain)>2){ 
-	warn "warning: \"$column\" has more than 2 snp differences!\n" if ($verbose); 
+	warn "warning: \"$column\" has more than 2 snv differences!\n" if ($verbose); 
     }  
     if (scalar (keys %strain)<2){ 
-	warn "warning: \"$column\" has no SNP differences!\n" if ($verbose); 
+	warn "warning: \"$column\" has no SNV differences!\n" if ($verbose); 
 	next column;
     }
 
@@ -92,15 +92,15 @@ column: for my $column (@columns) {
     
     my @nucleotides  = keys %strain;
     my %seen;
-    for my $snp1 (@nucleotides) {
-	snp2: for my $snp2 (@nucleotides) {
-	    next snp2 if $snp1 eq $snp2; 
-	    next snp2 if $seen{$snp1}{$snp2};
-	    next snp2 if $seen{$snp2}{$snp1};
-	    $seen{$snp1}{$snp2}++;
-	    $seen{$snp2}{$snp1}++;
-	    my @group1 = @{$strain{$snp1}};
-	    my @group2 = @{$strain{$snp2}};
+    for my $snv1 (@nucleotides) {
+	snv2: for my $snv2 (@nucleotides) {
+	    next snv2 if $snv1 eq $snv2; 
+	    next snv2 if $seen{$snv1}{$snv2};
+	    next snv2 if $seen{$snv2}{$snv1};
+	    $seen{$snv1}{$snv2}++;
+	    $seen{$snv2}{$snv1}++;
+	    my @group1 = @{$strain{$snv1}};
+	    my @group2 = @{$strain{$snv2}};
 	    for my $acc1 (@group1) {
 		for my $acc2 (@group2) {
 		    $matrix{$acc1}{$acc2}++;

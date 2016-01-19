@@ -287,4 +287,4 @@ all:
 		95:
 			ref: A
 			alt: A
-snps:
+snvs:

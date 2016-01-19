@@ -78,8 +78,8 @@ sub combine_vcfs{
     system($cmd) == 0 or die "Could not run $cmd";
 
 
-    #confirm SNPS in freebayes by comparing them to mpileup REF and ALT columns
-    #mark all SNPS found in mpileup but NOT in freebayes as filtered-mpileup with 'some' option. 'some' options allows
+    #confirm SNVS in freebayes by comparing them to mpileup REF and ALT columns
+    #mark all SNVS found in mpileup but NOT in freebayes as filtered-mpileup with 'some' option. 'some' options allows
     #only records where some subset of ALT alleles match are compatible
     #                  #chrom      #pos     #ref  #alt
     #so if mpileup had NC_007530.2|668709 . T     G,A
@@ -91,12 +91,12 @@ sub combine_vcfs{
 	#result from bcftools isec is a directory that contains multiple *$ext files
 	#ignoring: 0000$ext is for unique position just for vcf-split aka freebayes (we do not use at all since should be empty because mpileup report ALL positions)
 	#use: 0001$ext is for unique position only found in mpileup
-	#use: 0002$ext is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNP or same as reference)
+	#use: 0002$ext is positions that both freebayes and mpileup have a consensus on the base pair call (either a SNV or same as reference)
 	#VCF line that is kept is the one from freebayes and NOT mpileup
-	#use: 0003$ext same as 0002$ext but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNPS from freebayes (0002$ext)
+	#use: 0003$ext same as 0002$ext but where mpileup VCF line is kept and not freebayes. Need so we can confirm isec SNVS from freebayes (0002$ext)
 
 
-    #filter out SNPs that were only found in mpileup but NOT in freebayes
+    #filter out SNVs that were only found in mpileup but NOT in freebayes
     $cmd = "$bcftools  filter  -m + -s 'mpileup' -i ' TYPE!=\"snp\" ' $dir/0001$ext $out_type  > $dir/1-0001$ext";
 
     system($cmd) == 0 or die "Could not run $cmd";
@@ -122,7 +122,7 @@ sub combine_vcfs{
 
 
     #Doing two level of filtering here
-    #first is by alternative allele ratio. Default is 75% of the reads need to show a SNP exist
+    #first is by alternative allele ratio. Default is 75% of the reads need to show a SNV exist
     #Second is MQM (min mean mapping) needs to be above a threshold (default is 30)
     #if either of them fail, it will be hard clip out.
     #NB that not sure how it handles when have multiple different alternative alleles
@@ -162,7 +162,7 @@ sub combine_vcfs{
 
     if(not defined $skip_density_filter)
     {
-        $cmd = "$bcftools plugin filter_snp_density $dir/filtered_freebayes2$ext  --  --region_file $filtered_density_out";
+        $cmd = "$bcftools plugin filter_snv_density $dir/filtered_freebayes2$ext  --  --region_file $filtered_density_out";
             
         
         if(defined $window_size)

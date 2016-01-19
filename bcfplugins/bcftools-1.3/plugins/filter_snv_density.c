@@ -51,7 +51,7 @@ struct entry{
 const char *about(void)
 {
     return 
-      "A plugin which filters on freebayes for SNP's deemed to be within high density regions of the genome.\n"; 
+      "A plugin which filters on freebayes for SNV's deemed to be within high density regions of the genome.\n"; 
 }
 
 int init(int argc, char **argv, bcf_hdr_t *in, bcf_hdr_t *out)

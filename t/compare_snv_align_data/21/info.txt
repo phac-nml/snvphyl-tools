@@ -1,1 +1,1 @@
-Test single SNP and deletion on query idenfied by nucmer (should be filtered out)
+Test single SNV and deletion on query idenfied by nucmer (should be filtered out)

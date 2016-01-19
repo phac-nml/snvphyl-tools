@@ -1,1 +1,1 @@
-Test mis-detection of SNP, true detection of another SNP (% False Positive/% True Positive)
+Test mis-detection of SNV, true detection of another SNV (% False Positive/% True Positive)

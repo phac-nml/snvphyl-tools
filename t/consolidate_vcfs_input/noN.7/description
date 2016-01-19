@@ -1,4 +1,4 @@
-Tests two SNPs, but with no coverage in a region for v2, and with too low coverage overall
+Tests two SNVs, but with no coverage in a region for v2, and with too low coverage overall
 
 v1 alignments:
 ref atgc
