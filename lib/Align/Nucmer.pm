@@ -77,7 +77,7 @@ sub align_and_parse
 	system($command) == 0 or die "Could not execute '$command'";
 
 	my $snvs_file = "$nucmer_dir/snvs";
-	$command = "show-snvs -CTr $delta_filter > $snvs_file";
+	$command = "show-snps -CTr $delta_filter > $snvs_file";
 	system($command) == 0 or die "Could not execute '$command'";
 
 	chdir($cwd);

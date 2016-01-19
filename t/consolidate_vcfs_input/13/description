@@ -1,4 +1,4 @@
-Tests multiple SNPs and one insertion/one deletion on each of v1/v2
+Tests multiple SNVs and one insertion/one deletion on each of v1/v2
 
 v1 alignments:
 ref a-tgcatgcatgcatgc

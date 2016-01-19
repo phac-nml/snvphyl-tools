@@ -1,1 +1,1 @@
-Test multiple SNPs, both in core, starting at one SNP
+Test multiple SNVs, both in core, starting at one SNV

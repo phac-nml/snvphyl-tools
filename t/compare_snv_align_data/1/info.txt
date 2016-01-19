@@ -1,1 +1,1 @@
-Test single SNP (% True Positive)
+Test single SNV (% True Positive)
