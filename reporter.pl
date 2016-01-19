@@ -376,7 +376,7 @@ sub vcf2core_stats{
 #type of change that the variant will cause to the nucleotide sequence
 #of the resultant protein, if applicable.
 #------------------------------------------------------------------------
-sub record_snp_eff{
+sub record_snv_eff{
     #IMPLEMENTED TO v2.0
 }
 

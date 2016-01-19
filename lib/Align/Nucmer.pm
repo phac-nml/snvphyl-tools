@@ -76,8 +76,8 @@ sub align_and_parse
 	$command = "delta-filter -q -r $delta_file > $delta_filter";
 	system($command) == 0 or die "Could not execute '$command'";
 
-	my $snps_file = "$nucmer_dir/snps";
-	$command = "show-snps -CTr $delta_filter > $snps_file";
+	my $snvs_file = "$nucmer_dir/snvs";
+	$command = "show-snvs -CTr $delta_filter > $snvs_file";
 	system($command) == 0 or die "Could not execute '$command'";
 
 	chdir($cwd);
@@ -127,22 +127,22 @@ sub align_and_parse
 	}
 
 	$alignments{'all'} = \%bp;
-	$alignments{'snps'} = $self->_handle_show_snps($snps_file);
+	$alignments{'snvs'} = $self->_handle_show_snvs($snvs_file);
 
 	return \%alignments;
 }
 
-# returns a data structure containing SNPs, or undef if no SNPs
-sub _handle_show_snps
+# returns a data structure containing SNVs, or undef if no SNVs
+sub _handle_show_snvs
 {
-	my ($self,$show_snps_file) = @_;
+	my ($self,$show_snvs_file) = @_;
 
-	my %snps;
+	my %snvs;
 
-	die "error: show_snps_file is undefined" if (not defined $show_snps_file);
-	die "error: show_snps_file does not exist" if (not -e $show_snps_file);
+	die "error: show_snvs_file is undefined" if (not defined $show_snvs_file);
+	die "error: show_snvs_file does not exist" if (not -e $show_snvs_file);
 
-	open(my $fh, "<$show_snps_file") or die "Could not open $show_snps_file: $!";
+	open(my $fh, "<$show_snvs_file") or die "Could not open $show_snvs_file: $!";
 	
 	my $line;
 	# skip first line
@@ -150,7 +150,7 @@ sub _handle_show_snps
 
 	return undef if (not defined $line);
 	$line = readline($fh);
-	die "error: $show_snps_file not valid show-snps file. try running 'show-snps -CTr'"
+	die "error: $show_snvs_file not valid show-snvs file. try running 'show-snvs -CTr'"
 		if ($line ne "NUCMER\n");
 
 	# skip next two lines
@@ -162,36 +162,36 @@ sub _handle_show_snps
 		chomp $line;
 		my @fields = split(/\t/,$line);
 		my $ref_pos = $fields[0];
-		die "error parsing $show_snps_file, ref_pos undefined" if (not defined $ref_pos);
+		die "error parsing $show_snvs_file, ref_pos undefined" if (not defined $ref_pos);
 
 		my $ref = $fields[1];
-		die "error parsing $show_snps_file, ref not defined" if (not defined $ref);
+		die "error parsing $show_snvs_file, ref not defined" if (not defined $ref);
 
 		my $alt = $fields[2];
-		die "error parsing $show_snps_file, alt not defined" if (not defined $alt);
+		die "error parsing $show_snvs_file, alt not defined" if (not defined $alt);
 
 		my $ref_contig = $fields[8];
-		die "error parsing $show_snps_file, ref_contig not defined" if (not defined $ref_contig);
+		die "error parsing $show_snvs_file, ref_contig not defined" if (not defined $ref_contig);
 
-		$snps{$ref_contig}->{$ref_pos} = {'ref' => $ref, 'alt' => $alt};		
+		$snvs{$ref_contig}->{$ref_pos} = {'ref' => $ref, 'alt' => $alt};		
 	}
 
 	close($fh);
 
-	if (keys %snps <= 0)
+	if (keys %snvs <= 0)
 	{
 		return undef;
 	}
 	else
 	{
-		return \%snps;
+		return \%snvs;
 	}
 }
 
 # Parses alignments and returns a hash table storing all positions
 # input
 #	show-aligns-file: The show-aligns file
-#	show-snps-file: The show-snps file
+#	show-snvs-file: The show-snvs file
 # Output
 #	bp:  A hash table storing all positions
 sub _parse_alignments {

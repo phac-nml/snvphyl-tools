@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
-# check_snps_nucmer.pl
+# check_snvs_nucmer.pl
 # Purpose:  Given a snv_align-positions.tsv and list of closed/finished fasta files
-# and a reference, runs nucmer to verify the SNPs called from the reference mapping pipeline to those in snv_align-positions.tsv.
+# and a reference, runs nucmer to verify the SNVs called from the reference mapping pipeline to those in snv_align-positions.tsv.
 
 use warnings;
 use strict;
@@ -92,11 +92,11 @@ sub get_reference_length
 
 sub determine_genome_name
 {
-	my ($genomes_core_snp, $genome) = @_;
+	my ($genomes_core_snv, $genome) = @_;
 	my $genome_name = undef;
 	my $genome_file = basename($genome, '.fasta');
 
-	for my $curr_name (keys %$genomes_core_snp)
+	for my $curr_name (keys %$genomes_core_snv)
 	{
 		if ($genome_file =~ /^$curr_name/)
 		{
@@ -110,19 +110,19 @@ sub determine_genome_name
 
 sub build_pipeline_set
 {
-	my ($genome_name, $genomes_core_snp) = @_;
+	my ($genome_name, $genomes_core_snv) = @_;
 
 	my $pipeline_set = Set::Scalar->new;
 
-	my $genome_snps_set = $genomes_core_snp->{$genome_name};
-	if (not defined $genome_snps_set)
+	my $genome_snvs_set = $genomes_core_snv->{$genome_name};
+	if (not defined $genome_snvs_set)
 	{
-		warn "warning: no genome_snps_set for $genome_name defined";
+		warn "warning: no genome_snvs_set for $genome_name defined";
 	}
 
-	for my $chrom (keys %$genome_snps_set)
+	for my $chrom (keys %$genome_snvs_set)
 	{
-		my $pos_map = $genome_snps_set->{$chrom};
+		my $pos_map = $genome_snvs_set->{$chrom};
 		for my $pos (keys %$pos_map)
 		{
 			my $ref = $pos_map->{$pos}->{'reference'};
@@ -135,16 +135,16 @@ sub build_pipeline_set
 	return $pipeline_set;
 }
 
-sub print_snp_results
+sub print_snv_results
 {
-	my ($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_position_checker,$core_positions,$genome_core_snp_count) = @_;
+	my ($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_position_checker,$core_positions,$genome_core_snv_count) = @_;
 
-	my $nucmer_set = $nucmer_position_checker->get_nucmer_snp_set;
+	my $nucmer_set = $nucmer_position_checker->get_nucmer_snv_set;
 	my $nucmer_ref_set = $nucmer_position_checker->get_nucmer_ref_set;
-	my $nucmer_set_core_pos = $nucmer_position_checker->get_nucmer_snp_set_core_pos;
+	my $nucmer_set_core_pos = $nucmer_position_checker->get_nucmer_snv_set_core_pos;
 	my $nucmer_ref_set_core_pos = $nucmer_position_checker->get_nucmer_ref_set_core_pos;
 	my $unknown_pipeline_positions = $nucmer_position_checker->get_unknown_pipeline_positions;
-	my $uknown_snps_removed_count = $nucmer_position_checker->get_unknown_snps_removed_count;
+	my $uknown_snvs_removed_count = $nucmer_position_checker->get_unknown_snvs_removed_count;
 
 	# only print statistics on positions we could validate with nucmer
 	my $pipeline_set_known = $pipeline_set - $unknown_pipeline_positions;
@@ -157,7 +157,7 @@ sub print_snp_results
 	my $nucmer_all = ($nucmer_set + $nucmer_ref_set);
 	my $nucmer_core_all = ($nucmer_set_core_pos + $nucmer_ref_set_core_pos);
 
-	# compare sets of snps
+	# compare sets of snvs
 	my $intersection = $pipeline_set_known * $nucmer_all;
 	my $uniq_pipeline = $pipeline_set_known - $nucmer_all;
 	my $uniq_nucmer = $nucmer_all - $pipeline_set_known;
@@ -169,15 +169,15 @@ sub print_snp_results
 	my $total_bases_kept = scalar(keys %$core_positions);
 	my $total_bases_reference = get_reference_length($reference);
 	
-	my $nucmer_snps = $nucmer_set->size;
-	my $nucmer_filtered_snps = $nucmer_set_core_pos->size;
+	my $nucmer_snvs = $nucmer_set->size;
+	my $nucmer_filtered_snvs = $nucmer_set_core_pos->size;
 
-	my $validated_pipeline_snps_count = $genome_core_snp_count - $uknown_snps_removed_count;
+	my $validated_pipeline_snvs_count = $genome_core_snv_count - $uknown_snvs_removed_count;
 	
-	print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tCore Pipeline Validated\tCore Pipeline SNPs\tNucmer Positions\tNucmer SNPs\tNucmer Filtered Positions\tNucmer Filtered SNPs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\t% Unknown\n";
+	print "Reference\tGenome\tCore Positions File\tBad Positions File\tTotal Reference Length\tTotal Length Used\t% Used\tCore Pipeline Positions\tCore Pipeline Validated\tCore Pipeline SNVs\tNucmer Positions\tNucmer SNVs\tNucmer Filtered Positions\tNucmer Filtered SNVs\tIntersection\tUnique Core Pipeline\tUnique Nucmer\t% True Positive\t% False Positive\t% False Negative\t% Unknown\n";
 	print "$reference_base\t$genome_base\t$core_positions_base\t$bad_positions_base\t$total_bases_reference\t$total_bases_kept\t";
 	printf "%0.1f\t",($total_bases_kept/$total_bases_reference)*100;
-	print $pipeline_set->size."\t".$pipeline_set_known->size."\t$validated_pipeline_snps_count\t".$nucmer_all->size."\t$nucmer_snps\t".$nucmer_core_all->size."\t$nucmer_filtered_snps\t".
+	print $pipeline_set->size."\t".$pipeline_set_known->size."\t$validated_pipeline_snvs_count\t".$nucmer_all->size."\t$nucmer_snvs\t".$nucmer_core_all->size."\t$nucmer_filtered_snvs\t".
 		$intersection_core_pos->size."\t".$uniq_pipeline_core->size."\t".$uniq_nucmer_core->size."\t";
 	
 	my $true_positive;
@@ -257,7 +257,7 @@ sub usage
 {
 	"Usage: $0 -i [snv_align-positions.tsv] -r [reference file] -g [genome file] [-v]\n".
 	"Parameters:\n".
-	"\t-i|--input-align:  Input file (snv_align-positions.tsv generated by snp pipeline)\n".
+	"\t-i|--input-align:  Input file (snv_align-positions.tsv generated by snv pipeline)\n".
 	"\t-r|--reference: Reference genome.\n".
 	"\t-o|--output: File to output detailed information\n".
 	"\t-b|--bad-positions: Bad positions file\n".
@@ -294,19 +294,19 @@ die "Error: no output file defined" if (not defined $output);
 $keep_temp = 0 if ($verbose);
 
 my $positions_table_parser = PositionsTable->new($verbose);
-my ($genomes_core_snp,$genomes_core_snp_count) = $positions_table_parser->read_table($input_align);
+my ($genomes_core_snv,$genomes_core_snv_count) = $positions_table_parser->read_table($input_align);
 
-my $genome_name = determine_genome_name($genomes_core_snp,$genome);
+my $genome_name = determine_genome_name($genomes_core_snv,$genome);
 die "error: no entry in table $input_align for $genome" if (not defined $genome_name);
 
-my $genome_core_snp_count = $genomes_core_snp_count->{$genome_name};
-die "error: could not find SNP count in $input_align for $genome_name" if (not defined $genome_core_snp_count);
+my $genome_core_snv_count = $genomes_core_snv_count->{$genome_name};
+die "error: could not find SNV count in $input_align for $genome_name" if (not defined $genome_core_snv_count);
 
 my $core_positions_parser = CorePositions->new($core_positions_file,$bad_positions_file,'tsv');
 my $core_positions = $core_positions_parser->get_core_positions;
 
-my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snp);
+my $pipeline_set = build_pipeline_set($genome_name, $genomes_core_snv);
 
-my $nucmer_position_checker = NucmerPositionsChecker->new($reference,$genome,$genome_name,$genomes_core_snp,$core_positions,$verbose);
+my $nucmer_position_checker = NucmerPositionsChecker->new($reference,$genome,$genome_name,$genomes_core_snv,$core_positions,$verbose);
 
-print_snp_results($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_position_checker,$core_positions,$genome_core_snp_count);
+print_snv_results($reference,$genome,$bad_positions_file,$core_positions_file,$pipeline_set,$nucmer_position_checker,$core_positions,$genome_core_snv_count);

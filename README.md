@@ -50,7 +50,7 @@ In order to run the tests, please run the command:
 
 	$ prove
 	t/compare_snv_align_nucmer.t .. ok    
-	t/extract_snps_metaalign.t ...... ok   
+	t/extract_snvs_metaalign.t ...... ok   
 	t/find-positions-used.t ......... ok   
 	t/nucmer_align.t ................ ok    
 	t/variant_calls.t ............... ok     

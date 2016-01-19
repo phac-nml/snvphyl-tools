@@ -12,13 +12,13 @@ main( check_inputs() );
 
 sub main
 {
-    my ($tsv,$flag,$tree_file,$output, $clade_output, $snpeff_input_ref, $quiet,  @desired_strains) = @_;
+    my ($tsv,$flag,$tree_file,$output, $clade_output, $snveff_input_ref, $quiet,  @desired_strains) = @_;
 
     my @strains= map_strains($tsv, $tree_file);
     my @tsv_array = get_all_positions($tsv);
 
 
-   my %snpeff_info;
+   my %snveff_info;
 
     open my $outfile, '>', $output or die "Could not open file for writing: $?";
 
@@ -34,7 +34,7 @@ sub main
   		  push(@desired, $strain);
 	    }
 	    print $outfile sprintf("Clade_".$index.":,\n");
-    	    process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref, $quiet);
+    	    process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snveff_input_ref, $quiet);
     	    print $outfile sprintf("Strains:, ("."@desired".")\n\n");
     	    print $outfile "--------------------------------------------------------------------------------------------\n\n";
     	    $index++;
@@ -47,7 +47,7 @@ sub main
             my @desired;
             push(@desired, $strains[$i]);
             print $outfile sprintf("Strains: ("."$strains[$i]".")\n");
-            process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snpeff_input_ref, $quiet);
+            process_strains(\@tsv_array, $outfile, \@desired, $flag, \@strains, $snveff_input_ref, $quiet);
             printf $outfile "\n\n";
             print $outfile "--------------------------------------------------------------------------------------------\n\n";
         }
@@ -55,7 +55,7 @@ sub main
     else
     {
          print $outfile sprintf("Strains: ("."@desired_strains".")\n");
-         process_strains(\@tsv_array, $outfile, \@desired_strains, $flag, \@strains, $snpeff_input_ref, $quiet);
+         process_strains(\@tsv_array, $outfile, \@desired_strains, $flag, \@strains, $snveff_input_ref, $quiet);
 	 printf $outfile "\n\n";
 	 print $outfile "--------------------------------------------------------------------------------------------\n\n";
     }
@@ -180,9 +180,9 @@ sub get_clades_from_tree
 }
 
 sub process_strains {
-    my ($tsv_array, $outfile, $desired_strains_ref, $flag, $all_strains_ref, $snpeff_input_ref, $quiet) = @_;
+    my ($tsv_array, $outfile, $desired_strains_ref, $flag, $all_strains_ref, $snveff_input_ref, $quiet) = @_;
     my %strain_cols;
-    my %snpeff_info;
+    my %snveff_info;
     my @desired_strains = @{$desired_strains_ref};
     my @all_strains = @{$all_strains_ref};
 
@@ -192,9 +192,9 @@ sub process_strains {
     
 
     print $outfile "Chromosome_Name, Position, Reference_BP, Alternate_BP";
-    if ($snpeff_input_ref)
+    if ($snveff_input_ref)
     {
-         %snpeff_info = %{get_snpeff_info($snpeff_input_ref, \@desired_strains, $quiet)};
+         %snveff_info = %{get_snveff_info($snveff_input_ref, \@desired_strains, $quiet)};
          print $outfile ",Effect,Gene_Name,Old_AA/New_AA,Codon_Change,Coding,Impact,Funclass,Strand";
     }
     print $outfile "\n";
@@ -220,8 +220,8 @@ sub process_strains {
                 {
                     print $outfile $bps[0].",".$position.",".$bps[3].",".$bp_match;
 
-                     #User provided snpeff output, so let us print the extra info
-                    if ($snpeff_input_ref)
+                     #User provided snveff output, so let us print the extra info
+                    if ($snveff_input_ref)
                     {
                         #Is this bp same as the reference??
                         if ($bp_match eq $bps[3])
@@ -232,9 +232,9 @@ sub process_strains {
                         {
                            my $strand = "";
                            #Let us figure out the strand
-                           if ($snpeff_info{$strain}{$bps[0]}{$position}{'aa'})
+                           if ($snveff_info{$strain}{$bps[0]}{$position}{'aa'})
                            {
-                              my ($old_aa, $new_aa) = split /\//, $snpeff_info{$strain}{$bps[0]}{$position}{'aa'};
+                              my ($old_aa, $new_aa) = split /\//, $snveff_info{$strain}{$bps[0]}{$position}{'aa'};
                               $old_aa =~ s/[a-z]//g;
                               $new_aa =~ s/[a-z]//g;
                               
@@ -248,17 +248,17 @@ sub process_strains {
                               }
                            }
 
-                           if (exists($snpeff_info{$strain}{$bps[0]}{$position}) and $snpeff_info{$strain}{$bps[0]}{$position}{'alt'} eq $bp_match)
+                           if (exists($snveff_info{$strain}{$bps[0]}{$position}) and $snveff_info{$strain}{$bps[0]}{$position}{'alt'} eq $bp_match)
                            {
-                              print $outfile ",".$snpeff_info{$strain}{$bps[0]}{$position}{'effect'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'gene'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'aa'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'codon'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'coding'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'impact'}.",".$snpeff_info{$strain}{$bps[0]}{$position}{'funclass'}.",".$strand;
+                              print $outfile ",".$snveff_info{$strain}{$bps[0]}{$position}{'effect'}.",".$snveff_info{$strain}{$bps[0]}{$position}{'gene'}.",".$snveff_info{$strain}{$bps[0]}{$position}{'aa'}.",".$snveff_info{$strain}{$bps[0]}{$position}{'codon'}.",".$snveff_info{$strain}{$bps[0]}{$position}{'coding'}.",".$snveff_info{$strain}{$bps[0]}{$position}{'impact'}.",".$snveff_info{$strain}{$bps[0]}{$position}{'funclass'}.",".$strand;
                            }
-                           elsif ($snpeff_info{$strain}{$bps[0]}{$position}{'alt'} ne $bp_match)
+                           elsif ($snveff_info{$strain}{$bps[0]}{$position}{'alt'} ne $bp_match)
                            {
-                              print $outfile ",ERROR_BP_DOES_NOT_MATCH_SNPEFF_OUTPUT Ref: $snpeff_info{$strain}{$bps[0]}{$position}{'alt'} and $bp_match";
+                              print $outfile ",ERROR_BP_DOES_NOT_MATCH_SNVEFF_OUTPUT Ref: $snveff_info{$strain}{$bps[0]}{$position}{'alt'} and $bp_match";
                            }
                            else
                            {
-                              print $outfile ",ERROR_SNP_NOT_FOUND_IN_SNPEFF_OUTPUT";
+                              print $outfile ",ERROR_SNV_NOT_FOUND_IN_SNVEFF_OUTPUT";
                            }
                         }
                     }
@@ -282,12 +282,12 @@ sub complement
 
 }
 
-sub get_snpeff_info
+sub get_snveff_info
 {
-      my ($snpeff_input_ref, $desired_strains_ref, $quiet) = @_;
-      my %snpeff_input = %{$snpeff_input_ref};
+      my ($snveff_input_ref, $desired_strains_ref, $quiet) = @_;
+      my %snveff_input = %{$snveff_input_ref};
       my @desired_strains = @{$desired_strains_ref};
-      my %snpeff_info;
+      my %snveff_info;
 
       my @list_of_acceptable_effects = (  "INTERGENIC", "INTERGENIC_CONSERVED", "START_GAINED", 
                                           "START_LOST", "SYNONYMOUS_START", "NON_SYNONYMOUS_START", 
@@ -298,8 +298,8 @@ sub get_snpeff_info
 
       foreach my $strain (@desired_strains)
       {
-            next if (!(exists($snpeff_input{$strain})));
-            my $file = $snpeff_input{$strain};
+            next if (!(exists($snveff_input{$strain})));
+            my $file = $snveff_input{$strain};
             
             open my $in, "<", $file or die "Could not open VCF file: ($strain: $file) $?";
 
@@ -329,7 +329,7 @@ sub get_snpeff_info
                   }
                   if ($eff_index == -1)
                   {
-                        die "The VCF files are not properly annotated. Cannot find the EFF information. Make sure you give me the SnpEFF VCF output files\n $file: $line";
+                        die "The VCF files are not properly annotated. Cannot find the EFF information. Make sure you give me the snvEFF VCF output files\n $file: $line";
                   }
 
                   #Get the EFF entry
@@ -368,21 +368,21 @@ sub get_snpeff_info
          
                   
                   #Let's store the information we want
-                  $snpeff_info{$strain}{$chromosome}{$position}{'ref'} = $reference;
-                  $snpeff_info{$strain}{$chromosome}{$position}{'alt'} = $change;
-                  $snpeff_info{$strain}{$chromosome}{$position}{'gene'} = $sub_fields[5];
-                  $snpeff_info{$strain}{$chromosome}{$position}{'effect'} = $effect;
-                  $snpeff_info{$strain}{$chromosome}{$position}{'aa'} = $sub_fields[2];
-                  $snpeff_info{$strain}{$chromosome}{$position}{'codon'} = $sub_fields[3];
-                  $snpeff_info{$strain}{$chromosome}{$position}{'coding'} = $sub_fields[7];
-                  $snpeff_info{$strain}{$chromosome}{$position}{'impact'} = $sub_fields[0];
-                  $snpeff_info{$strain}{$chromosome}{$position}{'funclass'} = $sub_fields[1];
+                  $snveff_info{$strain}{$chromosome}{$position}{'ref'} = $reference;
+                  $snveff_info{$strain}{$chromosome}{$position}{'alt'} = $change;
+                  $snveff_info{$strain}{$chromosome}{$position}{'gene'} = $sub_fields[5];
+                  $snveff_info{$strain}{$chromosome}{$position}{'effect'} = $effect;
+                  $snveff_info{$strain}{$chromosome}{$position}{'aa'} = $sub_fields[2];
+                  $snveff_info{$strain}{$chromosome}{$position}{'codon'} = $sub_fields[3];
+                  $snveff_info{$strain}{$chromosome}{$position}{'coding'} = $sub_fields[7];
+                  $snveff_info{$strain}{$chromosome}{$position}{'impact'} = $sub_fields[0];
+                  $snveff_info{$strain}{$chromosome}{$position}{'funclass'} = $sub_fields[1];
             }
 
             close $file;
       }
       
-      return \%snpeff_info;
+      return \%snveff_info;
 }
 
 #given an array that represents the first line of the tsv file, and an array containing
@@ -625,7 +625,7 @@ A VCF input file in the following format: strain_name=file_path
 
 =item B<-d>, B<--directory>
 
-A folder containing all of the tabular Snpeff outputs
+A folder containing all of the tabular snveff outputs
 
 =item B<-s>, B<--strains>
 
