@@ -97,7 +97,7 @@ sub combine_vcfs{
 
 
     #filter out SNVs that were only found in mpileup but NOT in freebayes
-    $cmd = "$bcftools  filter  -m + -s 'mpileup' -i ' TYPE!=\"snv\" ' $dir/0001$ext $out_type  > $dir/1-0001$ext";
+    $cmd = "$bcftools  filter  -m + -s 'mpileup' -i ' TYPE!=\"snp\" ' $dir/0001$ext $out_type  > $dir/1-0001$ext";
 
     system($cmd) == 0 or die "Could not run $cmd";
 
