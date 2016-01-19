@@ -11,8 +11,8 @@ my $script_name = $0;
 
 sub usage
 {
-	"Usage: ".basename($script_name)." [pseudoalign.phy]\n".
-	"Constructs a snp matrix from the pseudoalignment file of the pipeline\n".
+	"Usage: ".basename($script_name)." [snv_align.phy]\n".
+	"Constructs a snp matrix from the snv_alignment file of the pipeline\n".
 	"Options:\n".
 	"\t-v:  Print more information (to stderr)\n".
 	"\t-o:  Prints matrix to passed file\n";

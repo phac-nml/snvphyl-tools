@@ -121,7 +121,7 @@ sub updateMatrixCsv
 #differences 
 #Input:
 #    $input_taxa_tree -> Bio::Phylo::Forest::Tree phylogenetic tree to re-root
-#    $inputPhyFile -> The location of the input pseudoalign.phy file.
+#    $inputPhyFile -> The location of the input snv_align.phy file.
 #    $logger->reference to the Logger object.
 #==============================================================================
 sub branchLengthToSNP
@@ -225,7 +225,7 @@ pod2usage(1) unless $input_tree && $output_dir && $matrix_input && $input_phy;
 $output_dir='.' if (not defined $output_dir);
 die "Error: Invalid newick file." if (not -e $input_tree);
 die "Error: Invalid matrix.csv file." if (not -e $matrix_input);
-die "Error: Invalid pseudoalign.phy file." if (not -e $input_phy);
+die "Error: Invalid snv_align.phy file." if (not -e $input_phy);
 
 $keep_tmp = 0 if (not defined $keep_tmp);
 
@@ -281,7 +281,7 @@ rearrange_snp_matrix.pl - Script to re-root a phylogenetic tree, order the tree 
 
 =head1 SYNOPSIS
 
- rearrange_snp_matrix.pl -t input_tree -o output_dir -m matrix.csv -p pseudoalign.phy
+ rearrange_snp_matrix.pl -t input_tree -o output_dir -m matrix.csv -p snv_align.phy
 
 =head1 OPTIONS
 
@@ -297,7 +297,7 @@ The directory for output files.
 
 =item B<-p>, B<--phy> [required]
 
-Input pseudoalign.phy file. 
+Input snv_align.phy file. 
 
 =item B<-m>, B<--matrix> [required]
 

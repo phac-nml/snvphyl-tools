@@ -22,7 +22,7 @@ opendir(my $in_h,$input_dir) or die "Could not open $input_dir: $!";
 my @in_files = sort {$a =~ /-(\d+)\.phy/; my $x = $1; $b =~ /-(\d+)\.phy/; my $y = $1; $x <=> $y} grep {$_ !~ /^\./} readdir($in_h);
 closedir($in_h);
 
-print "Testing all input pseudoalignments in $input_dir\n";
+print "Testing all input snv_alignments in $input_dir\n";
 for my $file (@in_files)
 {
 	print "\n### Testing $input_dir/$file ###\n";

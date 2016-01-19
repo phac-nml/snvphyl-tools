@@ -6,7 +6,7 @@ use strict;
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
 use Test::More;
-use File::Temp 'tempfile';
+use File::Temp 'tempfile'; 
 use Getopt::Long;
 
 use CompareFiles;
@@ -17,7 +17,7 @@ my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../../../lib:$script_dir/../../../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
-my $vcf_align_bin = "$script_dir/../vcf2pseudoalignment.pl";
+my $vcf_align_bin = "$script_dir/../vcf2snv_alignment.pl";
 
 my $verbose = 0;
 
@@ -81,9 +81,10 @@ sub run_command
 	my ($vcf_hash, $reference, $formats, $extra_params) = @_;
 
 	my %vcf_files = %$vcf_hash;
+        
+	my ($fh,$actual_out_base) = tempfile('vcf2snv_alignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
 
-	my ($fh,$actual_out_base) = tempfile('vcf2pseudoalignment.test.XXXXXXXX', TMPDIR => 1, UNLINK => 1);
-	close($fh);
+        close($fh);
 	my $format = '';
 	$extra_params = '' if (not defined $extra_params);
 	my @out_files = ();
@@ -116,7 +117,7 @@ sub run_command
 	}
 	else
 	{
-		$command .= " 2>&1 1>/dev/null";
+	    $command .= " 2>&1 1>/dev/null";
 	}
 
 	print "## Running $command\n\n";
@@ -215,7 +216,7 @@ for my $dir (@in_files)
 	my $success = compare_files($expected_out_file,$actual_out_file);
 	if ($success) #pass
 	{
-		pass("pseudoalignment generated from data in $curr_input is valid");
+		pass("snv_alignment generated from data in $curr_input is valid");
 	}
 	$success = compare_files($expected_positions_file,$actual_positions_file);
 	if ($success)

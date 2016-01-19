@@ -15,10 +15,10 @@ __PACKAGE__->run unless caller;
 
 sub run{
     
-   my ( $step, $output_json, $json_input, %bam_files, $pseudoalign_filepath, $reference_filepath, $ref_sequencer, $ref_source, 
+   my ( $step, $output_json, $json_input, %bam_files, $snv_align_filepath, $reference_filepath, $ref_sequencer, $ref_source, 
         $plasmids, $genus, $species, $serotype, $file_type, %file_sizes, $drmaa_general, $drmaa_trimClean, 
-        $drmaa_vcf2core, $drmaa_vcf2pseudoalign, $freebayes_params, $max_coverage, $min_coverage,
-        $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $vcf2pseudo_cpus, $id, $masked_positions, 
+        $drmaa_vcf2core, $drmaa_vcf2snv_align, $freebayes_params, $max_coverage, $min_coverage,
+        $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $vcf2snvalign_cpus, $id, $masked_positions, 
         %read_files, $vcf2core_stats);
  
    GetOptions(
@@ -26,7 +26,7 @@ sub run{
       "json=s" => \$json_input,
       "output=s" => \$output_json,
       "bam=s" => \%bam_files,
-      "pseudo=s" => \$pseudoalign_filepath,
+      "snvalign=s" => \$snv_align_filepath,
       "ref-file=s" => \$reference_filepath,
       "ref-sequencer=s" => \$ref_sequencer,
       "ref-source=s" => \$ref_source,
@@ -62,7 +62,7 @@ sub run{
    
    switch($step){
          case "bam_quality_data" { $output = bam_quality_data($json_daisy_chain, %bam_files) }
-         case "record_filter_stats"{ $output = record_filter_stats($json_daisy_chain, $pseudoalign_filepath)}
+         case "record_filter_stats"{ $output = record_filter_stats($json_daisy_chain, $snv_align_filepath)}
          case "record_reference_info"{ $output = record_reference_info($json_daisy_chain, $reference_filepath, $ref_sequencer, $ref_source, $plasmids, $genus, $species, $serotype)};
          case "record_file_sizes"{ $output = record_file_sizes($json_daisy_chain, $file_type, %file_sizes)};
          case "record_run_parameters"{ $output = record_run_parameters($json_daisy_chain, $freebayes_params, $max_coverage, $min_coverage, $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $id, 
@@ -165,15 +165,15 @@ sub bam_quality_data{
 #easily readable format for the reporter log file.
 #Input:
 #   $json_daisy_chain: JSON string containing reporter data for the run.
-#   $pseudoalign_filepath: File path to the pseudoalign-positions.tsv
+#   $snv_align_filepath: File path to the snv_align-positions.tsv
 #                          for the run.
 #Output:
 #   JSON daisy chain with the filter stats data included.
 #------------------------------------------------------------------------
 sub record_filter_stats{
     
-    my($json_daisy_chain, $pseudoalign_filepath) = @_;
-    my $result = `perl $script_dir/filter-stats.pl -i $pseudoalign_filepath`;
+    my($json_daisy_chain, $snv_align_filepath) = @_;
+    my $result = `perl $script_dir/filter-stats.pl -i $snv_align_filepath`;
     my %filter_stats;
     
     for(split /^/, $result){
@@ -288,7 +288,7 @@ sub record_file_sizes{
 #   $drmaa_general: drmaa general parameter string.
 #   $drmaa_trimClean: drmaa_trimclean parameter string.
 #   $drmaa_vcf2core: drmaa_vcf2core parameter string.
-#   $drmaa_vcf2pseudoalign: drmaa_vcf2pseudoalign parameter string.
+#   $drmaa_vcf2snv_align: drmaa_vcf2snv_align parameter string.
 #   $freebayes_params: The freebayes parameter string.
 #   $max_coverage: The max coverage value.
 #   $min_coverage: The min coverage value.
@@ -298,7 +298,7 @@ sub record_file_sizes{
 #   $smalt_map: The parameter string for smalt_map.
 #   $trim_clean: The parameter string for trim_clean.
 #   $vcf2core_cpus: The number of cpus used for the vcf2core stage.
-#   $vcf2pseudo_cpus: The number of cpus used for the vcf2pseudo stage.
+#   $vcf2snvalign_cpus: The number of cpus used for the vcf2snvalign stage.
 #   $id: The run id.
 #   $masked_positions: The file path to the masked positions file.
 #   @read_files: A list of file paths to the fastq files used in the run.

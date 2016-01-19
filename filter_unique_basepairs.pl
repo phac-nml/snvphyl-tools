@@ -68,10 +68,10 @@ sub map_strains
     my ($tsv, $tree_in) = @_;
     my @strains;
 
-	open( my $pseudo_align, '<', $tsv ) or die "could not open file";
+	open( my $snv_align, '<', $tsv ) or die "could not open file";
 
     #grab the strain names from the top of the tsv file
-    my $line = <$pseudo_align>;
+    my $line = <$snv_align>;
     chomp $line;
 
     @strains = split( /\s/, $line );
@@ -100,13 +100,13 @@ sub get_all_positions
     my $posn = 0;
     my @tsv_array;
 
-    open( my $pseudo_align, '<', $tsv ) or die "could not open file";
+    open( my $snv_align, '<', $tsv ) or die "could not open file";
 
     #grab the file headers
-    my $line = <$pseudo_align>;
+    my $line = <$snv_align>;
     chomp $line;
 
-    while($line = <$pseudo_align>)
+    while($line = <$snv_align>)
     {
         chomp $line;
         my @bps = split( /\s/, $line );
@@ -605,7 +605,7 @@ filter_unique_basepairs.pl -t tsv_file -p phylotree.tre -v <optional> -o output 
 
 =item B<-t>, B<--tsv>
 
-The tsv file containing the pseudoalignment
+The tsv file containing the snv_alignment
 
 =item B<-p>, B<--tree>
 
@@ -643,7 +643,7 @@ Suppress all warnings
 
 =head1 DESCRIPTION
 
- filter_unique_basepairs determines at what positions in a pseudoalignment file for given number of strains have unique basepairs compared to the other strains in the file. 
+ filter_unique_basepairs determines at what positions in a snv_alignment file for given number of strains have unique basepairs compared to the other strains in the file. 
  If you wish to compare manually selected strains be sure to enter in each strain you wish to compare
 
  The program will generate 2 files:
