@@ -9,7 +9,7 @@ use File::Compare;
 use File::Temp qw(tempdir);
 
 my $script_dir = $FindBin::Bin;
-my $rearrange_bin = "$script_dir/../rearrange_snp_matrix.pl";
+my $rearrange_bin = "$script_dir/../rearrange_snv_matrix.pl";
 
 my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../lib:$script_dir/../cpanlib/lib/perl5:";
@@ -31,10 +31,10 @@ system("$rearrange_bin -t $script_dir/tree/input/snv_align.phy_phyml_tree.txt -o
 ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/2/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has remained unchanged.");
 ok(!(-e $create_dir.'/revisedMatrix.csv'), "Verify that the revised matrix file was not generated.");
 
-#3 => verify that the tree will convert branch lengths to total SNP estimate
+#3 => verify that the tree will convert branch lengths to total SNV estimate
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
 system("$rearrange_bin -c -t $script_dir/tree/input/snv_align.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/snv_align.phy 2>&1");
-ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/3/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has its branch lengths converted to total SNP estimates.");
+ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/3/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has its branch lengths converted to total SNV estimates.");
 
 #4 => verify that the tree is properly sorted in ascending order
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
@@ -49,7 +49,7 @@ ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/5/p
 #6 => verify that the tree is properly re-rooted
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";
 system("$rearrange_bin -c -r VC-18 -t $script_dir/tree/input/snv_align.phy_phyml_tree.txt -o ".$create_dir."/ -m $script_dir/tree/input/matrix.csv -p $script_dir/tree/input/snv_align.phy 2>&1");
-ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/6/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has its branch lengths converted to total SNP estimates.");
+ok((compare($create_dir.'/phylogeneticTree.txt', $script_dir.'/tree/expected/6/phylogeneticTree.txt')==0), "Verify that the phylogenetic tree has its branch lengths converted to total SNV estimates.");
 
 #7 => verify that the matrix.csv is properly re-ordered
 $create_dir = tempdir(TEMPLATE => 'XXXXX', CLEANUP => 1) or die "Unable to create temporary file directory.";

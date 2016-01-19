@@ -11,7 +11,7 @@ use Template;
 use File::Basename;
 
 my $script_dir = $FindBin::Bin;
-my $compare_snps_bin = "$script_dir/../compare_snv_align_nucmer.pl";
+my $compare_snvs_bin = "$script_dir/../compare_snv_align_nucmer.pl";
 my $delete_temp = 1;
 my $verbose = 0;
 my $tt = Template->new({ABSOLUTE => 1});
@@ -67,7 +67,7 @@ sub run_case
 	close($dfh);
 	print STDERR "Detailed Out: $detailed_out_file\n" if ($verbose);
 	
-	my $command = "$compare_snps_bin -i $snv_align -r $reference -g $fasta -c $core_positions_file -b $bad_positions_file -o $detailed_out_file 1> $actual_out_file";
+	my $command = "$compare_snvs_bin -i $snv_align -r $reference -g $fasta -c $core_positions_file -b $bad_positions_file -o $detailed_out_file 1> $actual_out_file";
 	$command .= " 2> /dev/null" if (not $verbose);
 	print STDERR "$command\n" if ($verbose);
 	system($command) == 0 or die "Could not execute command $command: $!";

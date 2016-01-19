@@ -199,7 +199,7 @@ sub run_command
 	{
 		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 500 --density-threshold 2";
 	}
-	if ($test_type == 2) #snp_density-specific test
+	if ($test_type == 2) #snv_density-specific test
 	{
 		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 200 --density-threshold 4";
 	}
@@ -249,7 +249,7 @@ my $input_dir = "$cases_dir/consolidate_vcfs_input";
 
 my $coverage_cutoff = 4;
 my $regular_test = 1;
-my $snp_test = 2;
+my $snv_test = 2;
 
 ### MAIN ###
 
@@ -274,7 +274,7 @@ print "Testing all input variants in $input_dir\n\n";
 for my $dir (@in_files)
 {
 	my $curr_input = "$input_dir/$dir";
-	next if ($dir eq "snp-specific" || not -d $curr_input);
+	next if ($dir eq "snv-specific" || not -d $curr_input);
 	my $basename = basename($curr_input);
 
 	my $description = `cat $curr_input/description`;
@@ -316,7 +316,7 @@ for my $dir (@in_files)
 	print "### done ###\n";
 }
 
-$input_dir = "$cases_dir/consolidate_vcfs_input/snp-specific";
+$input_dir = "$cases_dir/consolidate_vcfs_input/snv-specific";
 
 opendir($in_h,$input_dir) or die "Could not open $input_dir: $!";
 @in_files = sort grep {$_ !~ /^\./} readdir($in_h);
@@ -349,7 +349,7 @@ for my $dir (@in_files)
 			my $output= tempdir (CLEANUP => 1);
 			$output .= "/$curr_freebayes.bcf.gz";
 
-			run_command($freebayes,$mpileup,$coverage_cutoff,$output, $snp_test);
+			run_command($freebayes,$mpileup,$coverage_cutoff,$output, $snv_test);
 
 			my $actual = dirname($output)."/density_filtered_positions.tsv";
 

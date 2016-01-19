@@ -12,7 +12,7 @@ my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../lib:$script_dir/../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
-my $matrix_bin = "$script_dir/../snp_matrix.pl";
+my $matrix_bin = "$script_dir/../snv_matrix.pl";
 
 my $matrix_dir = "$script_dir/matrix";
 my $input_dir = "$matrix_dir/input";
@@ -47,7 +47,7 @@ for my $file (@in_files)
 	}
 	if (not $done_testing) #pass
 	{
-		pass("SNP Matrix generated from $input_dir/$file is valid");
+		pass("SNV Matrix generated from $input_dir/$file is valid");
 	}
 	print "### done ###\n";
 	close($out_h);
