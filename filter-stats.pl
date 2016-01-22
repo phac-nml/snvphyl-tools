@@ -39,6 +39,8 @@ my $t = 2;
 #Open file
 open my $in, "<", $input or die "Could not open $input!";
 
+if(!$invalids){$total_invalid="Invalid positions not analyzed.  Please use -a flag to analyze."};
+
 my $line = <$in>;
 chomp $line;
 #Get the list of genome names from the header. 
