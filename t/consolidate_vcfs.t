@@ -170,7 +170,7 @@ sub compare_bcfs
 	{
 		# A limitation of this implementation is that if we get mismatched command type and command, it
 		# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
-		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)Command=(view|isec|filter|annotate|merge|plugin .+)/)
+		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)(Version|Command)=(1.3.+|view|isec|filter|annotate|merge|plugin .+)/ && $curr_line !~ /##FILTER=/)
 		{
 			$pass = 0;
 
