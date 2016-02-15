@@ -65,10 +65,10 @@ sub combine_vcfs{
     #if we are using vcf files, need to convert first to vcf before applying the filter. The reason is bug with bcftools where SOME files will put the wrong FLAG in....
     if ( $ext eq '.vcf.gz')
     {
-        $cmd = "$bcftools view $mpileup -O v | $bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff'  $out_type > $dir/coverage_mpileup$ext";
+        $cmd = "$bcftools view $mpileup -O v | $bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff || DP4[0]+DP4[1]>=$coverage_cutoff'  $out_type > $dir/coverage_mpileup$ext";
     }
     else {
-        $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff' $mpileup $out_type > $dir/coverage_mpileup$ext";
+        $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff || DP4[0]+DP4[1]>=$coverage_cutoff' $mpileup $out_type > $dir/coverage_mpileup$ext";
     }
 
     system($cmd) == 0 or die "Could not run $cmd";
