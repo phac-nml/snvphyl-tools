@@ -351,7 +351,7 @@ sub print_stats
 
     open my $out_fh,'>',$out;
 
-    my @header = ("#Reference","total length","total invalid pos","total valid pos","total core","Percentage in non-repetitive, valid positions", "Percentage in reference genome");
+    my @header = ("#Reference name","Total length","Total invalid and excluded positions","Total valid and included positions","Total valid and included positions in core genome","Percentage of valid and included positions in core genome", "Percentage of all positions that are valid, included, and part of the core genome");
 
     print $out_fh join("\t",@header) . "\n";
     #negative final_invalid indicates there was no invalid positions file given
@@ -398,8 +398,8 @@ sub print_stats
         }
         $final_core +=$core;
         $final_total +=$total;
-
-        print $out_fh join ("\t", ($chrom,$total,$invalid,$total_no_invalid,$core,$perc)) . "\n";
+        my $final_totals_with_invalid_contigs = sprintf("%.2f",($core/$total)*100);
+        print $out_fh join ("\t", ($chrom,$total,$invalid,$total_no_invalid,$core,$perc,$final_totals_with_invalid_contigs)) . "\n";
     }
 
 

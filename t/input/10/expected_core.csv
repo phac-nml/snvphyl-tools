@@ -1,4 +1,4 @@
-#Reference	total length	total invalid pos	total valid pos	total core	Percentage in non-repetitive, valid positions	Percentage in reference genome
-ref1	4	N/A	4	4	100.00
-ref2	4	N/A	4	4	100.00
+#Reference name	Total length	Total invalid and excluded positions	Total valid and included positions	Total valid and included positions in core genome	Percentage of valid and included positions in core genome	Percentage of all positions that are valid, included, and part of the core genome
+ref1	4	N/A	4	4	100.00	100.00
+ref2	4	N/A	4	4	100.00	100.00
 all	8	N/A	8	8	100.00	100.00
