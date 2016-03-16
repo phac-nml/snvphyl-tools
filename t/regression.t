@@ -42,6 +42,7 @@ sub compare_files
 
 	open(my $out_h, $expected_out_file) or die "Could not open $expected_out_file: $!";
 	open(my $a_out_h, $actual_out_file) or die "Could not open $actual_out_file: $!";
+         
 	while($success and (defined (my $expected_line = readline($out_h))))
 	{
 		my $actual_line = readline($a_out_h);
