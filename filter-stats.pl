@@ -126,7 +126,7 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 	$t_perc = "Total percent of N's and -'s"."\t".$chromosome_total_percent;
 
 	#Sort the entries by the total count of N's and -'s in descending order
-	for my $genome (sort {$counts{$chromosome}{$b}{$t} <=> $counts{$chromosome}{$a}{$t}} keys %{$counts{$chromosome}})
+	for my $genome (sort {$counts{$chromosome}{$b}{$t} <=> $counts{$chromosome}{$a}{$t} || $a cmp $b} keys %{$counts{$chromosome}})
 	{	
 		#Get list of genome names
 		$header_out = $header_out."\t".$genome;
