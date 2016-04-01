@@ -39,8 +39,6 @@ my $t = 2;
 #Open file
 open my $in, "<", $input or die "Could not open $input!";
 
-if(!$invalids){$total_invalid="Invalid positions not analyzed.  Please use -a flag to analyze."};
-
 my $line = <$in>;
 chomp $line;
 #Get the list of genome names from the header. 
@@ -55,18 +53,18 @@ while ($line = <$in>)
 	#Get the chromosome name which is the first thing in the line
 	my $chrom = $entries[0];	
 
-	#Does the user want the filtered-invalid entries included? If not, skip
-	next if ($entries[2] eq "filtered-invalid" and !$invalids);
-
-        #Increment totals
-        $totals{$chrom}++;
+    #Increment totals
+    $totals{$chrom}++;
         	
 	detailed_filter_stats($entries[2]);
 	#Valid? No point in doing all the work. Skip
-	next if ($entries[2] eq "valid");
+	#next if ($entries[2] eq "valid");
 	
+	#Does the user want the filtered-invalid entries included? If not, skip
+	#next if ($entries[2] eq "filtered-invalid" and !$invalids);
+		
 	#Not valid? Increment the total number of filtered SNP's for chromosome
-	$totalsFiltered{$chrom}++;
+	$totalsFiltered{$chrom}++ if($invalids || !($entries[2] eq "filtered-invalid"));
 	#Flag to indicate whether an N or - is found in any genome for a given position:
         my $n_flag = 0;
 	#Go through the genomes. First genome starts at the 4th column
@@ -152,6 +150,8 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 my $percent_filtered = ($total_filtered/$total)*100;
 my $total_used = $total - $total_filtered;
 
+if(!$invalids){$total_invalid="Invalid positions not analyzed.  Please use -a flag to analyze.\n"};
+
 printf "================= Filter Summary Statistics =====================
 Number of sites used to generate phylogeny: $total_used
 Total number of sites identified: $total
@@ -159,7 +159,7 @@ Number of sites filtered: $total_filtered
 Percentage of sites filtered: %.2f
 Coverage filtered: $total_coverage
 mpileup filtered: $total_mpileup
-Invalid filtered: $total_invalid", $percent_filtered;
+Invalid filtered: $total_invalid\n", $percent_filtered;
 
 #TODO: Add the density filter stat after the vcf files are actually changed:
 #Density filtered: $total_density
@@ -167,12 +167,15 @@ Invalid filtered: $total_invalid", $percent_filtered;
 sub detailed_filter_stats{
 	my($filter_type)= @_;
 	$total++;
+	#do not count invalids if -a was not present as command line option
+	if($invalids || !($filter_type eq "filtered-invalid")){
 	switch($filter_type){
 		case "filtered-density" {$total_filtered++, $total_density++}
 		case "filtered-mpileup" {$total_filtered++, $total_mpileup++}
 		case "filtered-coverage" {$total_filtered++, $total_coverage++}
 		case "filtered-invalid" {$total_filtered++, $total_invalid++}
 		case "filtered-freebayes" {$total_filtered++, $total_freebayes++}
+	}
 	}
 	return;	
 }
