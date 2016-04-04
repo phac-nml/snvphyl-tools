@@ -110,7 +110,7 @@ while ($line = <$in>)
 }
 close($in);
 
-my ($header_out, $t_count, $t_perc);
+my ($header_out, $t_count, $t_perc, $t_totals);
 
 foreach my $chromosome(sort {$a cmp $b} keys %counts)
 {
@@ -122,7 +122,7 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 	$header_out = $chromosome."\t"."ALL";
 	$t_count = "Total number of N's and -'s"."\t".$total_N{$chromosome};
 	$t_perc = "Total percent of N's and -'s"."\t".$chromosome_total_percent;
-
+        $t_totals = "Total number of unfiltered variants in chromosome: ".$totals{$chromosome};
 	#Sort the entries by the total count of N's and -'s in descending order
 	for my $genome (sort {$counts{$chromosome}{$b}{$t} <=> $counts{$chromosome}{$a}{$t} || $a cmp $b} keys %{$counts{$chromosome}})
 	{	
@@ -141,7 +141,7 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 	}
 
 	#Write everything to file
-	my $temp = "Chromosome\tGenomes\n".$header_out."\n".$t_count."\n".$t_perc."\n\n";
+	my $temp = "Chromosome\tGenomes\n".$header_out."\n".$t_count."\n".$t_perc."\n".$t_totals."\n\n";
 	print $temp;
 
 }
