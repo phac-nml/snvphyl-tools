@@ -177,6 +177,9 @@ sub detailed_filter_stats{
 		case "filtered-freebayes" {$total_filtered++, $total_freebayes++}
 	}
 	}
+	elsif(!($filter_type eq "valid")){
+		$total_filtered++;
+	}
 	return;	
 }
 
