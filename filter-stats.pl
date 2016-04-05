@@ -7,12 +7,11 @@ use Getopt::Long;
 use Pod::Usage;
 use Switch;
 
-my ($input, $output, $invalids, %counts, %totals, %totalsFiltered, $help);
+my ($input, $invalids, %counts, %totals, %totalsFiltered, $help);
 
 Getopt::Long::Configure('bundling');
 GetOptions(
 	'i|input=s'	=> \$input,
-	'o|output=s'	=> \$output,
 	'a|all'		=> \$invalids,
 	'h|help'	=> \$help
 );
@@ -21,6 +20,7 @@ pod2usage(1) unless $input;
 
 #variables to track more detailed stats on variants
 my $total = 0;
+my $total_excluding_invalid = 0;
 my $total_filtered = 0;
 my $total_invalid = 0;
 my $total_density = 0;
@@ -150,8 +150,13 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 my $percent_filtered = ($total_filtered/$total)*100;
 my $total_used = $total - $total_filtered;
 
-if(!$invalids){$total_invalid="Invalid positions not analyzed.  Please use -a flag to analyze.\n"};
-
+if(!$invalids){
+   #exclude filtered-invalid positions from output stats:	
+   $total = $total - $total_invalid;
+   $total_filtered = $total_filtered - $total_invalid;
+   $percent_filtered = ($total_filtered/$total)*100;
+   $total_used = $total - $total_filtered;	
+   $total_invalid="Invalid positions not analyzed.  Please use -a flag to analyze.\n";
 printf "================= Filter Summary Statistics =====================
 Number of sites used to generate phylogeny: $total_used
 Total number of sites identified: $total
@@ -160,6 +165,17 @@ Percentage of sites filtered: %.2f
 Coverage filtered: $total_coverage
 mpileup filtered: $total_mpileup
 Invalid filtered: $total_invalid\n", $percent_filtered;
+}
+else{ 	
+printf "================= Filter Summary Statistics =====================
+Number of sites used to generate phylogeny: $total_used
+Total number of sites identified: $total
+Number of sites filtered: $total_filtered
+Percentage of sites filtered: %.2f
+Coverage filtered: $total_coverage
+mpileup filtered: $total_mpileup
+Invalid filtered: $total_invalid\n", $percent_filtered;
+}
 
 #TODO: Add the density filter stat after the vcf files are actually changed:
 #Density filtered: $total_density
@@ -167,18 +183,12 @@ Invalid filtered: $total_invalid\n", $percent_filtered;
 sub detailed_filter_stats{
 	my($filter_type)= @_;
 	$total++;
-	#do not count invalids if -a was not present as command line option
-	if($invalids || !($filter_type eq "filtered-invalid")){
 	switch($filter_type){
 		case "filtered-density" {$total_filtered++, $total_density++}
 		case "filtered-mpileup" {$total_filtered++, $total_mpileup++}
 		case "filtered-coverage" {$total_filtered++, $total_coverage++}
 		case "filtered-invalid" {$total_filtered++, $total_invalid++}
 		case "filtered-freebayes" {$total_filtered++, $total_freebayes++}
-	}
-	}
-	elsif(!($filter_type eq "valid")){
-		$total_filtered++;
 	}
 	return;	
 }

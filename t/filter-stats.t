@@ -13,8 +13,13 @@ my $create_dir = tempdir(TEMPLATE => 'tempjsonXXXX', CLEANUP => 1) or die "Unabl
 #esnure that the results are consistent
 my $results1 = `perl $script_dir/../filter-stats.pl -a -i $script_dir/filter-stats/input1.tsv > $create_dir/temp1.txt`; 
 my $diff_results = `diff $script_dir/filter-stats/expected1.txt $create_dir/temp1.txt`;
-
 ok(!$diff_results);
+
+#ensure filter-invalids are properly excluded
+my $results = `perl $script_dir/../filter-stats.pl -i $script_dir/filter-stats/input1.tsv > $create_dir/temp4.txt`; 
+my $diff_results2 = `diff $script_dir/filter-stats/expected2.txt $create_dir/temp4.txt`;
+ok(!$diff_results2);
+
 ok(`grep "Number of sites used to generate phylogeny: 8934" $create_dir/temp1.txt`);
 ok(`grep "Total number of sites identified: 9623" $create_dir/temp1.txt`);
 ok(`grep "Percentage of sites filtered: 7.16" $create_dir/temp1.txt`);
