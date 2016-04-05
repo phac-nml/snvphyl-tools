@@ -214,7 +214,7 @@ __END__
 
 The psudo-alignment positions tab delimited file
 
-=item B<-a> B<-all>
+=item B<-a> B<--all>
 
 When this option is set, the results will include all the entries marked as 'filtered-invalid'
 
