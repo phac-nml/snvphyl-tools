@@ -216,7 +216,7 @@ The psudo-alignment positions tab delimited file
 
 =item B<-a> B<-all>
 
-When this option is set, the summary will include all the entries marked as 'filtered-invalid'
+When this option is set, the results will include all the entries marked as 'filtered-invalid'
 
 =item B<-h> B<--help>
 
