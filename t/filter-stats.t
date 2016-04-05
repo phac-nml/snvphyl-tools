@@ -18,6 +18,7 @@ ok(!$diff_results);
 #ensure filter-invalids are properly excluded
 my $results = `perl $script_dir/../filter-stats.pl -i $script_dir/filter-stats/input1.tsv > $create_dir/temp4.txt`; 
 my $diff_results2 = `diff $script_dir/filter-stats/expected2.txt $create_dir/temp4.txt`;
+print $diff_results2;
 ok(!$diff_results2);
 
 ok(`grep "Number of sites used to generate phylogeny: 8934" $create_dir/temp1.txt`);
@@ -38,7 +39,7 @@ ok($grep_invalids);
 ok($grep_invalids2);
 
 my $results3 =  `perl $script_dir/../filter-stats.pl -i $script_dir/filter-stats/input2.tsv > $create_dir/temp3.txt`; 
-
+ok(!`diff $script_dir/filter-stats/expected3.txt $create_dir/temp3.txt`);
 my $grep_3 = `grep "Total number of N's and -'s\t0" $create_dir/temp3.txt`;
 ok($grep_3);
 $grep_3 = `grep "Total percent of N's and -'s\t0" $create_dir/temp3.txt`;

@@ -66,10 +66,12 @@ while ($line = <$in>)
 	#Go through the genomes. First genome starts at the 4th column
 	for my $i(4 .. $#entries)
 	{
-		if($entries[2] eq "filtered-invalid" && !$invalids){
+		my $isolate_N_flag = 1;
+                if($entries[2] eq "filtered-invalid" && !$invalids){
 			#we don't want to count filtered-invalid, undo the total increment done earlier
 			$totals{$chrom}-- if !$invalid_total_flag;
 			$invalid_total_flag = 1;
+                        $isolate_N_flag = 0;
 		};
 		
 		#Get the name of the current genome we're looking at
@@ -90,7 +92,7 @@ while ($line = <$in>)
 		}
 
 		#If entry is N or -, then go count things
-		if ($entries[$i] eq "N" or $entries[$i] eq "-")
+		if (($entries[$i] eq "N" or $entries[$i] eq "-") && $isolate_N_flag)
 		{
 			#N
 			if ($entries[$i] eq "N")
