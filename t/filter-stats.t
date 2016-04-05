@@ -39,17 +39,17 @@ ok($grep_invalids2);
 
 my $results3 =  `perl $script_dir/../filter-stats.pl -i $script_dir/filter-stats/input2.tsv > $create_dir/temp3.txt`; 
 
-my $grep_3 = `grep "Total number of N's and -'s\t5" $create_dir/temp3.txt`;
+my $grep_3 = `grep "Total number of N's and -'s\t0" $create_dir/temp3.txt`;
 ok($grep_3);
-$grep_3 = `grep "Total percent of N's and -'s\t71.43" $create_dir/temp3.txt`;
+$grep_3 = `grep "Total percent of N's and -'s\t0" $create_dir/temp3.txt`;
 ok($grep_3);
 $grep_3 = `grep "Coverage filtered: 2" $create_dir/temp3.txt`;
 ok($grep_3);
 $grep_3 = `grep "mpileup filtered: 1" $create_dir/temp3.txt`;
 ok($grep_3);
-$grep_3 = `grep "Total number of unfiltered variants in chromosome: 7" $create_dir/temp3.txt`;
+$grep_3 = `grep "Total number of unfiltered variants in chromosome: 0" $create_dir/temp3.txt`;
 ok($grep_3);
-$grep_3 = `grep "Total number of unfiltered variants in chromosome: 9" $create_dir/temp3.txt`;
+$grep_3 = `grep "Total number of unfiltered variants in chromosome: 3" $create_dir/temp3.txt`;
 ok($grep_3);
 $grep_3 = `grep "Total number of unfiltered variants in chromosome: 4" $create_dir/temp3.txt`;
 ok($grep_3);

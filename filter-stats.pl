@@ -57,19 +57,21 @@ while ($line = <$in>)
     $totals{$chrom}++;
         	
 	detailed_filter_stats($entries[2]);
-	#Valid? No point in doing all the work. Skip
-	#next if ($entries[2] eq "valid");
-	
-	#Does the user want the filtered-invalid entries included? If not, skip
-	#next if ($entries[2] eq "filtered-invalid" and !$invalids);
 		
 	#Not valid? Increment the total number of filtered SNP's for chromosome
 	$totalsFiltered{$chrom}++ if($invalids || !($entries[2] eq "filtered-invalid"));
 	#Flag to indicate whether an N or - is found in any genome for a given position:
-        my $n_flag = 0;
+    my $n_flag = 0;
+    my $invalid_total_flag = 0;
 	#Go through the genomes. First genome starts at the 4th column
 	for my $i(4 .. $#entries)
 	{
+		if($entries[2] eq "filtered-invalid" && !$invalids){
+			#we don't want to count filtered-invalid, undo the total increment done earlier
+			$totals{$chrom}-- if !$invalid_total_flag;
+			$invalid_total_flag = 1;
+		};
+		
 		#Get the name of the current genome we're looking at
 		my $gen = $header[$i];
 	
@@ -86,7 +88,6 @@ while ($line = <$in>)
 		{
 			$counts{$chrom}{$gen}{$t} = 0;
 		}
-		
 
 		#If entry is N or -, then go count things
 		if ($entries[$i] eq "N" or $entries[$i] eq "-")
@@ -114,15 +115,15 @@ my ($header_out, $t_count, $t_perc, $t_totals);
 
 foreach my $chromosome(sort {$a cmp $b} keys %counts)
 {
-        if(!$total_N{$chromosome}){$total_N{$chromosome} = 0;};
-        #set up the header columns/rows and print the summary of combined results as the first column
-	my $chromosome_total_unrounded = $total_N{$chromosome}/$totals{$chromosome} * 100;
+    if(!$total_N{$chromosome}){$total_N{$chromosome} = 0;};
+    #set up the header columns/rows and print the summary of combined results as the first column
+	my $chromosome_total_unrounded = $totals{$chromosome} ? $total_N{$chromosome}/$totals{$chromosome} * 100 : 0;
 	my $chromosome_total_percent = sprintf("%.2f", $chromosome_total_unrounded);
 
 	$header_out = $chromosome."\t"."ALL";
 	$t_count = "Total number of N's and -'s"."\t".$total_N{$chromosome};
 	$t_perc = "Total percent of N's and -'s"."\t".$chromosome_total_percent;
-        $t_totals = "Total number of unfiltered variants in chromosome: ".$totals{$chromosome};
+    $t_totals = "Total number of unfiltered variants in chromosome: ".$totals{$chromosome};
 	#Sort the entries by the total count of N's and -'s in descending order
 	for my $genome (sort {$counts{$chromosome}{$b}{$t} <=> $counts{$chromosome}{$a}{$t} || $a cmp $b} keys %{$counts{$chromosome}})
 	{	
@@ -131,15 +132,14 @@ foreach my $chromosome(sort {$a cmp $b} keys %counts)
 
 		#Get the counts and percentages
 		my $total_count = $counts{$chromosome}{$genome}{$t};
-		my $total_percent_unrounded = $total_count/$totals{$chromosome} * 100;
+		my $total_percent_unrounded = $totals{$chromosome} ? $total_count/$totals{$chromosome} * 100 : 0;
 		my $total_percent_rounded = sprintf("%.2f", $total_percent_unrounded);
 
 		#Concatentate this information
 		$t_count = $t_count."\t".$total_count;
 		$t_perc = $t_perc."\t".$total_percent_rounded;
-		
 	}
-
+    
 	#Write everything to file
 	my $temp = "Chromosome\tGenomes\n".$header_out."\n".$t_count."\n".$t_perc."\n".$t_totals."\n\n";
 	print $temp;
