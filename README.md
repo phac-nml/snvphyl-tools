@@ -79,4 +79,4 @@ In order to run the tests, please run the command:
 
 
 [SNVPhyl]: http://snvphyl.readthedocs.org/
-[filter_snv_density]: bcftools-1.3/plugins/filter_snv_density.c
+[filter_snv_density]: bcfplugins/bcftools-1.3/plugins/filter_snv_density.c
