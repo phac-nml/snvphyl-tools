@@ -3,6 +3,8 @@ SNVPhyl Tools
 
 This project contains a number of dependency tools for the [SNVPhyl][] whole genome phylogeny pipeline.
 
+This project includes a copy of bcftools-1.3 and htslib-1.3 for compiling a custom bcftools plugin [filter_snv_density][].  The original code can be downloaded from <http://www.htslib.org>.
+
 Legal
 =====
 
@@ -77,3 +79,4 @@ In order to run the tests, please run the command:
 
 
 [SNVPhyl]: http://snvphyl.readthedocs.org/
+[filter_snv_density]: bcftools-1.3/plugins/filter_snv_density.c
