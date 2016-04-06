@@ -1,0 +1,26 @@
+Chromosome	Genomes
+gi|10955262|ref|NC_002127.1|	ALL	e_coli_sakai_w_plasmids-duplicate-0	e_coli_sakai_w_plasmids-variant-0	e_coli_sakai_w_plasmids-variant-1	e_coli_sakai_w_plasmids-variant-2
+Total number of N's and -'s	0	0	0	0	0
+Total percent of N's and -'s	0.00	0.00	0.00	0.00	0.00
+Total number of unfiltered variants in chromosome: 7
+
+Chromosome	Genomes
+gi|10955266|ref|NC_002128.1|	ALL	e_coli_sakai_w_plasmids-duplicate-0	e_coli_sakai_w_plasmids-variant-0	e_coli_sakai_w_plasmids-variant-1	e_coli_sakai_w_plasmids-variant-2
+Total number of N's and -'s	0	0	0	0	0
+Total percent of N's and -'s	0.00	0.00	0.00	0.00	0.00
+Total number of unfiltered variants in chromosome: 177
+
+Chromosome	Genomes
+gi|15829254|ref|NC_002695.1|	ALL	e_coli_sakai_w_plasmids-variant-1	e_coli_sakai_w_plasmids-variant-2	e_coli_sakai_w_plasmids-variant-0	e_coli_sakai_w_plasmids-duplicate-0
+Total number of N's and -'s	46	27	23	22	0
+Total percent of N's and -'s	0.49	0.29	0.24	0.23	0.00
+Total number of unfiltered variants in chromosome: 9439
+
+================= Filter Summary Statistics =====================
+Number of sites used to generate phylogeny: 8934
+Total number of sites identified: 9623
+Number of sites filtered: 689
+Percentage of sites filtered: 7.16
+Coverage filtered: 0
+mpileup filtered: 0
+Invalid filtered: 689
