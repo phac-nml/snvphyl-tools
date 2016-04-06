@@ -1,0 +1,5 @@
+#Chromosome	Position	Status	Reference	a	b	c
+reference	4	valid	A	A	T	A
+reference	48	valid	A	A	A	C
+reference	675	filtered-mpileup	A	A	G	N
+reference	678	filtered-coverage	T	T	C	-

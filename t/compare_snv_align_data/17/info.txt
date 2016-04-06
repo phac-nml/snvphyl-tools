@@ -1,0 +1,1 @@
+Test multiple SNVs, both in core

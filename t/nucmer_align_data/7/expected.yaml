@@ -573,7 +573,7 @@ all:
 		95:
 			ref: T
 			alt: T
-snps:
+snvs:
 	ref:
 		9:
 			ref: A

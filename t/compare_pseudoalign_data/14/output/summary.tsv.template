@@ -1,2 +1,0 @@
-Reference	Genome	Core Positions File	Bad Positions File	Total Reference Length	Total Length Used	% Used	Core Pipeline Positions	Core Pipeline Validated	Core Pipeline SNPs	Nucmer Positions	Nucmer SNPs	Nucmer Filtered Positions	Nucmer Filtered SNPs	Intersection	Unique Core Pipeline	Unique Nucmer	% True Positive	% False Positive	% False Negative	% Unknown
-[% reference_base %]	[% query_base %]	[% core_positions_base %]	[% bad_positions_base %]	184	184	100.0	1	1	0	1	1	1	1	0	1	1	0.0	100.0	100.0	0.0

@@ -1,1 +1,1 @@
-Testing two basic alignments, single contigs and a single SNP
+Testing two basic alignments, single contigs and a single SNV

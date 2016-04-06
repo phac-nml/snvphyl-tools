@@ -1,1 +1,0 @@
-Test multiple SNP (% True Positive)

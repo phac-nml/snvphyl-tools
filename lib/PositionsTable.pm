@@ -22,10 +22,10 @@ sub new
 # input
 #	positions_file:  The positions table file
 # output
-# 	a genomes_core_snp table mapping
+# 	a genomes_core_snv table mapping
 # 		strain_id => {chrom => {pos => {'reference' => $ref_base, 'alternative' => $alt_base}}}
-#	a genomes_core_snp_count table mapping
-#		strain_id => count_snps_from_reference
+#	a genomes_core_snv_count table mapping
+#		strain_id => count_snvs_from_reference
 sub read_table
 {
         my ($self,$positions_file) = @_;
@@ -40,14 +40,14 @@ sub read_table
         my (undef,undef,undef,@strains) = split(/\t/,$line);
         die "Error: no strains defined in $positions_file" if (@strains <= 0);
         die "Error: reference not in correct column" if ($strains[0] ne 'Reference');
-        my %genomes_core_snp;
-        my %genomes_core_snp_count;
+        my %genomes_core_snv;
+        my %genomes_core_snv_count;
 
         # initialize empty table for each strain
         for my $strain (@strains)
         {
-                $genomes_core_snp{$strain} = undef;
-                $genomes_core_snp_count{$strain} = 0;
+                $genomes_core_snv{$strain} = undef;
+                $genomes_core_snv_count{$strain} = 0;
         }
 
 	my $valid = 0;
@@ -71,12 +71,12 @@ sub read_table
                 {
                         for (my $i = 1; $i < @dna; $i++)
                         {
-                                $genomes_core_snp{$strains[$i]}{$chrom}{$pos} = {'reference' => $dna[0],
+                                $genomes_core_snv{$strains[$i]}{$chrom}{$pos} = {'reference' => $dna[0],
                                         'alternative' => $dna[$i]};
 
                                 if ($dna[0] ne $dna[$i])
                                 {
-                                        $genomes_core_snp_count{$strains[$i]}++;
+                                        $genomes_core_snv_count{$strains[$i]}++;
                                 }
 
                         }
@@ -88,7 +88,7 @@ sub read_table
 
         print STDERR "Kept $valid valid positions out of $total total positions\n" if ($verbose);
 
-        return (\%genomes_core_snp,\%genomes_core_snp_count);
+        return (\%genomes_core_snv,\%genomes_core_snv_count);
 }
 
 1;

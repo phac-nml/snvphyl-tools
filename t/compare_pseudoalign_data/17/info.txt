@@ -1,1 +1,0 @@
-Test multiple SNPs, both in core

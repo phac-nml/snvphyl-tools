@@ -1,1 +1,0 @@
-Test multiple SNP, one in bad position
