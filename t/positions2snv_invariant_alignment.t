@@ -17,13 +17,14 @@ my $positions2snv_dir = "$script_dir/snv_alignment_data";
 ### MAIN
 
 my $temp_dir = tempdir(CLEANUP => 0);
-my $output_phylip = "$temp_dir/ref.phylip";
+my $output_invariant_dir = "$temp_dir/output";
+my $output_phylip = "$output_invariant_dir/ref.phylip";
 my $stdout_phylip = "$temp_dir/stdout-phylip";
 my $input_positions = "$positions2snv_dir/empty_table/positions.tsv";
 my $reference_file = "$positions2snv_dir/empty_table/reference.fasta";
 
 print "Testing case of empty SNV table\n";
-my $command = "$positions2snv_invariant_bin -i $input_positions -o $temp_dir --reference-file $reference_file -f phylip > $stdout_phylip";
+my $command = "$positions2snv_invariant_bin -i $input_positions -o $output_invariant_dir --reference-file $reference_file -f phylip > $stdout_phylip";
 system($command) == 0 or die "Error executing $command\n";
 ok(not (-e $output_phylip), "phylip file $output_phylip not produced for empty input table");
 ok(`grep "No valid positions were found. Not creating empty alignment file" $stdout_phylip`, "Valid message on empty table");
