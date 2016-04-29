@@ -119,14 +119,7 @@ while(my $line = readline($fh))
 			for (my $i = 0; $i < @dna; $i++)
 			{
 				my $seq_data = \$aligned_chromosomes{$chrom}{$strains[$i]};
-				if ($dna[$i] eq '-')
-				{
-					substr($$seq_data,$string_pos,1) = 'N'; # replace those positions filtered by coverage with N
-				}
-				else
-				{
-					substr($$seq_data,$string_pos,1) = $dna[$i];
-				}
+				substr($$seq_data,$string_pos,1) = $dna[$i];
 			}
 		}
 	}
@@ -136,14 +129,7 @@ while(my $line = readline($fh))
 		for (my $i = 0; $i < @dna; $i++)
 		{
 			my $seq_data = \$aligned_chromosomes{$chrom}{$strains[$i]};
-			if ($dna[$i] eq '-')
-			{
-				substr($$seq_data,$string_pos,1) = 'N'; # replace those positions filtered by coverage with N
-			}
-			else
-			{
-				substr($$seq_data,$string_pos,1) = $dna[$i];
-			}
+			substr($$seq_data,$string_pos,1) = $dna[$i];
 		}
 	}
 }
