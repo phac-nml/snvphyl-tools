@@ -44,6 +44,8 @@ for my $case (@cases)
 	my $expected_phylip = "$case_dir/expected.phy";
 	my $expected_fasta = "$case_dir/expected.fasta";
 	my $expected_fasta_all = "$case_dir/expected-all.fasta";
+	my $expected_stdout = "$case_dir/expected-stdout-short";
+	my $expected_stdout_all = "$case_dir/expected-stdout-short-all";
 
 	my $output_phylip = "$temp_dir/output.phy";
 	my $stdout_phylip = "$temp_dir/stdout-phylip";
@@ -55,14 +57,17 @@ for my $case (@cases)
 	my $command = "$positions2snv_bin -i $input_positions -o $output_phylip -f phylip > $stdout_phylip";
 	system($command) == 0 or die "Error executing $command\n";
 	ok(compare($expected_phylip, $output_phylip) == 0, "phylip: $expected_phylip == $output_phylip");
+	ok(`grep -f $expected_stdout $stdout_phylip -c | tr -d '\n'` == `wc -l $expected_stdout | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout matched actual output $stdout_phylip");
 
 	$command = "$positions2snv_bin -i $input_positions -o $output_fasta -f fasta > $stdout_fasta";
 	system($command) == 0 or die "Error executing $command\n";
 	ok(compare($expected_fasta, $output_fasta) == 0, "fasta: $expected_fasta == $output_fasta");
+	ok(`grep -f $expected_stdout $stdout_fasta -c | tr -d '\n'` == `wc -l $expected_stdout | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout matched actual output $stdout_fasta");
 
 	$command = "$positions2snv_bin -i $input_positions --keep-all -o $output_fasta_all -f fasta > $stdout_fasta_all";
 	system($command) == 0 or die "Error executing $command\n";
 	ok(compare($expected_fasta_all, $output_fasta_all) == 0, "fasta: $expected_fasta_all == $output_fasta_all");
+	ok(`grep -f $expected_stdout_all $stdout_fasta_all -c | tr -d '\n'` == `wc -l $expected_stdout_all | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_all matched actual output $stdout_fasta_all");
 }
 
 done_testing();
