@@ -7,6 +7,7 @@ use FindBin;
 use Test::More;
 use File::Temp 'tempdir';
 use File::Compare;
+use Bio::SeqIO;
 
 my $script_dir = $FindBin::Bin;
 
@@ -42,27 +43,38 @@ for my $case (@cases)
 	my $done_testing = 0;
 	my $input_positions = "$case_dir/positions.tsv";
 	my $input_reference = "$case_dir/reference.fasta";
+	my $seq_io = Bio::SeqIO->new(-file=>"<$input_reference", -format=>"fasta");
+	my @reference_ids;
+	while (my $seq = $seq_io->next_seq)
+	{
+		push(@reference_ids, $seq->display_id.".fasta");
+	}
+	die "Error, no valid reference ids in file $input_reference for test" if (scalar(@reference_ids) == 0);
 
-	my $expected_fasta_invariant = "$case_dir/expected-invariant.fasta";
-	my $expected_fasta_invariant_all = "$case_dir/expected-invariant-all.fasta";
+	my $expected_fasta_invariant_dir = "$case_dir/invariant";
+	my $expected_fasta_invariant_all_dir = "$case_dir/invariant-all";
 	my $expected_stdout_invariant = "$case_dir/expected-stdout-short-invariant";
 	my $expected_stdout_invariant_all = "$case_dir/expected-stdout-short-invariant-all";
 
 	my $output_fasta_invariant_dir = "$temp_dir/invariant";
-	my $output_fasta_invariant = "$output_fasta_invariant_dir/ref.fasta";
 	my $output_fasta_invariant_all_dir = "$temp_dir/invariant-all";
-	my $output_fasta_invariant_all = "$output_fasta_invariant_all_dir/ref.fasta";
 	my $stdout_fasta_invariant = "$temp_dir/stdout-fasta-invariant";
 	my $stdout_fasta_invariant_all = "$temp_dir/stdout-fasta-invariant-all";
 
 	$command = "$positions2snv_invariant_bin -i $input_positions -o $output_fasta_invariant_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant";
 	system($command) == 0 or die "Error executing $command\n";
-	ok(compare($expected_fasta_invariant, $output_fasta_invariant) == 0, "fasta: $expected_fasta_invariant == $output_fasta_invariant");
+	for my $ref_id (@reference_ids)
+	{
+		ok(compare("$expected_fasta_invariant_dir/$ref_id", "$output_fasta_invariant_dir/$ref_id") == 0, "fasta: $expected_fasta_invariant_dir/$ref_id == $output_fasta_invariant_dir/$ref_id");
+	}
 	#ok(`grep -f $expected_stdout_invariant $stdout_fasta_invariant -c | tr -d '\n'` == `wc -l $expected_stdout_invariant | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant matched actual output $stdout_fasta_invariant");
 
 	$command = "$positions2snv_invariant_bin --keep-all -i $input_positions -o $output_fasta_invariant_all_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_all";
 	system($command) == 0 or die "Error executing $command\n";
-	ok(compare($expected_fasta_invariant_all, $output_fasta_invariant_all) == 0, "fasta: $expected_fasta_invariant_all == $output_fasta_invariant_all");
+	for my $ref_id (@reference_ids)
+	{
+		ok(compare("$expected_fasta_invariant_all_dir/$ref_id", "$output_fasta_invariant_all_dir/$ref_id") == 0, "fasta: $expected_fasta_invariant_all_dir/$ref_id == $output_fasta_invariant_all_dir/$ref_id");
+	}
 }
 
 done_testing();
