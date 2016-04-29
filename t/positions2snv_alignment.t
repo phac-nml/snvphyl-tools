@@ -43,11 +43,14 @@ for my $case (@cases)
 
 	my $expected_phylip = "$case_dir/expected.phy";
 	my $expected_fasta = "$case_dir/expected.fasta";
+	my $expected_fasta_all = "$case_dir/expected-all.fasta";
 
 	my $output_phylip = "$temp_dir/output.phy";
 	my $stdout_phylip = "$temp_dir/stdout-phylip";
 	my $output_fasta = "$temp_dir/output.fasta";
+	my $output_fasta_all = "$temp_dir/output-all.fasta";
 	my $stdout_fasta = "$temp_dir/stdout-fasta";
+	my $stdout_fasta_all = "$temp_dir/stdout-fasta-all";
 
 	my $command = "$positions2snv_bin -i $input_positions -o $output_phylip -f phylip > $stdout_phylip";
 	system($command) == 0 or die "Error executing $command\n";
@@ -56,6 +59,10 @@ for my $case (@cases)
 	$command = "$positions2snv_bin -i $input_positions -o $output_fasta -f fasta > $stdout_fasta";
 	system($command) == 0 or die "Error executing $command\n";
 	ok(compare($expected_fasta, $output_fasta) == 0, "fasta: $expected_fasta == $output_fasta");
+
+	$command = "$positions2snv_bin -i $input_positions --keep-all -o $output_fasta_all -f fasta > $stdout_fasta_all";
+	system($command) == 0 or die "Error executing $command\n";
+	ok(compare($expected_fasta_all, $output_fasta_all) == 0, "fasta: $expected_fasta_all == $output_fasta_all");
 }
 
 done_testing();
