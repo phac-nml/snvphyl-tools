@@ -54,8 +54,8 @@ for my $case (@cases)
 
 	my $expected_fasta_invariant_dir = "$case_dir/invariant";
 	my $expected_fasta_invariant_all_dir = "$case_dir/invariant-all";
-	my $expected_stdout_invariant = "$case_dir/expected-stdout-short-invariant";
-	my $expected_stdout_invariant_all = "$case_dir/expected-stdout-short-invariant-all";
+	my $expected_stdout_invariant = "$case_dir/expected-stdout-short";
+	my $expected_stdout_invariant_all = "$case_dir/expected-stdout-short-all";
 
 	my $output_fasta_invariant_dir = "$temp_dir/invariant";
 	my $output_fasta_invariant_all_dir = "$temp_dir/invariant-all";
@@ -68,7 +68,7 @@ for my $case (@cases)
 	{
 		ok(compare("$expected_fasta_invariant_dir/$ref_id", "$output_fasta_invariant_dir/$ref_id") == 0, "fasta: $expected_fasta_invariant_dir/$ref_id == $output_fasta_invariant_dir/$ref_id");
 	}
-	#ok(`grep -f $expected_stdout_invariant $stdout_fasta_invariant -c | tr -d '\n'` == `wc -l $expected_stdout_invariant | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant matched actual output $stdout_fasta_invariant");
+	ok(`grep -f $expected_stdout_invariant $stdout_fasta_invariant -c | tr -d '\n'` == `wc -l $expected_stdout_invariant | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant matched actual output $stdout_fasta_invariant");
 
 	$command = "$positions2snv_invariant_bin --keep-all -i $input_positions -o $output_fasta_invariant_all_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_all";
 	system($command) == 0 or die "Error executing $command\n";
@@ -76,6 +76,7 @@ for my $case (@cases)
 	{
 		ok(compare("$expected_fasta_invariant_all_dir/$ref_id", "$output_fasta_invariant_all_dir/$ref_id") == 0, "fasta: $expected_fasta_invariant_all_dir/$ref_id == $output_fasta_invariant_all_dir/$ref_id");
 	}
+	ok(`grep -f $expected_stdout_invariant_all $stdout_fasta_invariant_all -c | tr -d '\n'` == `wc -l $expected_stdout_invariant_all | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant_all matched actual output $stdout_fasta_invariant_all");
 }
 
 done_testing();
