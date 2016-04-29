@@ -28,6 +28,63 @@ sub usage
 
 }
 
+# Constructs an alignment of SNV-only sites.
+# Input: $fh  The file handle for the SNV table.
+#        $strains  A reference to a list of strain identifiers in the same order as the SNV table.
+#
+# Output: $valid_count  The number of valid SNV sites.
+#         $invalid_count  The number of invalid sites.
+#         $data  An array of nucleotides for the alignment, one entry per strain.
+sub construct_snvonly_alignment
+{
+	my ($fh, $strains) = @_;
+
+	my @data;
+	my $valid_count=0;
+	my $invalid_count=0;
+	while(my $line = readline($fh))
+	{
+		chomp $line;
+		my @values = split(/\t/,$line);
+	
+		my ($chrom,$pos,$status,@dna) = @values;
+	
+		if (scalar(@dna) != scalar(@$strains))
+		{
+			die "Error: line $line does not have same number of entries as header for $input";
+		}
+		elsif ($status ne 'valid')
+		{
+			if (not $keep)
+			{
+				print STDERR "Skipping invalid line: $line\n" if ($verbose);
+				$invalid_count++;
+			}
+			else
+			{		
+				$valid_count++;
+				for (my $i = 0; $i < @dna; $i++)
+				{
+					$data[$i] = '' if (not defined $data[$i]);
+					$dna[$i] = 'N' if ($dna[$i] eq '-'); # replace those positions filtered by coverage with N
+					$data[$i] .= $dna[$i];
+				}
+			}
+		}
+		else
+		{
+			$valid_count++;
+			for (my $i = 0; $i < @dna; $i++)
+			{
+				$data[$i] = '' if (not defined $data[$i]);
+				$data[$i] .= $dna[$i];
+			}
+		}
+	}
+
+	return ($valid_count,$invalid_count,\@data);
+}
+
 if (!GetOptions('i|input=s' => \$input,
 		'o|output=s' => \$output,
 		'f|format=s' => \$format,
@@ -64,50 +121,8 @@ if ($strains[0] eq 'Reference' and defined $reference_name)
 	$strains[0] = $reference_name;
 }
 
-my @data;
-my $valid_count=0;
-my $invalid_count=0;
-while($line = readline($fh))
-{
-	chomp $line;
-	@values = split(/\t/,$line);
-
-	my ($chrom,$pos,$status,@dna) = @values;
-
-	if (scalar(@dna) != scalar(@strains))
-	{
-		die "Error: line $line does not have same number of entries as header for $input";
-	}
-	elsif ($status ne 'valid')
-	{
-		if (not $keep)
-		{
-			print STDERR "Skipping invalid line: $line\n" if ($verbose);
-			$invalid_count++;
-		}
-		else
-		{		
-			$valid_count++;
-			for (my $i = 0; $i < @dna; $i++)
-			{
-				$data[$i] = '' if (not defined $data[$i]);
-				$dna[$i] = 'N' if ($dna[$i] eq '-'); # replace those positions filtered by coverage with N
-				$data[$i] .= $dna[$i];
-			}
-		}
-	}
-	else
-	{
-		$valid_count++;
-		for (my $i = 0; $i < @dna; $i++)
-		{
-			$data[$i] = '' if (not defined $data[$i]);
-			$data[$i] .= $dna[$i];
-		}
-	}
-}
+my ($valid_count, $invalid_count, $data) = construct_snvonly_alignment($fh,\@strains);
 close($fh);
-
 
 #no valid positions were found so no point making empty file
 if ( not $valid_count) {
@@ -119,7 +134,7 @@ if ( not $valid_count) {
 my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNV Pipeline",-longid=>1);
 for (my $i = 0; $i < @strains; $i++)
 {
-	my $seq = Bio::LocatableSeq->new(-seq => $data[$i], -id => $strains[$i], -start => 1, -end => length($data[$i]));
+	my $seq = Bio::LocatableSeq->new(-seq => $data->[$i], -id => $strains[$i], -start => 1, -end => length($data->[$i]));
 	$align->add_seq($seq);
 }
 $align->sort_alphabetically;
