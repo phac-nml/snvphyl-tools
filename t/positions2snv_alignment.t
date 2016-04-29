@@ -59,7 +59,8 @@ for my $case (@cases)
 	my $output_fasta_invariant_dir = "$temp_dir/invariant";
 	my $output_fasta_invariant = "$output_fasta_invariant_dir/ref.fasta";
 	my $output_fasta_all = "$temp_dir/output-all.fasta";
-	my $output_fasta_invariant_all = "$temp_dir/invariant/output-invariant-all.fasta";
+	my $output_fasta_invariant_all_dir = "$temp_dir/invariant-all";
+	my $output_fasta_invariant_all = "$output_fasta_invariant_all_dir/ref.fasta";
 	my $stdout_fasta = "$temp_dir/stdout-fasta";
 	my $stdout_fasta_all = "$temp_dir/stdout-fasta-all";
 	my $stdout_fasta_invariant = "$temp_dir/stdout-fasta-invariant";
@@ -84,6 +85,10 @@ for my $case (@cases)
 	system($command) == 0 or die "Error executing $command\n";
 	ok(compare($expected_fasta_invariant, $output_fasta_invariant) == 0, "fasta: $expected_fasta_invariant == $output_fasta_invariant");
 	#ok(`grep -f $expected_stdout_invariant $stdout_fasta_invariant -c | tr -d '\n'` == `wc -l $expected_stdout_invariant | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant matched actual output $stdout_fasta_invariant");
+
+	$command = "$positions2snv_invariant_bin --keep-all -i $input_positions -o $output_fasta_invariant_all_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_all";
+	system($command) == 0 or die "Error executing $command\n";
+	ok(compare($expected_fasta_invariant_all, $output_fasta_invariant_all) == 0, "fasta: $expected_fasta_invariant_all == $output_fasta_invariant_all");
 }
 
 done_testing();
