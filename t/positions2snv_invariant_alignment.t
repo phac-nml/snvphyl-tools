@@ -16,7 +16,7 @@ my $positions2snv_dir = "$script_dir/snv_alignment_data";
 
 ### MAIN
 
-my $temp_dir = tempdir(CLEANUP => 0);
+my $temp_dir = tempdir(CLEANUP => 1);
 my $output_invariant_dir = "$temp_dir/output";
 my $output_phylip = "$output_invariant_dir/ref.phylip";
 my $stdout_phylip = "$temp_dir/stdout-phylip";
@@ -37,7 +37,7 @@ print "Testing all cases in $positions2snv_dir\n";
 for my $case (@cases)
 {
 	my $case_dir = "$positions2snv_dir/$case";
-	my $temp_dir = tempdir(CLEANUP => 0);
+	my $temp_dir = tempdir(CLEANUP => 1);
 
 	print "\n### Testing $case_dir ###\n";
 

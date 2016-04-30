@@ -154,15 +154,17 @@ for my $chrom (keys %aligned_chromosomes)
 		my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strains[$i], -start => 1, -end => length($seq_data));
 		$align->add_seq($seq);
 	}
-	$align->sort_alphabetically;
 	
 	# build alignment
 	my $output_name = "$output/$chrom.$format";
+	die "Error: file $output_name already exists, not overwriting" if (-e $output_name);
+
 	my $io = Bio::AlignIO->new(-file => ">$output_name", -format => $format, -longid=>1);
 	die "Error: could not create Align::IO object" if (not defined $io);
 	$align->set_displayname_flat(1); #force to output only the display name and not length
 	die "Error: alignment not flush" if (not $align->is_flush);
 	$io->write_aln($align);
+	print "Wrote alignment for '".$chrom."' to $output_name\n";
 }
 
 print "Using reference file $reference_file\n";
