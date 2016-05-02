@@ -6,13 +6,38 @@ use strict;
 use FindBin;
 use Test::More;
 use File::Temp 'tempdir';
-use File::Compare;
 use Bio::SeqIO;
+use Bio::AlignIO;
 
 my $script_dir = $FindBin::Bin;
 
 my $positions2snv_invariant_bin = "$script_dir/../positions2snv_invariant_alignment.pl";
 my $positions2snv_dir = "$script_dir/snv_alignment_data";
+
+sub compare_alignments
+{
+	my ($a, $b) = @_;
+
+	my $aio = Bio::AlignIO->new(-file=>"<$a",-longid=>1);
+	my $bio = Bio::AlignIO->new(-file=>"<$b",-longid=>1);
+
+	my $a_aln = $aio->next_aln;
+	my $b_aln = $bio->next_aln;
+
+	#return 0 if ((defined $aio->next_aln) or (defined $bio->next_aln));
+	return 0 if ($a_aln->num_sequences != $b_aln->num_sequences);
+
+	for (my $i = 1; $i <= $a_aln->num_sequences; $i++)
+	{
+		my $aseq = $a_aln->get_seq_by_pos($i);
+		my $bseq = $b_aln->get_seq_by_pos($i);
+
+		return 0 if ($aseq->display_id ne $bseq->display_id);
+		return 0 if ($aseq->seq ne $bseq->seq);
+	}
+
+	return 1;
+}
 
 ### MAIN
 
@@ -74,7 +99,7 @@ for my $case (@cases)
 	system($command) == 0 or die "Error executing $command\n";
 	for my $ref_id (@reference_ids)
 	{
-		ok(compare("$expected_fasta_invariant_dir/$ref_id", "$output_fasta_invariant_dir/$ref_id") == 0, "fasta: $expected_fasta_invariant_dir/$ref_id == $output_fasta_invariant_dir/$ref_id");
+		ok(compare_alignments("$expected_fasta_invariant_dir/$ref_id", "$output_fasta_invariant_dir/$ref_id"), "fasta: $expected_fasta_invariant_dir/$ref_id == $output_fasta_invariant_dir/$ref_id");
 	}
 	ok(`grep -f $expected_stdout_invariant $stdout_fasta_invariant -c | tr -d '\n'` == `wc -l $expected_stdout_invariant | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant matched actual output $stdout_fasta_invariant");
 
@@ -83,19 +108,19 @@ for my $case (@cases)
 	system($command) == 0 or die "Error executing $command\n";
 	for my $ref_id (@reference_ids)
 	{
-		ok(compare("$expected_fasta_invariant_all_dir/$ref_id", "$output_fasta_invariant_all_dir/$ref_id") == 0, "fasta: $expected_fasta_invariant_all_dir/$ref_id == $output_fasta_invariant_all_dir/$ref_id");
+		ok(compare_alignments("$expected_fasta_invariant_all_dir/$ref_id", "$output_fasta_invariant_all_dir/$ref_id"), "fasta: $expected_fasta_invariant_all_dir/$ref_id == $output_fasta_invariant_all_dir/$ref_id");
 	}
 	ok(`grep -f $expected_stdout_invariant_all $stdout_fasta_invariant_all -c | tr -d '\n'` == `wc -l $expected_stdout_invariant_all | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant_all matched actual output $stdout_fasta_invariant_all");
 
 	# Test merging alignment together into a single file (valid positions)
 	$command = "$positions2snv_invariant_bin --merge-alignment -i $input_positions -o $output_fasta_invariant_merged_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_merged";
 	system($command) == 0 or die "Error executing $command\n";
-	ok(compare("$expected_fasta_invariant_merged_dir/alignment_merged.fasta", "$output_fasta_invariant_merged_dir/alignment_merged.fasta") == 0, "fasta: $expected_fasta_invariant_merged_dir/alignment_merged.fasta == $output_fasta_invariant_merged_dir/alignment_merged.fasta");
+	ok(compare_alignments("$expected_fasta_invariant_merged_dir/alignment_merged.fasta", "$output_fasta_invariant_merged_dir/alignment_merged.fasta"), "fasta: $expected_fasta_invariant_merged_dir/alignment_merged.fasta == $output_fasta_invariant_merged_dir/alignment_merged.fasta");
 
 	# Test merging alignment together into a single file (all positions)
 	$command = "$positions2snv_invariant_bin --keep-all --merge-alignment -i $input_positions -o $output_fasta_invariant_merged_all_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_merged_all";
 	system($command) == 0 or die "Error executing $command\n";
-	ok(compare("$expected_fasta_invariant_merged_all_dir/alignment_merged.fasta", "$output_fasta_invariant_merged_all_dir/alignment_merged.fasta") == 0, "fasta: $expected_fasta_invariant_merged_all_dir/alignment_merged.fasta == $output_fasta_invariant_merged_all_dir/alignment_merged.fasta");
+	ok(compare_alignments("$expected_fasta_invariant_merged_all_dir/alignment_merged.fasta", "$output_fasta_invariant_merged_all_dir/alignment_merged.fasta"), "fasta: $expected_fasta_invariant_merged_all_dir/alignment_merged.fasta == $output_fasta_invariant_merged_all_dir/alignment_merged.fasta");
 }
 
 done_testing();
