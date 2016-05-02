@@ -30,6 +30,44 @@ sub usage
 	"\t--verbose: Print more information\n";
 }
 
+sub write_merged_alignment
+{
+	my ($aligned_chromosomes, $strains, $sequence_names, $output) = @_;
+
+	my %merged_sequence_data;
+
+	# merge alignment seq data
+	for my $chrom (@$sequence_names)
+	{
+		for my $strain (@$strains)
+		{
+			$merged_sequence_data{$strain} = '' if (not exists $merged_sequence_data{$strain});
+			$merged_sequence_data{$strain} .= uc($aligned_chromosomes->{$chrom}{$strain});
+		}
+		
+	}
+
+	# build alignment
+	my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNV Pipeline",-longid=>1);
+	for my $strain (@$strains)
+	{
+		my $seq_data = $merged_sequence_data{$strain};
+		my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strain, -start => 1, -end => length($seq_data));
+		$align->add_seq($seq);
+	}
+
+	my $output_name = "$output/alignment_merged.$format";
+	die "Error: file $output_name already exists, not overwriting" if (-e $output_name);
+
+	my $io = Bio::AlignIO->new(-file => ">$output_name", -format => $format, -longid=>1);
+	die "Error: could not create Align::IO object" if (not defined $io);
+	$align->set_displayname_flat(1); #force to output only the display name and not length
+	die "Error: alignment not flush" if (not $align->is_flush);
+	$io->write_aln($align);
+
+	print "Wrote alignment for merged alignment to $output_name\n";
+}
+
 sub write_separate_alignments
 {
 	my ($aligned_chromosomes, $strains, $output) = @_;
@@ -177,7 +215,14 @@ if ( not $valid_count) {
 
 mkdir ($output) if (not -e $output);
 
-write_separate_alignments(\%aligned_chromosomes,\@strains,$output);
+if ($merge_alignment)
+{
+	write_merged_alignment(\%aligned_chromosomes,\@strains,$sequence_names,$output);
+}
+else
+{
+	write_separate_alignments(\%aligned_chromosomes,\@strains,$output);
+}
 
 print "Using reference file $reference_file\n";
 print "Kept $valid_count valid positions\n";
