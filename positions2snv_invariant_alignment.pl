@@ -87,10 +87,10 @@ sub write_separate_alignments
 	for my $chrom (keys %$aligned_chromosomes)
 	{
 		my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNV Pipeline",-longid=>1);
-		for (my $i = 0; $i < @$strains; $i++)
+		for my $strain (@$strains)
 		{
-			my $seq_data = uc($aligned_chromosomes->{$chrom}{$strains->[$i]});
-			my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strains->[$i], -start => 1, -end => length($seq_data));
+			my $seq_data = uc($aligned_chromosomes->{$chrom}{$strain});
+			my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strain, -start => 1, -end => length($seq_data));
 			$align->add_seq($seq);
 		}
 		
@@ -134,7 +134,7 @@ if (!GetOptions('i|input=s' => \$input,
 		'keep-all' => \$keep,
 		'reference-file=s' => \$reference_file,
 		'merge-alignment' => \$merge_alignment,
-		'v|verbose=s' => \$verbose))
+		'v|verbose' => \$verbose))
 {
 	die "Invalid option\n".usage;
 }
