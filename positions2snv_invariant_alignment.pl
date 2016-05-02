@@ -12,7 +12,7 @@ use Bio::LocatableSeq;
 use Bio::SeqIO;
 use Bio::Seq::SeqFactory;
 
-my ($input,$output,$format,$keep,$reference_name,$reference_file,$verbose);
+my ($input,$output,$format,$keep,$reference_name,$reference_file,$merge_alignment,$verbose);
 $verbose = 0;
 $keep = 0;
 my %valid_formats = ('phylip' => 1,'fasta' => 1);
@@ -25,16 +25,47 @@ sub usage
 	"\t-o|--output-dir:  Output directory name (containing an alignment for each chromosome/sequence in reference file)\n".
 	"\t-f|--format:  Alignment format (default phylip)\n".
 	"\t--keep-all: Keep all positions in alignment\n".
+	"\t--merge-alignment:  Merge alignment to single file by concatenating individual chromosomes/sequences in the reference file\n".
 	"\t--reference-file:  Reference file\n".
 	"\t--verbose: Print more information\n";
 }
 
+sub write_separate_alignments
+{
+	my ($aligned_chromosomes, $strains, $output) = @_;
+
+	# generate seq objects
+	for my $chrom (keys %$aligned_chromosomes)
+	{
+		my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNV Pipeline",-longid=>1);
+		for (my $i = 0; $i < @$strains; $i++)
+		{
+			my $seq_data = uc($aligned_chromosomes->{$chrom}{$strains->[$i]});
+			my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strains->[$i], -start => 1, -end => length($seq_data));
+			$align->add_seq($seq);
+		}
+		
+		# build alignment
+		my $output_name = "$output/$chrom.$format";
+		die "Error: file $output_name already exists, not overwriting" if (-e $output_name);
+	
+		my $io = Bio::AlignIO->new(-file => ">$output_name", -format => $format, -longid=>1);
+		die "Error: could not create Align::IO object" if (not defined $io);
+		$align->set_displayname_flat(1); #force to output only the display name and not length
+		die "Error: alignment not flush" if (not $align->is_flush);
+		$io->write_aln($align);
+		print "Wrote alignment for '".$chrom."' to $output_name\n";
+	}
+}
+
 # reads all reference sequences into a table structured like
 # ref_id => seq_data
+# along with a list of ordered sequence names
 sub read_reference_sequences
 {
 	my ($reference_file) = @_;
 	my %sequence_table;
+	my @sequence_names;
 
 	my $ref_io = Bio::SeqIO->new(-file=>"< $reference_file",-format=>"fasta");
 	die "could not parse reference file $reference_file\n".usage if (not defined $ref_io);
@@ -42,9 +73,10 @@ sub read_reference_sequences
 	while (my $seq = $ref_io->next_seq)
 	{
 		$sequence_table{$seq->display_id} = $seq->seq;
+		push(@sequence_names,$seq->display_id);
 	}
 
-	return \%sequence_table;
+	return (\%sequence_table, \@sequence_names);
 }
 
 if (!GetOptions('i|input=s' => \$input,
@@ -52,6 +84,7 @@ if (!GetOptions('i|input=s' => \$input,
 		'f|format=s' => \$format,
 		'keep-all' => \$keep,
 		'reference-file=s' => \$reference_file,
+		'merge-alignment' => \$merge_alignment,
 		'v|verbose=s' => \$verbose))
 {
 	die "Invalid option\n".usage;
@@ -82,7 +115,7 @@ my %aligned_chromosomes;
 my $valid_count=0;
 my $invalid_count=0;
 
-my $sequence_table = read_reference_sequences($reference_file);
+my ($sequence_table,$sequence_names) = read_reference_sequences($reference_file);
 
 # fills in initial sequence information from reference genome
 for my $strain (@strains)
@@ -144,30 +177,9 @@ if ( not $valid_count) {
 
 mkdir ($output) if (not -e $output);
 
-# generate seq objects
-for my $chrom (keys %aligned_chromosomes)
-{
-	my $align = Bio::SimpleAlign->new(-source=>"NML Bioinformatics Core SNV Pipeline",-longid=>1);
-	for (my $i = 0; $i < @strains; $i++)
-	{
-		my $seq_data = uc($aligned_chromosomes{$chrom}{$strains[$i]});
-		my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strains[$i], -start => 1, -end => length($seq_data));
-		$align->add_seq($seq);
-	}
-	
-	# build alignment
-	my $output_name = "$output/$chrom.$format";
-	die "Error: file $output_name already exists, not overwriting" if (-e $output_name);
-
-	my $io = Bio::AlignIO->new(-file => ">$output_name", -format => $format, -longid=>1);
-	die "Error: could not create Align::IO object" if (not defined $io);
-	$align->set_displayname_flat(1); #force to output only the display name and not length
-	die "Error: alignment not flush" if (not $align->is_flush);
-	$io->write_aln($align);
-	print "Wrote alignment for '".$chrom."' to $output_name\n";
-}
+write_separate_alignments(\%aligned_chromosomes,\@strains,$output);
 
 print "Using reference file $reference_file\n";
 print "Kept $valid_count valid positions\n";
 print "Skipped $invalid_count positions\n";
-print "Alignments for each chromosome written to $output\n";
+print "Alignments written to $output\n";
