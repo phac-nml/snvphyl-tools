@@ -58,7 +58,7 @@ sub write_merged_alignment
 	for my $strain (@$strains)
 	{
 		my $seq_data = $merged_sequence_data{$strain};
-		my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strain, -start => 1, -end => length($seq_data));
+		my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strain);
 		$align->add_seq($seq);
 	}
 
@@ -90,7 +90,7 @@ sub write_separate_alignments
 		for my $strain (@$strains)
 		{
 			my $seq_data = uc($aligned_chromosomes->{$chrom}{$strain});
-			my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strain, -start => 1, -end => length($seq_data));
+			my $seq = Bio::LocatableSeq->new(-seq => $seq_data, -id => $strain);
 			$align->add_seq($seq);
 		}
 		
