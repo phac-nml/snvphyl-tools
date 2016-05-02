@@ -37,7 +37,7 @@ print "Testing all cases in $positions2snv_dir\n";
 for my $case (@cases)
 {
 	my $case_dir = "$positions2snv_dir/$case";
-	my $temp_dir = tempdir(CLEANUP => 0);
+	my $temp_dir = tempdir(CLEANUP => 1);
 
 	print "\n### Testing $case_dir ###\n";
 
@@ -53,18 +53,23 @@ for my $case (@cases)
 	die "Error, no valid reference ids in file $input_reference for test" if (scalar(@reference_ids) == 0);
 
 	my $expected_fasta_invariant_dir = "$case_dir/invariant";
+	my $expected_fasta_invariant_merged_dir = "$case_dir/invariant-merged";
 	my $expected_fasta_invariant_all_dir = "$case_dir/invariant-all";
 	my $expected_fasta_invariant_merged_all_dir = "$case_dir/invariant-merged-all";
 	my $expected_stdout_invariant = "$case_dir/expected-stdout-short";
+	my $expected_stdout_invariant_merged = "$case_dir/expected-stdout-short-merged";
 	my $expected_stdout_invariant_all = "$case_dir/expected-stdout-short-all";
 
 	my $output_fasta_invariant_dir = "$temp_dir/invariant";
+	my $output_fasta_invariant_merged_dir = "$temp_dir/invariant-merged";
 	my $output_fasta_invariant_all_dir = "$temp_dir/invariant-all";
 	my $output_fasta_invariant_merged_all_dir = "$temp_dir/invariant-merged-all";
 	my $stdout_fasta_invariant = "$temp_dir/stdout-fasta-invariant";
+	my $stdout_fasta_invariant_merged = "$temp_dir/stdout-fasta-invariant-merged";
 	my $stdout_fasta_invariant_all = "$temp_dir/stdout-fasta-invariant-all";
 	my $stdout_fasta_invariant_merged_all = "$temp_dir/stdout-fasta-invariant-merged-all";
 
+	# Test writing alignment with only valid positions
 	$command = "$positions2snv_invariant_bin -i $input_positions -o $output_fasta_invariant_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant";
 	system($command) == 0 or die "Error executing $command\n";
 	for my $ref_id (@reference_ids)
@@ -73,6 +78,7 @@ for my $case (@cases)
 	}
 	ok(`grep -f $expected_stdout_invariant $stdout_fasta_invariant -c | tr -d '\n'` == `wc -l $expected_stdout_invariant | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant matched actual output $stdout_fasta_invariant");
 
+	# Test alignment with both valid and invald positions
 	$command = "$positions2snv_invariant_bin --keep-all -i $input_positions -o $output_fasta_invariant_all_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_all";
 	system($command) == 0 or die "Error executing $command\n";
 	for my $ref_id (@reference_ids)
@@ -81,10 +87,15 @@ for my $case (@cases)
 	}
 	ok(`grep -f $expected_stdout_invariant_all $stdout_fasta_invariant_all -c | tr -d '\n'` == `wc -l $expected_stdout_invariant_all | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant_all matched actual output $stdout_fasta_invariant_all");
 
+	# Test merging alignment together into a single file (valid positions)
+	$command = "$positions2snv_invariant_bin --merge-alignment -i $input_positions -o $output_fasta_invariant_merged_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_merged";
+	system($command) == 0 or die "Error executing $command\n";
+	ok(compare("$expected_fasta_invariant_merged_dir/alignment_merged.fasta", "$output_fasta_invariant_merged_dir/alignment_merged.fasta") == 0, "fasta: $expected_fasta_invariant_merged_dir/alignment_merged.fasta == $output_fasta_invariant_merged_dir/alignment_merged.fasta");
+
+	# Test merging alignment together into a single file (all positions)
 	$command = "$positions2snv_invariant_bin --keep-all --merge-alignment -i $input_positions -o $output_fasta_invariant_merged_all_dir -f fasta --reference-file $input_reference > $stdout_fasta_invariant_merged_all";
 	system($command) == 0 or die "Error executing $command\n";
 	ok(compare("$expected_fasta_invariant_merged_all_dir/alignment_merged.fasta", "$output_fasta_invariant_merged_all_dir/alignment_merged.fasta") == 0, "fasta: $expected_fasta_invariant_merged_all_dir/alignment_merged.fasta == $output_fasta_invariant_merged_all_dir/alignment_merged.fasta");
-#	ok(`grep -f $expected_stdout_invariant_merged_all $stdout_fasta_invariant_merged_all -c | tr -d '\n'` == `wc -l $expected_stdout_invariant_merged_all | cut -d ' ' -f 1 | tr -d '\n'`, "Every line in $expected_stdout_invariant_merged_all matched actual output $stdout_fasta_invariant_merged_all");
 }
 
 done_testing();

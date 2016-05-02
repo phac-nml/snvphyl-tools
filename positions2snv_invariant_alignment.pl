@@ -30,6 +30,12 @@ sub usage
 	"\t--verbose: Print more information\n";
 }
 
+# Writes alignments for each contig/chromosome/sequence in reference to a merged alignment file.
+# Input:  $aligned_chromosomes A table of alignment data for each chromosome.
+#         $strains  A reference to a list of strains.
+#         $sequence_names  A list of sequence names/chromosomes, in order they should be merged.
+#         $output  The output directory.
+# Output:  A single file 'alignment_merged.type' containing the merged alignment.
 sub write_merged_alignment
 {
 	my ($aligned_chromosomes, $strains, $sequence_names, $output) = @_;
@@ -65,9 +71,14 @@ sub write_merged_alignment
 	die "Error: alignment not flush" if (not $align->is_flush);
 	$io->write_aln($align);
 
-	print "Wrote alignment for merged alignment to $output_name\n";
+	print "Wrote merged alignment to $output_name\n";
 }
 
+# Writes alignments for each contig/chromosome/sequence in reference to separate file.
+# Input:  $aligned_chromosomes A table of alignment data for each chromosome.
+#         $strains  A reference to a list of strains.
+#         $output  The output directory.
+# Output:  A set of files in the output directory, named after each contig/chromosome in the reference file.
 sub write_separate_alignments
 {
 	my ($aligned_chromosomes, $strains, $output) = @_;
