@@ -51,7 +51,7 @@ die "No phylip formatted alignment found in $input_file\n" if (not defined $aln)
 
 my %longseq;
 my @columns;
-for my $seq ($aln->each_alphabetically) {
+for my $seq ($aln->each_seq) {
     my @nucleotides = split //, $seq->seq;
     $longseq{$seq->display_id} .= $seq->seq;
     $longseq{$seq->display_id} .= "*";
