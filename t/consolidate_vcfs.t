@@ -197,11 +197,11 @@ sub run_command
 
 	if ($test_type == 1) #simple test
 	{
-		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 500 --density-threshold 2";
+		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --snv-abundance-ratio 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 500 --density-threshold 2";
 	}
 	if ($test_type == 2) #snv_density-specific test
 	{
-		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --ao 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 200 --density-threshold 4";
+		$command = "$vcf_align_bin --vcfsplit $freebayes --mpileup $mpileup --coverage-cutoff $coverage_cutoff --min-mean-mapping 30 --snv-abundance-ratio 0.75 --output $output --filtered-density-out $filtered_density_out --window-size 200 --density-threshold 4";
 	}
 
 	if ($verbose)
