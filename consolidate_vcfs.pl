@@ -122,7 +122,7 @@ sub combine_vcfs{
 
 
     #Doing two level of filtering here
-    #first is by alternative allele ratio. Default is 75% of the reads need to show a SNV exist
+    #first is by alternative allele ratio (snv abundance ratio). Default is 75% of the reads need to show a SNV exist
     #Second is MQM (min mean mapping) needs to be above a threshold (default is 30)
     #if either of them fail, it will be hard clip out.
     #NB that not sure how it handles when have multiple different alternative alleles
@@ -304,9 +304,9 @@ sub prepare_inputs
 				"mpileup=s"                => \$mpileup,
 				"coverage-cutoff|c=i"      => \$coverage_cutoff,
 				"min-mean-mapping=i"       => \$min_mean_mapping,
-				"ao=s"                     => \$ao,
+				"snv-abundance-ratio=s"    => \$ao,
 				"b|bcftools-path=s"        => \$bcftools,
-                "o|output=s"               => \$output,
+				"o|output=s"               => \$output,
 				"f|filtered-density-out=s" => \$filtered_density_out,
 				"s|skip-density-filter"    => \$skip_density_filter,
 				"w|window-size=i"          => \$window_size,
@@ -378,6 +378,7 @@ sub prepare_inputs
     if(not defined $ao)
     {
        $ao = 0.75;
+       print "Value for '--snv-abundance-ratio' not defined, defaulting to 0.75\n";
     }
     elsif ( $ao > 1)
     {
@@ -438,7 +439,7 @@ consolidate_vcfs.pl
 
 =head1 SYNOPSIS
 
-consolidate_vcfs.pl --vcfsplit v1=files/dataset1.dat --mpileup v1=files/dataset2.dat --coverage-cutoff 15 --min-mean-mapping 30 --ao 0.75 --bcftools-path /opt/bcftools/bcftools
+consolidate_vcfs.pl --vcfsplit v1=files/dataset1.dat --mpileup v1=files/dataset2.dat --coverage-cutoff 15 --min-mean-mapping 30 --snv-abundance-ratio 0.75 --bcftools-path /opt/bcftools/bcftools
 
 =head1 OPTIONS
 
@@ -460,9 +461,9 @@ The cutoff for coverage to include a reference base (default: 1).
 
 Mean mapping quality of observed alternate alleles.
 
-=item B<--ao> [REQUIRED]
+=item B<--snv-abundance-ratio> [REQUIRED]
 
-Percentage in decimal format number of reads that alternative alleles present compare to reference. i.e : 0.75.
+Ratio of number of reads that supporting a variant compare to total reads for a particular position. Percentage for values > 1 (e.g., 75 = 75%), decimal for values <= 1 (e.g., 0.75 = 75%).
 
 =item B<--bcftools-path> [REQUIRED]
 
