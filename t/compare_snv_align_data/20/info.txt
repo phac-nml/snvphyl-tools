@@ -1,1 +1,0 @@
-Test multiple SNVs, both in core, but one in bad_positions (at end of coordinates)

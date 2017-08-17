@@ -1,1 +1,0 @@
-Test detection single reference base (% True Positive)

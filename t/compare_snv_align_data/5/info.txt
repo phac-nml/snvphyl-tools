@@ -1,1 +1,0 @@
-Test multiple SNV, one in bad position

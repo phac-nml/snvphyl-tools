@@ -1,1 +1,0 @@
-Testing multiple reference contigs, one with nothing aligned in query
