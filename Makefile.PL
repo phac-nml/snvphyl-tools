@@ -37,6 +37,10 @@ WriteMakefile(
     BUILD_REQUIRES => {
         'Test::More' => '0',
     },
+    TEST_REQUIRES => {
+        'Template' => '2.27',
+        'Text::Diff' => '1.45',
+    },
     PREREQ_PM => {
         'Bio::Perl' => '1.007001',
         'Switch' => '2.17',
