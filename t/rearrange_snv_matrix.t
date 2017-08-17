@@ -9,7 +9,7 @@ use File::Compare;
 use File::Temp qw(tempdir);
 
 my $script_dir = $FindBin::Bin;
-my $rearrange_bin = "$script_dir/../rearrange_snv_matrix.pl";
+my $rearrange_bin = "$script_dir/../bin/rearrange_snv_matrix.pl";
 
 my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../lib:$script_dir/../cpanlib/lib/perl5:";

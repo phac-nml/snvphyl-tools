@@ -20,7 +20,7 @@ my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../../../lib:$script_dir/../../../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
-my $vcf_align_bin = "$script_dir/../consolidate_vcfs.pl";
+my $vcf_align_bin = "$script_dir/../bin/consolidate_vcfs.pl";
 
 my $verbose = 0;
 

@@ -9,7 +9,7 @@ use File::Temp 'tempfile';
 use Getopt::Long;
 
 my $script_dir = $FindBin::Bin;
-my $extract_snvs_bin = "$script_dir/../extract_snvs_metaalign.pl";
+my $extract_snvs_bin = "$script_dir/../bin/extract_snvs_metaalign.pl";
 my $delete_temp = 1;
 
 sub compare_files
