@@ -17,7 +17,7 @@ $ENV{'PERL5LIB'} = "$script_dir/../lib:$script_dir/../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
 my $mapping_dir = "$script_dir/mapping";
-my $mapping_bin = "$script_dir/../verify_mapping_quality.pl";
+my $mapping_bin = "$script_dir/../bin/verify_mapping_quality.pl";
 my ($command);
 
 #==============================================================================

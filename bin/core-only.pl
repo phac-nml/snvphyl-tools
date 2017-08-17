@@ -4,7 +4,7 @@
 use warnings;
 use strict;
 use FindBin;
-use lib $FindBin::Bin.'/lib';
+use lib $FindBin::Bin.'/../lib';
 use Getopt::Long;
 use Bio::SeqIO;
 use autodie;

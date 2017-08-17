@@ -10,7 +10,7 @@ use FindBin;
 use Getopt::Long;
 use Bio::SeqIO;
 
-use lib $FindBin::Bin.'/lib';
+use lib $FindBin::Bin.'/../lib';
 
 use CorePositions;
 

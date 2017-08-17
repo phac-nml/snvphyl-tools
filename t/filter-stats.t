@@ -11,12 +11,12 @@ my $script_dir = $FindBin::Bin;
 my $create_dir = tempdir(TEMPLATE => 'tempjsonXXXX', CLEANUP => 1) or die "Unable to create a temporary file directory.";
 
 #esnure that the results are consistent
-my $results1 = `perl $script_dir/../filter-stats.pl -a -i $script_dir/filter-stats/input1.tsv > $create_dir/temp1.txt`; 
+my $results1 = `perl $script_dir/../bin/filter-stats.pl -a -i $script_dir/filter-stats/input1.tsv > $create_dir/temp1.txt`; 
 my $diff_results = `diff $script_dir/filter-stats/expected1.txt $create_dir/temp1.txt`;
 ok(!$diff_results);
 
 #ensure filter-invalids are properly excluded
-my $results = `perl $script_dir/../filter-stats.pl -i $script_dir/filter-stats/input1.tsv > $create_dir/temp4.txt`; 
+my $results = `perl $script_dir/../bin/filter-stats.pl -i $script_dir/filter-stats/input1.tsv > $create_dir/temp4.txt`; 
 my $diff_results2 = `diff $script_dir/filter-stats/expected2.txt $create_dir/temp4.txt`;
 print $diff_results2;
 ok(!$diff_results2);
@@ -28,7 +28,7 @@ ok(`grep "Coverage filtered: 0" $create_dir/temp1.txt`);
 ok(`grep "mpileup filtered: 0" $create_dir/temp1.txt`);
 ok(`grep "Number of sites filtered: 689" $create_dir/temp1.txt`);
 
-my $results2 =  `perl $script_dir/../filter-stats.pl -i $script_dir/filter-stats/input1.tsv > $create_dir/temp2.txt`; 
+my $results2 =  `perl $script_dir/../bin/filter-stats.pl -i $script_dir/filter-stats/input1.tsv > $create_dir/temp2.txt`; 
 my $diff_without_a = `diff $script_dir/filter-stats/expected1.txt $create_dir/temp2.txt`;
 ok($diff_without_a);
 
@@ -38,7 +38,7 @@ my $grep_invalids2 = `grep "Invalid filtered: Invalid positions not analyzed." $
 ok($grep_invalids);
 ok($grep_invalids2);
 
-my $results3 =  `perl $script_dir/../filter-stats.pl -i $script_dir/filter-stats/input2.tsv > $create_dir/temp3.txt`; 
+my $results3 =  `perl $script_dir/../bin/filter-stats.pl -i $script_dir/filter-stats/input2.tsv > $create_dir/temp3.txt`; 
 ok(!`diff $script_dir/filter-stats/expected3.txt $create_dir/temp3.txt`);
 my $grep_3 = `grep "Total number of N's and -'s\t0" $create_dir/temp3.txt`;
 ok($grep_3);
