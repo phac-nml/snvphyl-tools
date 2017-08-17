@@ -67,10 +67,8 @@ Step 3: Run Tests
 In order to run the tests, please run the command:
 
 	$ prove
-	t/compare_snv_align_nucmer.t .. ok    
 	t/extract_snvs_metaalign.t ...... ok   
 	t/find-positions-used.t ......... ok   
-	t/nucmer_align.t ................ ok    
 	t/variant_calls.t ............... ok     
 	t/vcf2core.t .................... ok    
 	All tests successful.
