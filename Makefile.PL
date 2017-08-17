@@ -49,7 +49,7 @@ WriteMakefile(
         'Readonly' => '2.05',
         'Hash::Merge' => '0.200',
         'String::Util' => '1.26',
-        'Bio::Phylo::IO' => '0.58',
+        'Bio::Phylo' => '0.58',
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'snvphyl-*' },
