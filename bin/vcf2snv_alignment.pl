@@ -7,7 +7,7 @@
 use warnings;
 use strict;
 use FindBin;
-use lib $FindBin::Bin.'../lib';
+use lib $FindBin::Bin.'/../lib';
 use lib $FindBin::Bin;
 use Pod::Usage;
 use Getopt::Long;
