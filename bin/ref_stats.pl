@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # ref_stats.pl
 # AUTHOR: Cameron Sieffert (modified from script by Joseph Fass)
 # 
