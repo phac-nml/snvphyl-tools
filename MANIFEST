@@ -25,7 +25,7 @@ lib/InvalidPositions.pm
 lib/PositionsTable.pm
 lib/Streaming.pm
 Makefile.PL
-MANIFEST			This list of files
+MANIFEST
 README.md
 t/tree/expected/5/phylogeneticTree.txt
 t/tree/expected/5/revisedMatrix.csv
