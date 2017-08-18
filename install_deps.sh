@@ -2,8 +2,6 @@
 
 set -e
 
-toolPATH=''
-plugins=''
 
 #flag to silent all make and configures being ran.
 #set to empty string if you want to see everything in its glory
@@ -56,8 +54,8 @@ tar -zxf bcftools.tar.gz
 #clean up
 rm bcftools.tar.gz
 
-cp bcfplugins/filter_snv_density.c bcftools-1.5/plugins
-cd bcftools-1.5
+cp bcfplugins/filter_snv_density.c $bcftools/plugins
+cd $bcftools
 
 autoreconf
 ./configure $silent 2> /dev/null
@@ -97,9 +95,10 @@ toolPATH=$toolPATH:`pwd`
 cd $DIR
 
 echo "Done!";
-echo "Please source following environement variables"
+echo "Please add following environement variables to your ~/.bashrc  "
 echo "export PATH=$toolPATH:\$PATH"
 echo "export BCFTOOLS_PLUGINS=$plugins"
+
 
 export PATH=$toolPATH:$PATH
 export BCFTOOLS_PLUGINS=$plugins
