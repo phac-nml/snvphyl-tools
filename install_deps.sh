@@ -95,7 +95,8 @@ toolPATH=$toolPATH:`pwd`
 cd $DIR
 
 echo "Done!";
-echo "Please add following environement variables to your ~/.bashrc  "
+echo "Both PATH and BCFTOOL_PLUGINS have been modified for this terminal session."
+echo "Please add following environment variables to your ~/.bashrc if long term use"
 echo "export PATH=$toolPATH:\$PATH"
 echo "export BCFTOOLS_PLUGINS=$plugins"
 
