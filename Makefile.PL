@@ -5,9 +5,6 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
     NAME             => 'SNVPhyl',
-#    AUTHOR           => q{Philip Mabon <philip.mabon@phac-aspc.gc.ca>},
-#    VERSION_FROM     => 'bin/vcf2snv_alignment.pl',
-    #    ABSTRACT_FROM    => 'bin/vcf2snv_alignment.pl',
     EXE_FILES           => [ 'bin/snv_matrix.pl' ,
                              'bin/consolidate_vcfs.pl',
                              'bin/core-only.pl',
@@ -40,9 +37,23 @@ WriteMakefile(
     BUILD_REQUIRES => {
         'Test::More' => '0',
     },
+    TEST_REQUIRES => {
+        'Template' => '2.27',
+        'Text::Diff' => '1.45',
+    },
     PREREQ_PM => {
-        #'ABC'              => '1.6',
-        #'Foo::Bar::Module' => '5.0401',
+        'Bio::Perl' => '1.007001',
+        'Switch' => '2.17',
+        'List::MoreUtils' => '0.419',
+        'JSON' => '2.94',
+        'Test::JSON' => '0.11',
+        'Math::Round' => '0.07',
+        'Text::CSV' => '1.95',
+        'Parallel::ForkManager' => '1.19',
+        'Readonly' => '2.05',
+        'Hash::Merge' => '0.200',
+        'String::Util' => '1.26',
+        'Bio::Phylo' => '0.58',
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'snvphyl-*' },
