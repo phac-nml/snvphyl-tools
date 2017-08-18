@@ -31,7 +31,7 @@ rm htslib.tar.gz
 
 cd $htslib
 autoreconf 
-./configure --disable-bz2 $silent
+./configure --disable-bz2 --disable-lzma $silent
 make $silent 2> /dev/null
 
 export HTSLIB=`pwd`/htslib
