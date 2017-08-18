@@ -94,6 +94,22 @@ toolPATH=$toolPATH:`pwd`
 
 cd $DIR
 
+
+vcftools='vcftools-0.1.15'
+
+if [ ! -d "$vcftools" ]; then
+
+    rm -rf $vcftools
+fi
+
+
+#fetching and installing vcftools
+curl -s -L https://github.com/vcftools/vcftools/archive/v0.1.15.tar.gz > vcftools.tar.gz
+tar -zxf vcftools.tar.gz
+rm vcftools.tar.gz
+cp $vcftools/src/perl/Vcf.pm $DIR/lib
+
+
 echo "Done!";
 echo "Both PATH and BCFTOOL_PLUGINS have been modified for this terminal session."
 echo "Please add following environment variables to your ~/.bashrc if long term use"
