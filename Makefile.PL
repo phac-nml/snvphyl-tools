@@ -42,7 +42,7 @@ WriteMakefile(
         'Text::Diff' => '1.45',
     },
     PREREQ_PM => {
-#        'Bio::Perl' => '1.007001',
+        'Bio::Perl' => '1.007001',
         'Switch' => '2.17',
         'List::MoreUtils' => '0.419',
         'JSON' => '2.94',

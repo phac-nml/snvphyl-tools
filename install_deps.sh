@@ -115,8 +115,8 @@ echo "Done!";
 
 
 echo "Installing cpan all modules in local directory in `pwd`/lib/perl5"
-cpanm --installdeps -L . .
-cpanm -L . Bio::Perl
+cpanm --installdeps -L . . || :
+
 
 
 echo "Both PATH and BCFTOOL_PLUGINS have been modified for this terminal session."
