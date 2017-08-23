@@ -315,8 +315,8 @@ sub prepare_inputs
 				"m|an"                     => \$man,
 				"v|verbose"                => \$verbose
 			);
-			pod2usage(1) if $help;
-			pod2usage(-verbose => 2) if $man;
+			pod2usage(0) if $help;
+			pod2usage(-verbose => 2, -exitval=> 0) if $man;
 		}
 		else
 		{

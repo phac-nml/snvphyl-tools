@@ -453,7 +453,7 @@ sub prepare_inputs
 				 'include=s'             => \$inc_list,
  				 'exclude=s'             => \$exc_list
 		);
-		pod2usage(1) if $help;
+		pod2usage(0) if $help;
 	}
 	else
 	{

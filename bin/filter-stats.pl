@@ -15,7 +15,7 @@ GetOptions(
 	'a|all'		=> \$invalids,
 	'h|help'	=> \$help
 );
-pod2usage(1) if $help;
+pod2usage(0) if $help;
 pod2usage(1) unless $input;
 
 #variables to track more detailed stats on variants

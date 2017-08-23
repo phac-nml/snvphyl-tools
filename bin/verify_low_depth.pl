@@ -43,8 +43,8 @@ sub run{
         "h|help"      => \$help,
         "m|man"       => \$man
     );
-    pod2usage(1) if $help;
-    pod2usage(-verbose => 2) if $man;
+    pod2usage(0) if $help;
+    pod2usage(-verbose => 2, -exitval => 0) if $man;
         
     unless ( (scalar keys %bam_files != 0 ) ) {
         print "Unable to find any input bam files.\n\n";
