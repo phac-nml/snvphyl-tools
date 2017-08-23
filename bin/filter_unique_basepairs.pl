@@ -540,6 +540,7 @@ sub check_inputs {
     if ($help) {
         pod2usage(
             -verbose  => 99,
+            -exitval => 0,
             -sections => "SYNOPSIS|OPTIONS|DESCRIPTION"
         );
     }

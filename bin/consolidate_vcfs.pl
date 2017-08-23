@@ -316,7 +316,7 @@ sub prepare_inputs
 				"v|verbose"                => \$verbose
 			);
 			pod2usage(0) if $help;
-			pod2usage(-verbose => 2) if $man;
+			pod2usage(-verbose => 2, -exitval=> 0) if $man;
 		}
 		else
 		{
@@ -328,29 +328,29 @@ sub prepare_inputs
 		if(not defined $freebayes)
 		{
 			print STDERR "No freebayes file specified!\n\n";
-			pod2usage(0);
+			pod2usage(1);
 		}
 		if(not -e $freebayes)
 		{
 			print STDERR "Unable to find freebayes file '$freebayes'\n\n";
-			pod2usage(0);
+			pod2usage(1);
 		}
 
         if (not defined $mpileup)
 	    {
             print STDERR "No mpileup file specified!\n\n";
-		    pod2usage(0);
+		    pod2usage(1);
         }
 	    if (not -e $mpileup)
 	    {
 		    print STDERR "Unable to find mpileup file '$mpileup'\n\n";
-		    pod2usage(0);
+		    pod2usage(1);
 	    }
 
 		if (not defined $output)
 		{
 			print STDERR "No output specified.";
-			pod2usage(0);
+			pod2usage(1);
 		}
 
         if (not defined $bcftools)
@@ -365,7 +365,7 @@ sub prepare_inputs
         else
         {
             print STDERR "bcftools-path not defined and not found on the path.\n";
-			pod2usage(0);
+			pod2usage(1);
         }
     }
 
@@ -391,7 +391,7 @@ sub prepare_inputs
     if ( not $usage_state =~ /Version: .* \(using htslib/ )
     {
         print STDERR "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
-				pod2usage(0);
+				pod2usage(1);
     }
 
     if (not defined $coverage_cutoff)
@@ -402,7 +402,7 @@ sub prepare_inputs
     elsif ($coverage_cutoff !~ /^\d+$/)
     {
         print STDERR "coverage-cutoff=$coverage_cutoff is invalid\n";
-				pod2usage(0);
+				pod2usage(1);
     }
 
 	if (defined $skip_density_filter)
@@ -414,7 +414,7 @@ sub prepare_inputs
 		if (not defined $filtered_density_out)
 		{
 			print STDERR "Filtered density output not specified!\n";
-			pod2usage(0);
+			pod2usage(1);
 		}
 		if (not defined $window_size)
 		{
