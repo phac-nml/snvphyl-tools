@@ -453,7 +453,7 @@ sub prepare_inputs
 				 'include=s'             => \$inc_list,
  				 'exclude=s'             => \$exc_list
 		);
-		pod2usage(1) if $help;
+		pod2usage(0) if $help;
 	}
 	else
 	{
@@ -467,13 +467,13 @@ sub prepare_inputs
     if ( scalar keys %consolidate_vcf == 0)
     {
         print STDERR "Was not able to find any vcf files from consolidate_vcf.\n\n";
-		pod2usage(1);
+		pod2usage(0);
     }
 
 	if(not defined $output_base)
 	{
 		print STDERR "output-base undefined\n";
-		pod2usage(1);
+		pod2usage(0);
 	}
 
 	if (not defined $bcftools)
@@ -488,7 +488,7 @@ sub prepare_inputs
         else 
         {
             print STDERR "bcftools-path not defined and not found on the path.\n";
-			pod2usage(1);
+			pod2usage(0);
         }
     }
 
@@ -498,7 +498,7 @@ sub prepare_inputs
     if ( not $usage_state =~ /Version: .* \(using htslib/ ) 
     {
         print STDERR "bctools was not complied with htslib.\nPlease re-compile with htslib\nInstruction: http://samtools.github.io/bcftools/\n";
-		pod2usage(1);
+		pod2usage(0);
     }
 
     if (not defined $reference)
@@ -511,7 +511,7 @@ sub prepare_inputs
     {
         if ( ! -e $invalid){
             print STDERR "Was given an invalid position file but could not locate it '$invalid'\n";
-			pod2usage(1);
+			pod2usage(0);
         }
     }
     else
@@ -534,7 +534,7 @@ sub prepare_inputs
 			if(not defined $valid_formats{$format})
 			{
 				print STDERR "unrecognized format '$format', must be one of '".join(' ', keys %valid_formats),"'\n";
-				pod2usage(1);
+				pod2usage(0);
 			}
         }
     }
@@ -542,7 +542,7 @@ sub prepare_inputs
     if ( not -e $fasta) 
     {
         print STDERR "Error: Was not given reference fasta file\n";
-		pod2usage(1);
+		pod2usage(0);
     }
 
   	$refs_info = refs_info($fasta);

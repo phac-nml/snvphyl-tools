@@ -219,7 +219,7 @@ if ($help){
                 -sections => "SYNOPSIS|OPTIONS|DESCRIPTION");
 }
 
-pod2usage(1) unless $input_tree && $output_dir && $matrix_input && $input_phy;
+pod2usage(0) unless $input_tree && $output_dir && $matrix_input && $input_phy;
 
 #check to ensure all required command line variables are present and set default values if applicable:
 $output_dir='.' if (not defined $output_dir);
