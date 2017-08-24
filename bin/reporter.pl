@@ -5,7 +5,7 @@ use warnings;
 use Hash::Merge qw( merge );
 use String::Util 'trim';
 use JSON;
-use Test::JSON;
+use JSON::Parse;
 use Getopt::Long;
 
 my $script_dir = $FindBin::Bin;
@@ -439,7 +439,7 @@ sub run_plugin{
     
     my %output = `$command`;
     #ensure that the output is in JSON format
-    die "Improperly formatted JSON output for $plugin_name output" if !(is_valid_json(\%output));
+    die "Improperly formatted JSON output for $plugin_name output" if !(valid_json(\%output));
     
     my $additional = to_json(\%output);
     my $output = merge_json($json_daisy_chain, $additional);    
