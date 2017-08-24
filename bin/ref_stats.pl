@@ -10,7 +10,6 @@ use strict;
 use POSIX;
 use warnings;
 use JSON;
-use Test::JSON;
 use Getopt::Std;
 
 my $usage = "\n\nusage: $0 [-i <interval size in # of residues>] <fasta file(s)>\n".
