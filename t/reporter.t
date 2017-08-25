@@ -6,7 +6,7 @@ use Test::Exception;
 use File::Compare;
 use File::Temp qw(tempdir);
 use JSON;
-use Test::JSON;
+use JSON::Parse 'valid_json';
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
 
@@ -52,8 +52,9 @@ sub check_json{
    	   $json_daisy_chain .= $_;
    	}
    	
-   	if(is_valid_json($json_daisy_chain, "The json string is valid.")){
-   		return 1;
+   	if(valid_json($json_daisy_chain)){
+            print "The json string is valid.\n";
+            return 1;
    	}
    	else{
    		return 0;

@@ -49,7 +49,6 @@ WriteMakefile(
         'Math::Round' => '0.07',
         'Text::CSV' => '1.95',
         'Parallel::ForkManager' => '1.19',
-        'Readonly' => '2.05',
         'Hash::Merge' => '0.200',
         'String::Util' => '1.26',
         'Bio::Phylo' => '0.58',
