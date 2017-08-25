@@ -5,7 +5,7 @@ use warnings;
 use Hash::Merge qw( merge );
 use String::Util 'trim';
 use JSON;
-use JSON::Parse;
+use JSON::Parse 'valid_json';
 use Getopt::Long;
 
 my $script_dir = $FindBin::Bin;
