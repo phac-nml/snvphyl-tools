@@ -7,10 +7,9 @@ use autodie;
 use FindBin qw($Bin);
 use File::Basename;
 use Parallel::ForkManager;
-use Readonly;
 
-Readonly my $MIN_DEPTH => 10;    
-Readonly my $MIN_MAP => 80;
+use constant MIN_DEPTH => 10;    
+use constant MIN_MAP => 80;
 
 __PACKAGE__->run unless caller;
 
@@ -38,13 +37,13 @@ sub run {
 
 	#set default values if undefined on command line
     if(!defined $min_depth){
-        $min_depth = $MIN_DEPTH;
+        $min_depth = MIN_DEPTH;
     }
 			
     #set default number of cores
     $cores = 1 if (not defined $cores);
     #set default minimum percent mapping
-    $min_map=$MIN_MAP if (not defined $min_map);
+    $min_map=MIN_MAP if (not defined $min_map);
 
     #check to see if we are given a $out , if not we will write to STDOUT
     my $out_fh;

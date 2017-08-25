@@ -43,10 +43,9 @@ WriteMakefile(
     },
     PREREQ_PM => {
         'Bio::Perl' => '1.007001',
-        'Switch' => '2.17',
         'List::MoreUtils' => '0.419',
         'JSON' => '2.94',
-        'Test::JSON' => '0.11',
+        'JSON::Parse' => '0.49',
         'Math::Round' => '0.07',
         'Text::CSV' => '1.95',
         'Parallel::ForkManager' => '1.19',

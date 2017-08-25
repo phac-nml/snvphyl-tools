@@ -1,11 +1,11 @@
+#!/usr/bin/env perl
 use FindBin;
 use strict;
 use warnings;
 use Hash::Merge qw( merge );
 use String::Util 'trim';
 use JSON;
-use Test::JSON;
-use Switch;
+use JSON::Parse;
 use Getopt::Long;
 
 my $script_dir = $FindBin::Bin;
@@ -52,24 +52,44 @@ sub run{
    
    my $json_daisy_chain="";
    my $output;
+
+   if ( not $step) {
+       die "No step given\n";
+   }
    
    if(defined $json_input){
-      open(JSON_FILE, $json_input) or die "Unable to open input file handle: $json_input";  
-   	  while(<JSON_FILE>){
-   	     $json_daisy_chain .= $_;
-   	  }
+       open(JSON_FILE, $json_input) or die "Unable to open input file handle: $json_input";  
+       while(<JSON_FILE>){
+           $json_daisy_chain .= $_;
+       }
    }
    
-   switch($step){
-         case "bam_quality_data" { $output = bam_quality_data($json_daisy_chain, %bam_files) }
-         case "record_filter_stats"{ $output = record_filter_stats($json_daisy_chain, $snv_align_filepath)}
-         case "record_reference_info"{ $output = record_reference_info($json_daisy_chain, $reference_filepath, $ref_sequencer, $ref_source, $plasmids, $genus, $species, $serotype)};
-         case "record_file_sizes"{ $output = record_file_sizes($json_daisy_chain, $file_type, %file_sizes)};
-         case "record_run_parameters"{ $output = record_run_parameters($json_daisy_chain, $freebayes_params, $max_coverage, $min_coverage, $processors, $smalt_index, $smalt_map, $trim_clean, $vcf2core_cpus, $id, 
-                                                    $masked_positions, %read_files)};
-         case "vcf2core_stats"{$output = vcf2core_stats($json_daisy_chain, $vcf2core_stats)};
-         #TODO:case {'run_plugin'}{return run_plugin($json_daisy_chain)};
+   
+   if ($step eq "bam_quality_data" ) {
+       $output = bam_quality_data($json_daisy_chain, %bam_files);
    }
+   elsif ( $step eq "record_filter_stats") {
+       $output = record_filter_stats($json_daisy_chain, $snv_align_filepath);
+   }
+   elsif ( $step eq "record_reference_info") {
+       $output = record_reference_info($json_daisy_chain, $reference_filepath, $ref_sequencer,
+                                       $ref_source, $plasmids, $genus, $species, $serotype);
+   }
+   elsif ( $step eq "record_file_sizes") {
+       $output = record_file_sizes($json_daisy_chain, $file_type, %file_sizes);
+   }
+   elsif ( $step eq "record_run_parameters") {
+       $output = record_run_parameters($json_daisy_chain, $freebayes_params, $max_coverage,
+                                       $min_coverage, $processors, $smalt_index, $smalt_map,
+                                       $trim_clean, $vcf2core_cpus, $id,
+                                       $masked_positions, %read_files);
+   }
+   elsif ( $step eq "vcf2core_stats") {
+       $output = vcf2core_stats($json_daisy_chain, $vcf2core_stats);
+   }
+
+
+   
    #print the json output to a file for the results
    open(my $out, '>', $output_json);
    print $out $output;
@@ -175,18 +195,31 @@ sub record_filter_stats{
     my($json_daisy_chain, $snv_align_filepath) = @_;
     my $result = `perl $script_dir/filter-stats.pl -i $snv_align_filepath`;
     my %filter_stats;
-    
     for(split /^/, $result){
-        switch($_){
-            case {$_ =~ 'generate phylogeny'} {$filter_stats{'filter_stats'}{'total_sites'}=trim((split ":", $_ )[1])}
-            case {$_ =~ 'sites identified'} {$filter_stats{'filter_stats'}{'sites_unfiltered'}=trim((split ":", $_ )[1])}
-            case {$_ =~ 'sites filtered'} {$filter_stats{'filter_stats'}{'sites_filtered'}=trim((split ":", $_ )[1])}
-            case {$_ =~ 'Coverage filtered'} {$filter_stats{'filter_stats'}{'filtered_coverage'}=trim((split ":", $_ )[1])}
-            case {$_ =~ 'mpileup filtered'} {$filter_stats{'filter_stats'}{'filtered_mpileup'}=trim((split ":", $_ )[1])}
-            case {$_ =~ 'Density filtered'} {$filter_stats{'filter_stats'}{'filtered_density'}=trim((split ":", $_ )[1])}
-            case {$_ =~ 'Invalid filtered'} {$filter_stats{'filter_stats'}{'filtered_invalid'}=trim((split ":", $_ )[1])}
-        } 
+        if ($_ =~ 'generate phylogeny'){
+            $filter_stats{'filter_stats'}{'total_sites'}=trim((split ":", $_ )[1]);
+        }
+        elsif ($_ =~ 'sites identified'){
+            $filter_stats{'filter_stats'}{'sites_unfiltered'}=trim((split ":", $_ )[1]);
+        }
+        elsif ($_ =~ 'sites filtered'){
+            $filter_stats{'filter_stats'}{'sites_filtered'}=trim((split ":", $_ )[1]);
+        }
+        elsif ($_ =~ 'Coverage filtered'){
+            $filter_stats{'filter_stats'}{'filtered_coverage'}=trim((split ":", $_ )[1]);
+        }
+        elsif ($_ =~ 'mpileup filtered'){
+            $filter_stats{'filter_stats'}{'filtered_mpileup'}=trim((split ":", $_ )[1]);
+        }
+        elsif ($_ =~ 'Density filtered'){
+            $filter_stats{'filter_stats'}{'filtered_density'}=trim((split ":", $_ )[1]);
+        }
+        elsif ($_ =~ 'Invalid filtered'){
+            $filter_stats{'filter_stats'}{'filtered_invalid'}=trim((split ":", $_ )[1]);
+        }
     }
+    
+
     my $additional = to_json(\%filter_stats);
     my $output = merge_json($json_daisy_chain, $additional);    
     
@@ -406,7 +439,7 @@ sub run_plugin{
     
     my %output = `$command`;
     #ensure that the output is in JSON format
-    die "Improperly formatted JSON output for $plugin_name output" if !(is_valid_json(\%output));
+    die "Improperly formatted JSON output for $plugin_name output" if !(valid_json(\%output));
     
     my $additional = to_json(\%output);
     my $output = merge_json($json_daisy_chain, $additional);    

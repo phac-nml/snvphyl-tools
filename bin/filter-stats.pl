@@ -1,11 +1,8 @@
 #!/usr/bin/env perl
-#filer-stats.pl
-
 use warnings;
 use strict;
 use Getopt::Long;
 use Pod::Usage;
-use Switch;
 
 my ($input, $invalids, %counts, %totals, %totalsFiltered, $help);
 
@@ -183,16 +180,25 @@ Invalid filtered: $total_invalid\n", $percent_filtered;
 #Density filtered: $total_density
 
 sub detailed_filter_stats{
-	my($filter_type)= @_;
-	$total++;
-	switch($filter_type){
-		case "filtered-density" {$total_filtered++, $total_density++}
-		case "filtered-mpileup" {$total_filtered++, $total_mpileup++}
-		case "filtered-coverage" {$total_filtered++, $total_coverage++}
-		case "filtered-invalid" {$total_filtered++, $total_invalid++}
-		case "filtered-freebayes" {$total_filtered++, $total_freebayes++}
-	}
-	return;	
+    my($filter_type)= @_;
+    $total++;
+    if ($filter_type eq "filtered-density"){
+        $total_filtered++, $total_density++;
+    }
+    elsif ($filter_type eq "filtered-mpileup"){
+        $total_filtered++, $total_mpileup++;
+    }
+    elsif ($filter_type eq "filtered-coverage"){
+        $total_filtered++, $total_coverage++;
+    }
+    elsif ($filter_type eq "filtered-invalid"){
+        $total_filtered++, $total_invalid++;
+    }
+    elsif ($filter_type eq "filtered-freebayes"){
+        $total_filtered++, $total_freebayes++;
+    }
+    
+    return;	
 }
 
 
