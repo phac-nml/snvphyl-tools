@@ -117,14 +117,7 @@ echo "Done!";
 echo "Installing cpan all modules in local directory in `pwd`/lib/perl5"
 cpanm --installdeps -L . . || :
 
-
-
-echo "Both PATH and BCFTOOL_PLUGINS have been modified for this terminal session."
-export PATH=$toolPATH:$PATH
-export BCFTOOLS_PLUGINS=$plugins
-export PERL5LIB=`pwd`/lib/perl5
-
-echo "Please add following environment variables to your ~/.bashrc if long term use"
+echo "Please add following environment variables to terminal or your ~/.bashrc if long term use" 
 echo "export PATH=$toolPATH:\$PATH"
 echo "export BCFTOOLS_PLUGINS=$plugins"
 echo "PERL5LIB=`pwd`/lib/perl5"

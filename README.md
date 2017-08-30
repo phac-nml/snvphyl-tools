@@ -1,14 +1,12 @@
 SNVPhyl Tools
 =============
 
-This project contains a number of dependency tools for the [SNVPhyl][] whole genome phylogeny pipeline.
-
-This project includes a copy of bcftools-1.3 and htslib-1.3 for compiling a custom bcftools plugin [filter_snv_density][].  The original code can be downloaded from <http://www.htslib.org>.
+This project will download and compile a number of dependency tools for the [SNVPhyl][] whole genome phylogeny pipeline.
 
 Legal
 =====
 
-Copyright 2012-2016 Government of Canada
+Copyright 2012-2017 Government of Canada
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 this work except in compliance with the License. You may obtain a copy of the
@@ -21,47 +19,39 @@ under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
-Installation
-============
 
-Please follow the below steps.
+## Install Options
 
-Step 1: Download Software
--------------------------
 
-Download the software with:
+### 1. Install with bioconda (recommended)
+
+```shell
+conda install snvphyl-tools
+```
+
+
+### 2. Install dependencies using install_deps.sh
+Script will download and compile in the current working directory [bcftools](http://www.htslib.org/),[htslib](http://www.htslib.org/), [Mummer](http://mummer.sourceforge.net/) and [Vcftools](https://vcftools.github.io/index.html).
+
+
+#### Step a: Install Dependencies
+----------------------------
+
+
 
 ```bash
 git clone https://irida.corefacility.ca/analysis-pipelines/snvphyl-tools.git
+cd snvphyl-tools
+./install_deps.sh
+#wait patiently to completion and install
+#source following 3 environment variables
+#example below
+export PATH=/home/test/snvphyl-tools/bcftools-1.5:/home/test/snvphyl-tools/MUMmer3.23:$PATH
+export BCFTOOLS_PLUGINS=/home/test//snvphyl-tools/bcftools-1.5/plugins
+PERL5LIB=/home/test/snvphyl-tools/lib/perl5
 ```
 
-Step 2: Install Dependencies
-----------------------------
-
-* [vcftools](http://vcftools.sourceforge.net/)
-* [bcftools](http://www.htslib.org/download/)
-* [BioPerl](http://www.bioperl.org/wiki/Main_Page)
-
-In addition, this software requires the Perl modules from vcftools someplace within your library path (in PERL5LIB for example).  This can be accomplished by running, for example:
-
-	$ export PERL5LIB=/path/to/vcftools/lib/perl5/site_perl/:$PERL5LIB
-
-Or, you can simply link up the appropriate perl modules within the **snvphyl-tools/lib/** directory.  For example:
-
-	$ ln -s /path/to/vcftools/lib/perl5/site_perl/*.pm /path/to/snvphyl-tools/lib
-	$ ls /path/to/snvphyl-tools/lib
-	Align  CorePositions.pm  FaSlice.pm  InvalidPositions.pm  NucmerPositionsChecker.pm  PositionsTable.pm  Vcf.pm  VcfStats.pm
-
-You will need to compile custom bcftools plugin and modify a few ENV variables.
-```
-	cd bcfplugins/bcftools-1.3
-	make
-	export PATH=`pwd`:$PATH
-	export LD_LIBRARY_PATH=`pwd`/htslib-1.3:$LD_LIBRARY_PATH
-	export BCFTOOLS_PLUGINS=`pwd`/plugins:$BCFTOOLS_PLUGINS
-```
-
-Step 3: Run Tests
+#### Step b: Run Tests
 -----------------
 
 In order to run the tests, please run the command:
@@ -77,4 +67,4 @@ In order to run the tests, please run the command:
 
 
 [SNVPhyl]: http://snvphyl.readthedocs.org/
-[filter_snv_density]: bcfplugins/bcftools-1.3/plugins/filter_snv_density.c
+[filter_snv_density]: bcfplugins/filter_snv_density.c
