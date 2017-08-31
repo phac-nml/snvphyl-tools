@@ -17,7 +17,7 @@ my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../../../lib:$script_dir/../../../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
-my $vcf_align_bin = "$script_dir/../vcf2snv_alignment.pl";
+my $vcf_align_bin = "$script_dir/../bin/vcf2snv_alignment.pl";
 
 my $verbose = 0;
 

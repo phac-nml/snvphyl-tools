@@ -10,7 +10,7 @@ use Bio::AlignIO;
 
 my $script_dir = $FindBin::Bin;
 
-my $positions2snv_bin = "$script_dir/../positions2snv_alignment.pl";
+my $positions2snv_bin = "$script_dir/../bin/positions2snv_alignment.pl";
 my $positions2snv_dir = "$script_dir/snv_alignment_data";
 
 sub compare_alignments

@@ -20,7 +20,7 @@ my $old_env = $ENV{'PERL5LIB'};
 $ENV{'PERL5LIB'} = "$script_dir/../../../lib:$script_dir/../../../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
-my $vcf_align_bin = "$script_dir/../consolidate_vcfs.pl";
+my $vcf_align_bin = "$script_dir/../bin/consolidate_vcfs.pl";
 
 my $verbose = 0;
 
@@ -129,7 +129,7 @@ sub compare_bcfs
 			{
 				# A limitation of this implementation is that if we get mismatched command type and command, it
 				# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
-				if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)Command=(view|isec|filter|annotate|merge|plugin .+)/)
+				if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin|filter)Command=(view|isec|filter|annotate|merge|plugin .+)/)
 				{
 					# Since @comparison_result is going to be a list of pairs of differences, since we want to
 					# compare the first of the pair with the second of the pair in the output, we need to make sure
@@ -170,7 +170,7 @@ sub compare_bcfs
 	{
 		# A limitation of this implementation is that if we get mismatched command type and command, it
 		# will not get caught as an error. For example: ##bcftools_viewCommand=Merge
-		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin)(Version|Command)=(1.3.+|view|isec|filter|annotate|merge|plugin .+)/ && $curr_line !~ /##FILTER=/)
+		if ($curr_line !~ /##bcftools_(view|isec|filter|annotate|merge|plugin|filter)(Version|Command)=(1.\d+.+|view|isec|filter|annotate|merge|plugin .+)/ && $curr_line !~ /##FILTER=/)
 		{
 			$pass = 0;
 

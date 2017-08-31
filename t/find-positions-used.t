@@ -11,7 +11,7 @@ use Template;
 use File::Basename;
 
 my $script_dir = $FindBin::Bin;
-my $find_positions_used_bin = "$script_dir/../find-positions-used.pl";
+my $find_positions_used_bin = "$script_dir/../bin/find-positions-used.pl";
 my $delete_temp = 1;
 my $verbose = 0;
 

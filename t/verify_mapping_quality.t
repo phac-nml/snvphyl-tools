@@ -17,7 +17,7 @@ $ENV{'PERL5LIB'} = "$script_dir/../lib:$script_dir/../cpanlib/lib/perl5:";
 $ENV{'PERL5LIB'} .= $old_env if (defined $old_env);
 
 my $mapping_dir = "$script_dir/mapping";
-my $mapping_bin = "$script_dir/../verify_mapping_quality.pl";
+my $mapping_bin = "$script_dir/../bin/verify_mapping_quality.pl";
 my ($command);
 
 #==============================================================================
@@ -40,8 +40,7 @@ $result = `$mapping_bin --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$ma
 ok($result =~ tr/\n// == 8, "The correct number of isolates are logged when min_mapping altered.");
 
 #5 => verify that script dies with error message when no valid bam files are input
-$command = system("$mapping_bin --bam nobam=$mapping_dir/no_bams_here 2>&1");
-my $return_code = system($command);
+my $return_code = system("$mapping_bin --bam nobam=$mapping_dir/no_bams_here 2>&1");
 ok($return_code !=0, "Invalid bam file test.");
 
 #6 => verify that the script allows the default number of cores to be changed
