@@ -59,7 +59,9 @@ ok($result =~ '7.29 %', "The script generates the correct mapping percentage wit
 
 #9 => Using designed output, ensure that with min-mpa at 80 and min depth at 2, 7.29% of the positions map and using ---output option
 my (undef,$output) = tempfile();
+my (undef,$outstrain) = tempfile();
 my $expected_out = "$mapping_dir/output/output_9.txt";
+
 
 $command = "$mapping_bin --bam bam1=$mapping_dir/input/sample5.bam --min-depth 2 --min-map 80 --output $output 2>&1";
 $return_code = system($command);
@@ -67,12 +69,14 @@ ok($return_code == 0, "Script ran successfully");
 ok(compare($output,$expected_out) == 0, "Bam1 had 7.29 % core with 2x on 80% of the genome");
 
 
-
+my $expected_outstrain = "$mapping_dir/output/sorted_strains_only.txt";
 $expected_out = "$mapping_dir/output/sorted_results.txt";
-$command = "$mapping_bin --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample4.bam  --min-depth 50 --min-map 80 --output $output 2>&1";
+$command = "$mapping_bin --bam bam1=$mapping_dir/input/sample1.bam --bam bam2=$mapping_dir/input/sample4.bam  --min-depth 50 --min-map 80 --output $output --out_strains $outstrain 2>&1";
 $return_code = system($command);
 ok($return_code == 0, "Script ran successfully");
 ok(compare($output,$expected_out) == 0, "Bam1 had 14.95 % core with 50x on 80% of the genome");
+
+ok(compare($outstrain,$expected_outstrain) == 0, "One strain name per line");
 
 
 done_testing();

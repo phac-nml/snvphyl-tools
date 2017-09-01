@@ -16,14 +16,16 @@ __PACKAGE__->run unless caller;
 
 sub run {
     my ( $size, $man, $help, $min_depth, $min_map, %bam_files, $cores ,$output);
-	
+    my ($out_strain);
+    
     GetOptions(
         "c|cores=i"   => \$cores,
         "bam=s"		  => \%bam_files,
         "s|size=s"    => \$size,
         "min-map=f"	  => \$min_map,
         "min-depth=i" => \$min_depth,
-        'output=s'       => \$output,
+        'o|output=s'       => \$output,
+        'out_strains=s' => \$out_strain,
         "h|help"      => \$help,
         "m|man"       => \$man
     );
@@ -46,14 +48,20 @@ sub run {
     $min_map=MIN_MAP if (not defined $min_map);
 
     #check to see if we are given a $out , if not we will write to STDOUT
-    my $out_fh;
+    my ($out_fh,$strain_fh);
     if ( defined $output ) {
         open( $out_fh, '>', $output );
     }
     else {
         $out_fh = \*STDOUT;
     }
-    
+
+    #if not given a file to write to, will not create a handler
+    if ( defined $out_strain ) {
+        open( $strain_fh, '>', $out_strain );
+    }
+
+
     
     #retrieve all of the bam file locations from the hash
     my @files = values %bam_files;
@@ -86,7 +94,11 @@ sub run {
 
     foreach my $name (sort {$results{$a} <=> $results{$b} } keys %results){
         my $perc = $results{$name};
-        print $out_fh "$name : $perc %\n" if $perc < $min_map;
+        if ($perc < $min_map) {
+            print $out_fh "$name : $perc %\n";
+            print $strain_fh "$name\n" if $strain_fh;
+        }
+
      }
 
     return;
@@ -152,7 +164,7 @@ sub verify_percent_coverage {
 #Returns the total number of positions that pass the min depth
 #
 sub total_passed_positions{
-	my ($result, $min_depth) = @_;
+    my ($result, $min_depth) = @_;
     my $total_passed = 0;
     
     my @lines = split /\n/, $result;
@@ -174,7 +186,7 @@ verify_mapping_quality.pl - Script to check the mapping quality of all BAM files
 
 =head1 VERSION
 
-This documentation refers to verify_mapping_quality.pl version 0.0.1.
+This documentation refers to verify_mapping_quality.pl version 0.0.5.
 
 =head1 SYNOPSIS
 
@@ -195,6 +207,21 @@ The minimum depth of coverage required at each genome position to be considered 
 =item B<--min-map> [optional]
 
 The minimum percent mapped to reference for each strain, pipeline will log all strains that do not meet this minimum percentage. Default value is 80%.
+
+=item B<-c>, B<--cores> [optional]
+
+The number of CPU cores that should be used for the calculations.
+
+
+=item B<-o>, B<--output>
+
+Path to write human readable report
+
+
+=item B<--out_strains>
+
+Path to write list of strain(s) one per line for filter File collection tool or vcf2snvalignment itself
+
 
 =item B<-h>, B<--help>
 
