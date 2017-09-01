@@ -58,37 +58,36 @@ sub run {
     #retrieve all of the bam file locations from the hash
     my @files = values %bam_files;
  
- 	#ensure that bam files are properly input on the command line and that each file path exists
- 	if (@files <= 0){ die "Error: No bam files input."};
- 	foreach(@files){
- 		if (!-e $_) {die "Error: Invalid bam file referenced."};
- 	}
- 	
-	#command to get the size of the genome from the bam file:
-	my @sizeArray = `samtools view -H $files[0] | grep -P '^\@SQ' | cut -f 3 -d ':'`;
-	
-	#if the read maps to several reference contigs, then add the lengths of each reference
-	#contig to calculate the total length for the reference	
-	$size = 0;
-	foreach(@sizeArray){ 
-	   $size += $_;
-	}	
-	die "Error: Size of reference genome could not be determined." if (not defined $size || $size eq 0);	
-		
-	#parse results and determine what should be written for user to view
-	my @results;
-
-	@results = verify_percent_coverage( \%bam_files, $size, $min_depth, $cores );
-	print $out_fh "==========Reference Mapping Quality===========\n";
-	print $out_fh "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
-	print $out_fh "MINIMUM DEPTH: ".$min_depth."\n";
-	print $out_fh "MINIMUM MAPPING: ".$min_map."\n";
-	
-    foreach my $result(@results){
-    	my @split = split(',', $result);
-    	my @double = split('%', $split[1]);
-    	print $out_fh $split[0]." : ".$split[1]."\n" if $double[0] < $min_map; 
+    #ensure that bam files are properly input on the command line and that each file path exists
+    if (@files <= 0){ die "Error: No bam files input."};
+    foreach(@files){
+        if (!-e $_) {die "Error: Invalid bam file referenced."};
     }
+ 	
+    #command to get the size of the genome from the bam file:
+    my @sizeArray = `samtools view -H $files[0] | grep -P '^\@SQ' | cut -f 3 -d ':'`;
+	
+    #if the read maps to several reference contigs, then add the lengths of each reference
+    #contig to calculate the total length for the reference	
+    $size = 0;
+    foreach(@sizeArray){ 
+        $size += $_;
+    }	
+    die "Error: Size of reference genome could not be determined." if (not defined $size || $size eq 0);	
+    
+    #parse results and determine what should be written for user to view
+    my %results;
+    
+    %results = %{verify_percent_coverage( \%bam_files, $size, $min_depth, $cores )};
+    print $out_fh "==========Reference Mapping Quality===========\n";
+    print $out_fh "NUMBER OF BP's IN REFERENCE GENOME: ".$size."\n";
+    print $out_fh "MINIMUM DEPTH: ".$min_depth."\n";
+    print $out_fh "MINIMUM MAPPING: ".$min_map."\n";
+
+    foreach my $name (sort {$results{$a} <=> $results{$b} } keys %results){
+        my $perc = $results{$name};
+        print $out_fh "$name : $perc %\n" if $perc < $min_map;
+     }
 
     return;
 }
@@ -103,15 +102,15 @@ sub verify_percent_coverage {
     #------------------------------#
     my $pm = new Parallel::ForkManager($cores);
 
-    my @results;
+    my %results;
     
     # data structure retrieval and handling
     $pm -> run_on_finish ( # called BEFORE the first call to start()
         sub {
-            my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $data_structure_reference) = @_;
+            my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $child_data) = @_;
             # retrieve data structure from child
-            if (defined($data_structure_reference)) {  # children are not forced to send anything
-                push @results,${$data_structure_reference};
+            if (defined($child_data)) {  # children are not forced to send anything
+                $results{$child_data->[0]} = $child_data->[1];
             } else {  # problems occuring during storage or retrieval will throw a warning
                 die "Did not recieve data from one of the children\n";
             }
@@ -139,14 +138,14 @@ sub verify_percent_coverage {
         #--------------------------------#
         my $total_passed = total_passed_positions($result, $min_depth);
 		
-        my $line = sprintf "$name,%3.2f%%", (($total_passed/ $size) * 100);  
+        my $perc = sprintf "%3.2f", (($total_passed/ $size) * 100);  
 
-        $pm->finish(0,\$line);
+        $pm->finish(0,[$name,$perc]);
     }
     $pm->wait_all_children;
 	
     #return the results
-    return @results;
+    return \%results;
 }
 
 #
