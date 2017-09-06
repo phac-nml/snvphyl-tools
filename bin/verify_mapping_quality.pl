@@ -184,9 +184,6 @@ sub total_passed_positions{
 
 verify_mapping_quality.pl - Script to check the mapping quality of all BAM files generated in the core SNP pipeline.
 
-=head1 VERSION
-
-This documentation refers to verify_mapping_quality.pl version 0.0.5.
 
 =head1 SYNOPSIS
 
