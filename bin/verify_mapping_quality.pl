@@ -95,7 +95,7 @@ sub run {
     foreach my $name (sort {$results{$a} <=> $results{$b} } keys %results){
         my $perc = $results{$name};
         if ($perc < $min_map) {
-            print $out_fh "$name : $perc %\n";
+            print $out_fh "$name : $perc%\n";
             print $strain_fh "$name\n" if $strain_fh;
         }
 
