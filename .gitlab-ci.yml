@@ -1,4 +1,4 @@
 before_script: 
-  - "source ./install_deps.sh; export PATH=`pwd`/bcftools-1.5:`pwd`/MUMmer3.23:$PATH ;export BCFTOOLS_PLUGINS=`pwd`/bcftools-1.5/plugins;export PERL5LIB=`pwd`/lib/perl"
+  - "source ./install_deps.sh; export PATH=`pwd`/bcftools-1.5:`pwd`/MUMmer3.23:$PATH ;export BCFTOOLS_PLUGINS=`pwd`/bcftools-1.5/plugins;export PERL5LIB=`pwd`/lib/perl:`pwd`/lib/perl5/x86_64-linux-gnu-thread-multi"
 job1:
   script: "prove"
