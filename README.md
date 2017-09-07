@@ -40,7 +40,7 @@ Script will download and compile in the current working directory [bcftools](htt
 
 
 ```bash
-git clone https://irida.corefacility.ca/analysis-pipelines/snvphyl-tools.git
+git clone https://github.com/phac-nml/snvphyl-tools.git
 cd snvphyl-tools
 ./install_deps.sh
 #wait patiently to completion and setup the following environment variables
