@@ -127,7 +127,7 @@ sub combine_vcfs{
     #if either of them fail, it will be hard clip out.
     #NB that not sure how it handles when have multiple different alternative alleles
     #also hard clipping ones that fail filtering. Do not want to have them appear in the snvalign-positions since they never passed
-    $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/0002$ext $out_type   > $dir/1-0002$ext && bcftools index $dir/1-0002$ext";
+    $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || INFO/AO/INFO/DP<$ao'  $dir/0002$ext $out_type   > $dir/1-0002$ext && bcftools index $dir/1-0002$ext";
     system($cmd) == 0 or die "Could not run $cmd";
 
 
