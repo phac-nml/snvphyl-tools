@@ -14,7 +14,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo "Fetching and installing htslib...";
 
 #installing all dependencies for building bcftools and our plugin
-htslib='htslib-1.5'
+htslib='htslib-1.9'
 
 if [ ! -d "$htslib" ]; then
 
@@ -22,7 +22,7 @@ if [ ! -d "$htslib" ]; then
 fi
 
 
-curl -s https://codeload.github.com/samtools/htslib/tar.gz/1.5 > htslib.tar.gz
+curl -s https://codeload.github.com/samtools/htslib/tar.gz/1.9 > htslib.tar.gz
 tar -zxf htslib.tar.gz
 #clean up
 rm htslib.tar.gz
@@ -39,7 +39,7 @@ echo "Done!"
 
 echo "Fetching and install bcftools"
 
-bcftools='bcftools-1.5'
+bcftools='bcftools-1.9'
 
 if [ ! -d "$bcftools" ]; then
 
@@ -48,7 +48,7 @@ fi
 
 
 
-curl -s https://codeload.github.com/samtools/bcftools/tar.gz/1.5 > bcftools.tar.gz
+curl -s https://codeload.github.com/samtools/bcftools/tar.gz/1.9 > bcftools.tar.gz
 tar -zxf bcftools.tar.gz
 
 #clean up

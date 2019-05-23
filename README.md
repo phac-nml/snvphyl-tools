@@ -45,8 +45,8 @@ cd snvphyl-tools
 ./install_deps.sh
 #wait patiently to completion and setup the following environment variables
 #example below
-export PATH=/home/test/snvphyl-tools/bcftools-1.5:/home/test/snvphyl-tools/MUMmer3.23:$PATH
-export BCFTOOLS_PLUGINS=/home/test//snvphyl-tools/bcftools-1.5/plugins
+export PATH=/home/test/snvphyl-tools/bcftools-1.9:/home/test/snvphyl-tools/MUMmer3.23:$PATH
+export BCFTOOLS_PLUGINS=/home/test//snvphyl-tools/bcftools-1.9/plugins
 PERL5LIB=/home/test/snvphyl-tools/lib/perl5
 ```
 
