@@ -65,10 +65,10 @@ sub combine_vcfs{
     #if we are using vcf files, need to convert first to vcf before applying the filter. The reason is bug with bcftools where SOME files will put the wrong FLAG in....
     if ( $ext eq '.vcf.gz')
     {
-        $cmd = "$bcftools view $mpileup -O v | $bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff || DP4[0]+DP4[1]>=$coverage_cutoff'  $out_type > $dir/coverage_mpileup$ext";
+        $cmd = "$bcftools view $mpileup -O v | $bcftools  filter -s 'coverage' -i 'INFO/DP>=$coverage_cutoff || INFO/DP4[0]+INFO/DP4[1]>=$coverage_cutoff'  $out_type > $dir/coverage_mpileup$ext";
     }
     else {
-        $cmd = "$bcftools  filter -s 'coverage' -i 'DP>=$coverage_cutoff || DP4[0]+DP4[1]>=$coverage_cutoff' $mpileup $out_type > $dir/coverage_mpileup$ext";
+        $cmd = "$bcftools  filter -s 'coverage' -i 'INFO/DP>=$coverage_cutoff || INFO/DP4[0]+INFO/DP4[1]>=$coverage_cutoff' $mpileup $out_type > $dir/coverage_mpileup$ext";
     }
 
     system($cmd) == 0 or die "Could not run $cmd";
@@ -127,7 +127,7 @@ sub combine_vcfs{
     #if either of them fail, it will be hard clip out.
     #NB that not sure how it handles when have multiple different alternative alleles
     #also hard clipping ones that fail filtering. Do not want to have them appear in the snvalign-positions since they never passed
-    $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || AO/DP<$ao'  $dir/0002$ext $out_type   > $dir/1-0002$ext && bcftools index $dir/1-0002$ext";
+    $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || INFO/AO/INFO/DP<$ao'  $dir/0002$ext $out_type   > $dir/1-0002$ext && bcftools index $dir/1-0002$ext";
     system($cmd) == 0 or die "Could not run $cmd";
 
 
