@@ -31,7 +31,7 @@ conda install snvphyl-tools
 
 
 ### 2. Install dependencies using install_deps.sh
-Script will download and compile in the current working directory [bcftools](http://www.htslib.org/),[htslib](http://www.htslib.org/), [Mummer](http://mummer.sourceforge.net/) and [Vcftools](https://vcftools.github.io/index.html).
+Script will download and compile in the current working directory [bcftools](http://www.htslib.org/),[htslib](http://www.htslib.org/), [Mummer](http://mummer.sourceforge.net/) and [Vcftools](https://vcftools.github.io/index.html). Note that [samtools](http://www.htslib.org/) version 1.9 needs to be available on the PATH and will not be installed by install_deps.sh .
 
 
 #### Step a: Install Dependencies
@@ -47,8 +47,13 @@ cd snvphyl-tools
 #example below
 export PATH=/home/test/snvphyl-tools/bcftools-1.9:/home/test/snvphyl-tools/MUMmer3.23:$PATH
 export BCFTOOLS_PLUGINS=/home/test//snvphyl-tools/bcftools-1.9/plugins
-PERL5LIB=/home/test/snvphyl-tools/lib/perl5
+export PERL5LIB=/home/test/snvphyl-tools/lib/perl5
+
+#Install samtools 1.9
+#if conda available, use command below, else build with source or apt/yum
+#conda install samtools samtools==1.9
 ```
+
 
 #### Step b: Run Tests
 -----------------
