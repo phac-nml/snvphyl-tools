@@ -1,5 +1,10 @@
 # Changes
 
+## 1.8.2
+
+*  Update bcftools from 1.5 to version 1.9
+*  Update consolidate_vcf.pl to new standard of bcftools version 1.9
+
 ## 1.8.1
 
 * Re-structured repository to use a `Makefile.PL` for handling installation/dependency checking. For integration with Bioconda.
