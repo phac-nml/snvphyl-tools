@@ -1,0 +1,29 @@
+notifications: # set notification options
+  email:
+    recipients:
+      - philip.mabon@canada.ca
+      - aaron.petkau@canada.ca
+
+    # change is when the repo status goes from pass to fail or vice versa
+    on_success: change
+    on_failure: change
+
+language: perl
+perl:
+  - '5.26'
+os:
+  - linux
+#  - osx
+
+# Whitelist of branches to run CI Testing on.
+branches:
+  only:
+    - master
+    - development
+
+before_install:
+  - "source ./install_deps.sh; export PATH=`pwd`/bcftools-1.9:`pwd`/MUMmer3.23:$PATH ;export BCFTOOLS_PLUGINS=`pwd`/bcftools-1.9/plugins;export PERL5LIB=`pwd`/lib/perl:`pwd`/lib/perl5/x86_64-linux-gnu-thread-multi"
+
+
+script:
+  - prove
