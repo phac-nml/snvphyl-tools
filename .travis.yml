@@ -34,4 +34,5 @@ before_install:
 
 
 script:
-  - prove
+  - echo "Done! Runing tests..."
+  - perl t/filter-stats.t
