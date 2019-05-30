@@ -90,21 +90,10 @@ echo "Done!";
 
 
 
-echo "Installing cpan all modules in local directory in `pwd`/lib/perl5"
-
-cwd=`pwd`
-curl -L -o miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash miniconda.sh -b -p $cwd/miniconda
-
-# step 2: setup channels
-$cwd/miniconda/bin/conda config --system --add channels defaults
-$cwd/miniconda/bin/conda config --system --add channels bioconda
-$cwd/miniconda/bin/conda config --system --add channels conda-forge
+echo "Installing cpan and other dependencies"
 
 #creating new conda env with all perl dependencies and mummer,samtools and vcftools
-$cwd/miniconda/bin/conda create -y -n testing
-$cwd/miniconda/bin/conda activate testing
-$cwd/miniconda/bin/conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-#util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools
+conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-#util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools
 
 
 echo "Please add following environment variables to the terminal or your ~/.bashrc for long term use"

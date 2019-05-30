@@ -22,7 +22,15 @@ branches:
     - development
 
 before_install:
-  - "source ./install_deps.sh; export PATH=`pwd`/bcftools-1.9:`pwd`/MUMmer3.23:$PATH ;export BCFTOOLS_PLUGINS=`pwd`/bcftools-1.9/plugins;"
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b
+  - export PATH=/home/travis/miniconda/bin:$PATH
+  - conda update --yes conda
+  - conda config --system --add channels defaults
+  - conda config --system --add channels bioconda
+  - conda config --system --add channels conda-forge
+  - "source ./install_deps.sh; export PATH=`pwd`/bcftools-1.9:$PATH ;export BCFTOOLS_PLUGINS=`pwd`/bcftools-1.9/plugins;"
 
 
 script:
