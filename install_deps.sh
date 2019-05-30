@@ -126,9 +126,9 @@ $cwd/miniconda/bin/conda config --system --add channels bioconda
 $cwd/miniconda/bin/conda config --system --add channels conda-forge
 
 #creating new conda env with all perl dependencies and mummer,samtools and vcftools
-conda create -n testing
-conda activate testing
-conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-#util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools
+$cwd/miniconda/bin/conda create -n testing
+$cwd/miniconda/bin/conda activate testing
+$cwd/miniconda/bin/conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-#util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools
 
 
 echo "Please add following environment variables to the terminal or your ~/.bashrc for long term use"
