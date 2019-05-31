@@ -31,4 +31,4 @@ before_install:
   - export BCFTOOLS_PLUGINS=`pwd`/bcftools-1.9/plugins
 
 script:
-  - perl t/filter-stats.t
+  - prove
