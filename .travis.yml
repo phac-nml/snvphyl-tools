@@ -26,7 +26,7 @@ before_install:
   - conda config --system --add channels defaults
   - conda config --system --add channels bioconda
   - conda config --system --add channels conda-forge
-
+  - "source ./install_deps.sh; export PATH=`pwd`/bcftools-1.9:$PATH ;export BCFTOOLS_PLUGINS=`pwd`/bcftools-1.9/plugins;"
 
 script:
   - conda --version

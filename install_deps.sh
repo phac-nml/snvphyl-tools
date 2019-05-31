@@ -70,30 +70,6 @@ cd $DIR
 
 echo "Done!"
 
-echo "Fetching and installing Mummer"
-
-mummer='MUMmer3.23'
-
-if [ ! -d "$mummer" ]; then
-
-    rm -rf $mummer
-fi
-
-
-#fetching and putting on the path mummer for find-repeats.pl script
-curl -s -L https://sourceforge.net/projects/mummer/files/mummer/3.23/MUMmer3.23.tar.gz/download > mummer.tar.gz
-tar -zxf mummer.tar.gz
-rm mummer.tar.gz
-
-cd $mummer
-#completely silenting the output from make
-make $silent 2> /dev/null
-
-#add mummer to the path
-toolPATH=$toolPATH:`pwd`
-
-cd $DIR
-
 
 vcftools='vcftools-0.1.15'
 
@@ -114,11 +90,14 @@ echo "Done!";
 
 
 
-echo "Installing cpan all modules in local directory in `pwd`/lib/perl5"
-cpanm --installdeps -L . . || :
+echo "Installing cpan and other dependencies"
+
+#creating new conda env with all perl dependencies and mummer,samtools and vcftools
+conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools
+
 
 echo "Please add following environment variables to the terminal or your ~/.bashrc for long term use"
 echo "export PATH=$toolPATH:\$PATH"
 echo "export BCFTOOLS_PLUGINS=$plugins"
-echo "export PERL5LIB=`pwd`/lib/perl5"
-
+export PATH=$toolPATH:$PATH
+export BCFTOOLS_PLUGINS=$plugins
