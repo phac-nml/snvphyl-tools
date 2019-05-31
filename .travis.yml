@@ -7,6 +7,7 @@ notifications: # set notification options
     # change is when the repo status goes from pass to fail or vice versa
     on_success: change
     on_failure: change
+language: minimal
 os:
   - linux
 #  - osx
