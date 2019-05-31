@@ -33,4 +33,4 @@ before_install:
 
 
 script:
-  - perl bin/vcf2snv_alignment.pl -h
+  - conda --version
