@@ -93,7 +93,7 @@ echo "Done!";
 echo "Installing cpan and other dependencies"
 
 #creating new conda env with all perl dependencies and mummer,samtools and vcftools
-conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools
+conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools perl-json-parse perl-string-util perl-parallel perl-parallel-forkmanager
 
 
 echo "Please add following environment variables to the terminal or your ~/.bashrc for long term use"
