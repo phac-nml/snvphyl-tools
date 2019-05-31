@@ -10,6 +10,33 @@ silent="--silent"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 
+
+echo "Fetching and installing htslib...";
+
+#installing all dependencies for building bcftools and our plugin
+htslib='htslib-1.9'
+
+if [ ! -d "$htslib" ]; then
+
+    rm -rf $htslib
+fi
+
+
+curl -s https://codeload.github.com/samtools/htslib/tar.gz/1.9 > htslib.tar.gz
+tar -zxf htslib.tar.gz
+#clean up
+rm htslib.tar.gz
+
+cd $htslib
+autoreconf 
+./configure --disable-bz2 --disable-lzma $silent
+make $silent 2> /dev/null
+
+export HTSLIB=`pwd`/htslib
+cd $DIR
+
+echo "Done!"
+
 echo "Fetching and install bcftools"
 
 bcftools='bcftools-1.9'
