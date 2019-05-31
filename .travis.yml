@@ -7,10 +7,6 @@ notifications: # set notification options
     # change is when the repo status goes from pass to fail or vice versa
     on_success: change
     on_failure: change
-
-language: perl
-perl:
-  - '5.26'
 os:
   - linux
 #  - osx
