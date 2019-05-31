@@ -1,0 +1,36 @@
+notifications: # set notification options
+  email:
+    recipients:
+      - philip.mabon@canada.ca
+      - aaron.petkau@canada.ca
+
+    # change is when the repo status goes from pass to fail or vice versa
+    on_success: change
+    on_failure: change
+
+language: perl
+perl:
+  - '5.26'
+os:
+  - linux
+#  - osx
+
+# Whitelist of branches to run CI Testing on.
+branches:
+  only:
+    - master
+    - development
+
+before_install:
+  - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b
+  - export PATH=/home/travis/miniconda3/bin:$PATH
+  - conda update --yes conda
+  - conda config --system --add channels defaults
+  - conda config --system --add channels bioconda
+  - conda config --system --add channels conda-forge
+
+
+script:
+  - perl bin/vcf2snv_alignment.pl -h
