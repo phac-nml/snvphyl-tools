@@ -1,5 +1,11 @@
 # Changes
 
+
+## 1.8.3
+
+* Migrate to travis from gitlab-ci.
+* Changed to using (bio)conda for installation of Perl module dependenices and other binaries
+
 ## 1.8.2
 
 *  Update bcftools from 1.5 to version 1.9
