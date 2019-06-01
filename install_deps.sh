@@ -82,6 +82,7 @@ then
 fi
 
 #creating and activating test environment
+conda init bash
 conda create -y -n snvphyltesting
 conda activate snvphyltesting
 
