@@ -75,7 +75,7 @@ echo "Installing cpan and other dependencies"
 
 conda --version 1>/dev/null 2>/dev/null
 exit_code = $?
-if [ exit_code -ne 0 ]
+if [ $exit_code -ne 0 ]
 	    echo "Please install 'conda' before continuing."
 fi
 #creating and activating test environment
