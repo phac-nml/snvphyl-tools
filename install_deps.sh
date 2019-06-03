@@ -82,9 +82,8 @@ then
 fi
 
 #creating and activating test environment
-conda init bash
 conda create -y -n snvphyltesting
-conda activate snvphyltesting
+source activate snvphyltesting
 
 #creating new conda env with all perl dependencies and mummer,samtools and vcftools
 conda install -y perl perl-bioperl perl-hash-merge perl-list-moreutils perl-math-round perl-parallel-forkmanager perl-string-util perl-template-toolkit perl-test-exception perl-text-csv perl-text-diff perl-vcftools-vcf mummer samtools vcftools perl-json-parse perl-string-util perl-parallel-forkmanager
