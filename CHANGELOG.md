@@ -1,10 +1,10 @@
 # Changes
 
-
 ## 1.8.3
 
 * Migrate to travis from gitlab-ci.
 * Changed to using (bio)conda for installation of Perl module dependenices and other binaries
+* Removed reporter.pl
 
 ## 1.8.2
 
