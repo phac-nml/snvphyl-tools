@@ -1,5 +1,8 @@
 # Changes
 
+## 1.8.X
+
+* Removed reporter.pl 
 
 ## 1.8.3
 
