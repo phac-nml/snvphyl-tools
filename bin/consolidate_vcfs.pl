@@ -101,7 +101,7 @@ sub combine_vcfs{
 
     system($cmd) == 0 or die "Could not run $cmd";
 
-	#need to get rid of the stupid format information since they cannot be merge later downstream
+    #need to get rid of the stupid format information since they cannot be merge later downstream
 	$cmd ="$bcftools  view -h $dir/1-0001$ext";
 	my $result = `$cmd`;
 	if ($result =~ /##FORMAT=\<ID=GL/)
@@ -130,19 +130,14 @@ sub combine_vcfs{
     $cmd = "$bcftools  filter  -m + -e  'MQM<$min_mean_mapping || INFO/AO/INFO/DP<$ao'  $dir/0002$ext $out_type   > $dir/1-0002$ext && bcftools index $dir/1-0002$ext";
     system($cmd) == 0 or die "Could not run $cmd";
 
-
-
-    my $mpileup_checked_bcf = check_reference($bcftools,"$dir/1-0002$ext","$dir/0003$ext",$dir,"$dir/filtered_freebayes$ext",$out_type,$ext);
-
-    if ($mpileup_checked_bcf )
-    {
-        die "Could not correctly format intersection mpileup file\n";
-    }
-
+    #applying mpileup filter-coverage status to intersect SNVs of both freebayes and mpileup
+    $cmd = "$bcftools  annotate  $dir/1-0002$ext -a $dir/0003$ext $out_type -c FILTER > $dir/filtered_freebayes$ext";
+    system($cmd) == 0 or die "Could not correctly format intersection mpileup file\n";
 
     $cmd = "$bcftools  annotate -x FORMAT -x FORMAT/GL -x FORMAT/GQ  $dir/filtered_freebayes$ext $out_type > $dir/filtered_freebayes2$ext";
     system($cmd) == 0 or die "Could not run $cmd";
 
+    #index both new filtered freebayes and mpileup files
     $cmd = "$bcftools index  $dir/filtered_freebayes2$ext";
     system($cmd) == 0 or die "Could not run $cmd";
 
@@ -185,113 +180,6 @@ sub combine_vcfs{
     return $file_name;
 
 }
-
-
-sub check_reference
-{
-    my ($bcftools,$freebayes,$mpileup,$basedir,$output,$out_type,$ext) = @_;
-    my $cmd;
-
-    #check to see if we have any records to run again
-    my $stats = `$bcftools  stats  $freebayes`;
-    if ( $stats =~ /number of records:\s+(\d+)/)
-    {
-        #if we do not find any valid SNVs in freebayes files,
-        #then we just use the original 0003 vcf file produced by bcftools isec
-        my $filter_vcf = $mpileup;
-        
-        if ($1)
-        {
-            #check to ensure that there is no reference in the header that does NOT at least one have record.
-            #If there is no record for a reference
-            #bcftools will simply freeze up
-            
-            #get header line and parse out the ##contig=
-            my $out = `$bcftools view -h $mpileup | grep "##contig" | sed -e 's/^##contig=<ID=//' -e 's/,length=[0-9][0-9]*>//'`;
-            die "Error: no ##contig entries in '$out'" if ($out =~ //); #assume that we have at least one reference
-
-            my %refs;
-
-            foreach ( split /\n/,$out)
-            {
-                $refs{$_}++; #adding each reference found into a hash
-            }
-
-            #determine which references ACTUALLY have position(s) in the body of the vcf.
-            $out = `$bcftools index -s  $mpileup`;
-            die "Error: no entry found using bcftools index  in '$out'" if ($out =~ //); #assume that we have at least one reference coming back from bcftools index
-            foreach my $line( split/\n/,$out)
-            {
-                my @data=split/\t/,$line;
-                if (exists $refs{$data[0]}) #removing reference(s) that have position in the body
-                {
-                    delete $refs{$data[0]};
-                }
-            }
-
-            #if any reference still in %refs, means there is NO position in the vcf and need to be removed!
-            if ( keys %refs)
-            {
-                $filter_vcf = "$basedir/corrected_mpileup.vcf.gz"; #will need a new modified VCF file
-                
-                my $old_header = `$bcftools view -h $mpileup`; #grabbing the current header that needs to be cleaned of references that do NOT have positions
-                open my $out, ">$basedir/newheader";
-
-                foreach my $line( split/\n/,$old_header)
-                {
-                    my $filter_in=1;
-                    foreach my $ref( keys %refs)
-                    {
-                        if ( (index $line,$ref) !=-1)
-                        {
-                            #line was found and will not be added to the new header file
-                            $filter_in=0;
-                            last; #no point looking farther since only one entry per header
-                        }
-                    }
-                    #if true, then print out header line into new file
-                    if ( $filter_in)
-                    {
-                        print $out "$line\n";
-                    }
-                }
-                close $out;
-
-                $cmd = "$bcftools view -H  $mpileup > $basedir/no_header_vcf";
-                system($cmd) == 0 or die "Could not run $cmd";
-
-                #combine new vcf header and the original body together as a vcf
-                $cmd = "cat $basedir/newheader $basedir/no_header_vcf > $basedir/new_mpileup.vcf";
-                system($cmd) == 0 or die "Could not run $cmd";
-
-                #need to convert into compressed and index due to edge case where 0003
-                #from bcftools isec mpileup may have extra contig entries which will
-                #cause annotate command below to die
-                $cmd = "$bcftools view $basedir/new_mpileup.vcf -O z > $filter_vcf";
-                system($cmd) == 0 or die "Could not run $cmd";
-                
-                $cmd = "$bcftools index -f $filter_vcf";
-                system($cmd) == 0 or die "Could not run $cmd";
-            }
-
-            #applying mpileup filter-coverage status to intersect SNVs of both freebayes and mpileup
-            $cmd = "$bcftools  annotate  $freebayes -a $filter_vcf $out_type -c FILTER > $output";
-            system($cmd) == 0 or die "Could not run $cmd";
-        }
-        else
-        {
-            $cmd = "ln -s $freebayes  $output";
-            system($cmd) == 0 or die "Could not run $cmd";
-        }
-    }
-    else
-    {
-        die "Could not run bcftools stats on file '$freebayes'\n";
-    }
-
-    return 0;
-}
-
 
 sub prepare_inputs
 {
