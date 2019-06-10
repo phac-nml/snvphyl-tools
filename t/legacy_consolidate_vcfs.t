@@ -5,7 +5,7 @@ use strict;
 
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
-use Test::More tests => 16;
+use Test::More tests => 278;
 use File::Temp 'tempfile';
 use File::Temp qw /tempdir/;
 use Getopt::Long;
@@ -245,7 +245,7 @@ sub test_header
 
 
 my $cases_dir = "$script_dir";
-my $input_dir = "$cases_dir/latest_consolidate_vcfs_input";
+my $input_dir = "$cases_dir/legacy_consolidate_vcfs_input";
 
 my $coverage_cutoff = 4;
 my $regular_test = 1;
@@ -316,7 +316,7 @@ for my $dir (@in_files)
 	print "### done ###\n";
 }
 
-$input_dir = "$cases_dir/latest_consolidate_vcfs_input/snv-specific";
+$input_dir = "$cases_dir/legacy_consolidate_vcfs_input/snv-specific";
 
 opendir($in_h,$input_dir) or die "Could not open $input_dir: $!";
 @in_files = sort grep {$_ !~ /^\./} readdir($in_h);
