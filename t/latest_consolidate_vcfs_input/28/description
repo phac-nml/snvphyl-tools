@@ -1,0 +1,1 @@
+Fix issue where intersect mpileup file (0003) has contig names in it's header compare to intersect freebayes files (0002)

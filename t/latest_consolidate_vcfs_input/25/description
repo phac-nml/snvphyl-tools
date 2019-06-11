@@ -1,0 +1,1 @@
+Tests no valid nucletodie variants and two invalid variants due to filtered-mpileup. Looking at edge case where too long chrom name with long position causes a hash issue where 'DP4' is put in status rather then 'filtered-mpileup' 

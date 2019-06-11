@@ -1,0 +1,1 @@
+Testing to ensure that the combined bcf file contain ##contig in the header otherwise bcftool index/query will have issues grabbing positions

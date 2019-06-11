@@ -1,0 +1,17 @@
+Tests single nucleotide and one non mutation
+
+v1 alignments:
+ref atgc
+    aagc
+    aagc
+    aagc
+    aagc
+    * **
+
+v2 alignments:
+ref atgc
+    atgc
+    atgc
+    atgc
+    atgc
+    ****

@@ -1,0 +1,1 @@
+Testing 3 invalid nucletodie variants. All positions in v1 mpileup are below the caseoff. Edge case where FILTER column is getting the wrong name when using bcf instead of vcf. Issue has been reported to bcftools on github as # 317. 
