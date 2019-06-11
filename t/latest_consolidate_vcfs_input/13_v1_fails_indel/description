@@ -1,0 +1,17 @@
+Tests multiple SNVs and one insertion/one deletion on each of v1/v2
+
+v1 alignments:
+ref a-tgcatgcatgcatgc
+    aaagca-gtatgcatg
+    aaagca-gtatgcatg
+    aaagca-gtatgcatg
+    aaagca-gtatgcatg
+    *  *** * *******
+
+v2 alignments:
+ref at-gcatgcatgcatgc
+    attgca--catgcatgc
+    attgca--catgcatgc
+    attgca--catgcatgc
+    attgca--catgcatgc
+    ** ***  *********

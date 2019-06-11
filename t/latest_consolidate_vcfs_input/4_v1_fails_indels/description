@@ -1,0 +1,17 @@
+Tests single SNV and an insertion before
+
+v1 alignments:
+ref a-tgcatgcatgcatgc
+    aaagcatgcatgcatgc
+    aaagcatgcatgcatgc
+    aaagcatgcatgcatgc
+    aaagcatgcatgcatgc
+    *  **************
+
+v2 alignments:
+ref atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    atgcatgcatgcatgc
+    ****************

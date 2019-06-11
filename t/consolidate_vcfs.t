@@ -5,7 +5,7 @@ use strict;
 
 use FindBin;
 use lib $FindBin::Bin.'/../lib';
-use Test::More tests => 16;
+use Test::More tests => 158;
 use File::Temp 'tempfile';
 use File::Temp qw /tempdir/;
 use Getopt::Long;
