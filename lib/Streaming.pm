@@ -13,8 +13,11 @@ sub create_streamers {
         #fetch only the range from the reference that was assigned to this filehandle.
         my $cmd = "$bcftools query -r $range -f '%CHROM\\t%POS\\t%ID\\t%REF\\t%ALT\\t%QUAL\\t%FILTER\\t%INFO/DP\n' " . $files->{$_} . " 2>/dev/null";
         
-        #created filehandle from $cmd above directly so we do not have to write to disk
-	open (my $OUTPUT,'-|',"$cmd");
+        #store results
+        my $result = `$cmd`;
+
+        #created filehandle from scalar so we do not have to write to disk
+        open (my $OUTPUT,'<',\$result);
         $info{'vcf'} = Vcf->new(fh => $OUTPUT ,_version_set=> '4.0');
         $info{'file'} = $files->{$_};
         push @fhs,\%info;
