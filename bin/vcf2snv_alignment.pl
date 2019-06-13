@@ -17,8 +17,6 @@ use Streaming;
 use Bio::AlignIO;
 use Bio::SeqIO;
 use Bio::SimpleAlign;
-# VCF module from vcftools: http://vcftools.sourceforge.net/index.html
-use Vcf;
 use File::Temp qw /tempdir/;
 use InvalidPositions;
 use List::MoreUtils qw/all any firstidx/;

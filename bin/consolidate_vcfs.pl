@@ -9,8 +9,6 @@ use lib $FindBin::Bin.'/../lib';
 use lib $FindBin::Bin;
 use Pod::Usage;
 use Getopt::Long;
-# VCF module from vcftools: http://vcftools.sourceforge.net/index.html
-use Vcf;
 use File::Temp qw /tempdir/;
 use File::Path qw /rmtree /;
 use File::Copy;
