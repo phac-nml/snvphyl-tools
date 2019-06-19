@@ -15,7 +15,7 @@ sub create_streamers {
         
         #store results
         my $result = `$cmd`;
-        
+
         #created filehandle from scalar so we do not have to write to disk
         open (my $OUTPUT,'<',\$result);
         $info{'vcf'} = Vcf->new(fh => $OUTPUT ,_version_set=> '4.0');
