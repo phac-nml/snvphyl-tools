@@ -17,6 +17,7 @@ use Bio::AlignIO;
 use Bio::SeqIO;
 use Bio::SimpleAlign;
 use File::Temp qw /tempdir/;
+use File::Path;
 use InvalidPositions;
 
 my %valid_formats = ('fasta' => 'fasta', 'phylip' => 'phy', 'clustalw' => 'cl');
@@ -256,27 +257,30 @@ sub filter_positions
                     $prev_key=$cur_key;
                 }
             }
-            
-        if ( $parallel) {
-            $pm->finish(0,{'job_file' =>$job_id, 'stats' => \%stats}) if $parallel;
-        }
-        else {
-            $results{$job_id}=$job_id;
 
-            foreach my $chrom ( keys %stats ) {
-                print "invalid: " . $stats{$chrom}{'invalid'} . "\n";
-                print "core: " . $stats{$chrom}{'core'} . "\n";
-                $vcfcore{$chrom}{'invalid'} += $stats{$chrom}{'invalid'};
-                $vcfcore{$chrom}{'core'}    += $stats{$chrom}{'core'};
+            #remove temp isec otherwise we can fill up the hardrive really fast
+            rmtree("$tmp_dir/isec_$job_id");
+            
+            if ( $parallel) {
+                $pm->finish(0,{'job_file' =>$job_id, 'stats' => \%stats}) if $parallel;
+            }
+            else {
+                $results{$job_id}=$job_id;
+
+                foreach my $chrom ( keys %stats ) {
+                    print "invalid: " . $stats{$chrom}{'invalid'} . "\n";
+                    print "core: " . $stats{$chrom}{'core'} . "\n";
+                    $vcfcore{$chrom}{'invalid'} += $stats{$chrom}{'invalid'};
+                    $vcfcore{$chrom}{'core'}    += $stats{$chrom}{'core'};
+                }
+
             }
             
-        }
-        
-    }#end while        
+        }#end while
 
     } #end foreach
     
-    $pm->wait_all_children if $parallel;        
+    $pm->wait_all_children if $parallel;
 
     #combine all results files in order
     my @cmd = "cat $tmp_dir/0";
